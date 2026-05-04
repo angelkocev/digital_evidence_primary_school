@@ -455,28 +455,30 @@ async function onLogin(user){
   document.getElementById('hdr-right-content').insertAdjacentHTML('afterbegin',
     `<div class="user-badge"><span>👤 ${name}</span><span class="save-indicator" id="save-ind">✓ Зачувано</span><button onclick="doLogout()">Одјави се</button></div>`
   );
-  // Load profile to get assigned class
-  const{data:profile}=await sb.from('profiles').select('uciliste,oddelenie,paralelka').eq('id',user.id).single();
-  if(profile&&profile.uciliste&&profile.oddelenie&&profile.paralelka){
-    // Auto-set and lock dropdowns
+  // Load profile
+  const{data:profile}=await sb.from('profiles').select('uciliste,oddelenie,paralelka,is_admin').eq('id',user.id).single();
+  currentUser.is_admin=profile?.is_admin||false;
+
+  if(currentUser.is_admin){
+    // Admin — слободни мениа, преглед на сè
+    const badge=document.querySelector('.user-badge span');
+    if(badge)badge.textContent='👑 '+name+' (Администратор)';
+  } else if(profile&&profile.uciliste&&profile.oddelenie&&profile.paralelka){
+    // Наставник — заклучи мениа на неговата паралелка
     curUch=profile.uciliste;
     curOdd=profile.oddelenie;
     curPar=profile.paralelka;
-    // Set and disable училиште
     const selUch=document.getElementById('sel-uch');
     selUch.value=curUch;
     selUch.disabled=true;
-    // Build and set одделение
     buildOddMenu();
     const selOdd=document.getElementById('sel-odd');
     selOdd.value=curOdd;
     selOdd.disabled=true;
-    // Build and set паралелка
     buildParMenu();
     const selPar=document.getElementById('sel-par');
     selPar.value=curPar;
     selPar.disabled=true;
-    // Style disabled selects
     [selUch,selOdd,selPar].forEach(s=>{s.style.opacity='0.7';s.style.cursor='not-allowed';});
   }
   await loadFromSupabase();
@@ -506,22 +508,26 @@ function showSaveInd(){
 async function loadFromSupabase(){
   if(!currentUser)return;
   allData={};electiveNames={};
-  // Load ученици
-  const{data:sts,error:e1}=await sb.from('ucenici').select('*').eq('teacher_id',currentUser.id);
+  // Admin гледа сè, наставник само свое
+  const isAdmin=currentUser.is_admin||false;
+  let q=sb.from('ucenici').select('*');
+  if(!isAdmin)q=q.eq('teacher_id',currentUser.id);
+  const{data:sts,error:e1}=await q;
   if(!e1&&sts){
     sts.forEach(s=>{
       const k=`${s.uciliste}|${s.oddelenie}|${s.paralelka}`;
       if(!allData[k])allData[k]=[];
       allData[k].push({rn:s.rn,ime:s.ime,prz:s.prz,pol:s.pol,mol:s.mol,etnik:s.etnik,op:s.op,nop:s.nop,gr:s.gr||{},merki:s.merki||[],extra:s.extra||[],_dbid:s.id});
     });
-    // Sort each class by rn
     Object.keys(allData).forEach(k=>{allData[k].sort((a,b)=>(a.rn||999)-(b.rn||999));});
   }
-  // Load elective names
-  const{data:en}=await sb.from('elective_names').select('*').eq('teacher_id',currentUser.id);
+  let qe=sb.from('elective_names').select('*');
+  if(!isAdmin)qe=qe.eq('teacher_id',currentUser.id);
+  const{data:en}=await qe;
   if(en){en.forEach(e=>{const k=`${e.uciliste}|${e.oddelenie}|${e.paralelka}`;electiveNames[k]={s1:e.s1,s2:e.s2,i9:e.i9};});}
-  // Load реализација
-  const{data:real}=await sb.from('realizacija').select('*').eq('teacher_id',currentUser.id);
+  let qr=sb.from('realizacija').select('*');
+  if(!isAdmin)qr=qr.eq('teacher_id',currentUser.id);
+  const{data:real}=await qr;
   if(real){
     realData={};
     real.forEach(r=>{
