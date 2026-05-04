@@ -247,11 +247,14 @@ body{font-family:var(--F);color:var(--tx);background:var(--bg);font-size:14px;pa
 
 <div class="app" id="main-app" style="display:none;">
 <div class="hdr">
-  <div>
-    <div class="eyebrow">Дигитална евиденција · 2025/2026</div>
-    <h1>Евиденција на паралелка</h1>
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;width:100%;flex-wrap:wrap;gap:10px;">
+    <div>
+      <div class="eyebrow">Дигитална евиденција · 2025/2026</div>
+      <h1>Евиденција на паралелка</h1>
+    </div>
+    <div id="hdr-right-content" style="display:flex;align-items:center;gap:8px;"></div>
   </div>
-  <div class="hdr-right" id="hdr-right-content">
+  <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;margin-top:10px;">
     <div class="hdr-sel"><label>Училиште</label>
       <select id="sel-uch" onchange="onUchChange()">
         <option value="">— изберете —</option>
