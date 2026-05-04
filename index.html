@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Евиденција на паралелка 2025/2026</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=Playfair+Display:wght@500;600&family=Noto+Serif:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -194,15 +195,63 @@ body{font-family:var(--F);color:var(--tx);background:var(--bg);font-size:14px;pa
   .kpis{break-inside:avoid;}
   .rep-duo{break-inside:avoid;}
 }
+/* ── LOGIN SCREEN ── */
+.login-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg);padding:1rem;}
+.login-box{background:var(--bg2);border:1px solid var(--bdr);border-radius:20px;padding:2.5rem 2rem;width:min(420px,95vw);box-shadow:0 32px 80px rgba(0,0,0,.5);}
+.login-logo{font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--acc);margin-bottom:8px;}
+.login-title{font-family:var(--FD);font-size:24px;font-weight:500;color:var(--tx);margin-bottom:4px;}
+.login-sub{font-size:13px;color:var(--tx3);margin-bottom:2rem;}
+.login-fld{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
+.login-fld label{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--tx3);}
+.login-fld input{font-family:var(--F);font-size:14px;border:1px solid var(--bdr);border-radius:9px;padding:11px 14px;color:var(--tx);background:var(--bg3);outline:none;transition:border-color .15s;width:100%;}
+.login-fld input:focus{border-color:var(--acc);}
+.login-btn{width:100%;font-family:var(--F);font-size:14px;font-weight:600;padding:12px;border-radius:9px;border:none;background:var(--acc2);color:#fff;cursor:pointer;transition:background .15s;margin-top:6px;}
+.login-btn:hover{background:var(--acc);}
+.login-btn:disabled{opacity:.5;cursor:not-allowed;}
+.login-err{font-size:12px;color:var(--rose);background:var(--rose-d);padding:8px 12px;border-radius:8px;margin-top:10px;display:none;}
+.login-toggle{text-align:center;margin-top:1rem;font-size:12px;color:var(--tx3);}
+.login-toggle a{color:var(--acc);cursor:pointer;text-decoration:underline;}
+.login-loading{text-align:center;padding:3rem;color:var(--tx3);font-size:14px;}
+/* User badge */
+.user-badge{display:flex;align-items:center;gap:8px;background:var(--bg2);border:1px solid var(--bdr);border-radius:9px;padding:6px 12px;}
+.user-badge span{font-size:12px;font-weight:600;color:var(--tx2);}
+.user-badge button{font-family:var(--F);font-size:11px;font-weight:600;padding:4px 10px;border-radius:6px;border:1px solid var(--bdr);background:var(--bg3);color:var(--tx3);cursor:pointer;transition:all .15s;}
+.user-badge button:hover{background:var(--rose-d);color:var(--rose);border-color:var(--rose);}
+.save-indicator{font-size:11px;color:var(--teal);display:none;}
+.save-indicator.show{display:inline;}
 </style>
 
-<div class="app">
+<!-- LOGIN SCREEN -->
+<div id="login-screen" class="login-wrap" style="display:none;">
+  <div class="login-box">
+    <div class="login-logo">Дигитална евиденција · 2025/2026</div>
+    <div class="login-title">Најава</div>
+    <div class="login-sub">Внесете ги вашите податоци за пристап</div>
+    <div class="login-fld">
+      <label>Е-пошта</label>
+      <input id="auth-email" type="email" placeholder="nastavnik@uciliste.mk">
+    </div>
+    <div class="login-fld">
+      <label>Лозинка</label>
+      <input id="auth-pass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doAuth()">
+    </div>
+    <button class="login-btn" id="auth-btn" onclick="doAuth()">Најави се</button>
+    <div class="login-err" id="auth-err"></div>
+  </div>
+</div>
+
+<!-- LOADING -->
+<div id="loading-screen" class="login-wrap">
+  <div class="login-loading">Се вчитува...</div>
+</div>
+
+<div class="app" id="main-app" style="display:none;">
 <div class="hdr">
   <div>
     <div class="eyebrow">Дигитална евиденција · 2025/2026</div>
     <h1>Евиденција на паралелка</h1>
   </div>
-  <div class="hdr-right">
+  <div class="hdr-right" id="hdr-right-content">
     <div class="hdr-sel"><label>Училиште</label>
       <select id="sel-uch" onchange="onUchChange()">
         <option value="">— изберете —</option>
@@ -324,8 +373,175 @@ body{font-family:var(--F);color:var(--tx);background:var(--bg);font-size:14px;pa
 </div>
 </div>
 </div>
+</div>
 
 <script>
+/* ══ SUPABASE ══ */
+const SUPA_URL='https://misgjrmpotlzjtgrujkp.supabase.co';
+const SUPA_KEY='sb_publishable_s4v_-I0V4341WYPyD01Sfg_OpJiSp5R';
+const sb=supabase.createClient(SUPA_URL,SUPA_KEY);
+
+let currentUser=null;
+let authMode='login'; // 'login' | 'register'
+
+/* ── AUTH UI ── */
+function toggleAuthMode(){
+  authMode=authMode==='login'?'register':'login';
+  const isReg=authMode==='register';
+  document.getElementById('auth-title').textContent=isReg?'Регистрација':'Најава';
+  document.getElementById('auth-sub').textContent=isReg?'Создадете нов акаунт':'Внесете ги вашите податоци за пристап';
+  document.getElementById('auth-btn').textContent=isReg?'Регистрирај се':'Најави се';
+  document.getElementById('auth-toggle-txt').textContent=isReg?'Веќе имате акаунт? ':'Немате акаунт? ';
+  document.querySelector('#auth-toggle-txt+a').textContent=isReg?'Најавете се':'Регистрирајте се';
+  document.getElementById('reg-name-wrap').style.display=isReg?'flex':'none';
+  document.getElementById('auth-err').style.display='none';
+}
+
+async function doAuth(){
+  const email=document.getElementById('auth-email').value.trim();
+  const pass=document.getElementById('auth-pass').value;
+  const btn=document.getElementById('auth-btn');
+  const errEl=document.getElementById('auth-err');
+  errEl.style.display='none';
+  if(!email||!pass){showAuthErr('Внесете е-пошта и лозинка.');return;}
+  btn.disabled=true;btn.textContent='Се најавува...';
+  try{
+    const{error}=await sb.auth.signInWithPassword({email,password:pass});
+    if(error)throw error;
+  } catch(e){
+    showAuthErr(e.message==='Invalid login credentials'?'Погрешна е-пошта или лозинка.':e.message);
+  }
+  btn.disabled=false;btn.textContent='Најави се';
+}
+
+function showAuthErr(msg,type='err'){
+  const el=document.getElementById('auth-err');
+  el.textContent=msg;
+  el.style.display='block';
+  el.style.background=type==='info'?'rgba(79,142,247,.15)':'var(--rose-d)';
+  el.style.color=type==='info'?'var(--acc)':'var(--rose)';
+}
+
+async function doLogout(){
+  await sb.auth.signOut();
+}
+
+/* ── SESSION ── */
+async function initAuth(){
+  try{
+    const {data:{session},error}=await sb.auth.getSession();
+    if(error||!session||!session.user){
+      await sb.auth.signOut();
+      showLoginScreen();
+    } else {
+      await onLogin(session.user);
+    }
+  } catch(e){
+    showLoginScreen();
+  }
+  sb.auth.onAuthStateChange(async(event,session)=>{
+    if(event==='SIGNED_IN'&&session){await onLogin(session.user);}
+    if(event==='SIGNED_OUT'){onLogout();}
+  });
+}
+
+async function onLogin(user){
+  currentUser=user;
+  document.getElementById('loading-screen').style.display='none';
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('main-app').style.display='block';
+  // Show user badge
+  const name=user.user_metadata?.full_name||user.email;
+  document.getElementById('hdr-right-content').insertAdjacentHTML('afterbegin',
+    `<div class="user-badge"><span>👤 ${name}</span><span class="save-indicator" id="save-ind">✓ Зачувано</span><button onclick="doLogout()">Одјави се</button></div>`
+  );
+  await loadFromSupabase();
+  renderL();upBadge();
+}
+
+function onLogout(){
+  currentUser=null;allData={};electiveNames={};
+  document.getElementById('main-app').style.display='none';
+  document.getElementById('hdr-right-content').innerHTML='';
+  showLoginScreen();
+}
+
+function showLoginScreen(){
+  document.getElementById('loading-screen').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+}
+
+function showSaveInd(){
+  const el=document.getElementById('save-ind');
+  if(!el)return;
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),2000);
+}
+
+/* ── SUPABASE DATA SYNC ── */
+async function loadFromSupabase(){
+  if(!currentUser)return;
+  allData={};electiveNames={};
+  // Load ученици
+  const{data:sts,error:e1}=await sb.from('ucenici').select('*').eq('teacher_id',currentUser.id);
+  if(!e1&&sts){
+    sts.forEach(s=>{
+      const k=`${s.uciliste}|${s.oddelenie}|${s.paralelka}`;
+      if(!allData[k])allData[k]=[];
+      allData[k].push({rn:s.rn,ime:s.ime,prz:s.prz,pol:s.pol,mol:s.mol,etnik:s.etnik,op:s.op,nop:s.nop,gr:s.gr||{},merki:s.merki||[],extra:s.extra||[],_dbid:s.id});
+    });
+    // Sort each class by rn
+    Object.keys(allData).forEach(k=>{allData[k].sort((a,b)=>(a.rn||999)-(b.rn||999));});
+  }
+  // Load elective names
+  const{data:en}=await sb.from('elective_names').select('*').eq('teacher_id',currentUser.id);
+  if(en){en.forEach(e=>{const k=`${e.uciliste}|${e.oddelenie}|${e.paralelka}`;electiveNames[k]={s1:e.s1,s2:e.s2,i9:e.i9};});}
+  // Load реализација
+  const{data:real}=await sb.from('realizacija').select('*').eq('teacher_id',currentUser.id);
+  if(real){
+    realData={};
+    real.forEach(r=>{
+      const k=`${r.uciliste}|${r.oddelenie}|${r.paralelka}`;
+      if(!realData[k])realData[k]={};
+      realData[k][r.predmet]={real:r.real,nereal:r.nereal,dop:r.dop,dod:r.dod};
+    });
+  }
+}
+
+let realData={};
+function getRealData(){return realData;}
+function setRealData(d){realData=d;}
+
+async function persistStudent(s,k){
+  if(!currentUser)return;
+  const[uch,odd,par]=k.split('|');
+  const row={teacher_id:currentUser.id,uciliste:uch,oddelenie:parseInt(odd),paralelka:par,rn:s.rn,ime:s.ime,prz:s.prz,pol:s.pol,mol:s.mol||'',etnik:s.etnik||'',op:s.op||0,nop:s.nop||0,gr:s.gr||{},merki:s.merki||[],extra:s.extra||[]};
+  if(s._dbid){
+    await sb.from('ucenici').update(row).eq('id',s._dbid);
+  } else {
+    const{data}=await sb.from('ucenici').insert(row).select().single();
+    if(data)s._dbid=data.id;
+  }
+  showSaveInd();
+}
+
+async function deleteStudent(dbid){
+  if(!currentUser||!dbid)return;
+  await sb.from('ucenici').delete().eq('id',dbid);
+}
+
+async function persistElective(k,en){
+  if(!currentUser)return;
+  const[uch,odd,par]=k.split('|');
+  await sb.from('elective_names').upsert({teacher_id:currentUser.id,uciliste:uch,oddelenie:parseInt(odd),paralelka:par,s1:en.s1,s2:en.s2,i9:en.i9},{onConflict:'teacher_id,училиште,одделение,паралелка'});
+}
+
+async function persistReal(k,subj,vals){
+  if(!currentUser)return;
+  const[uch,odd,par]=k.split('|');
+  await sb.from('realizacija').upsert({teacher_id:currentUser.id,uciliste:uch,oddelenie:parseInt(odd),paralelka:par,predmet:subj,real:vals.real||0,nereal:vals.nereal||0,dop:vals.dop||0,dod:vals.dod||0},{onConflict:'teacher_id,училиште,одделение,паралелка,предмет'});
+  showSaveInd();
+}
 const UCH_DATA={
   C:{name:'Централно училиште',odds:{
     1:['I-а','I-б','I-в'],2:['II-а','II-б','II-в'],3:['III-а','III-б','III-в'],
@@ -446,7 +662,10 @@ function getEN(){return electiveNames[stKey()]||{s1:'Слободен избор
 function setEN(o){electiveNames[stKey()]=o;}
 
 try{const d=localStorage.getItem('ev37');if(d){const p=JSON.parse(d);allData=p.d||{};electiveNames=p.e||{};}}catch(e){}
-function persist(){try{localStorage.setItem('ev37',JSON.stringify({d:allData,e:electiveNames}));}catch(e){}}
+function persist(){
+  // Зачувај во localStorage како backup
+  try{localStorage.setItem('ev37',JSON.stringify({d:allData,e:electiveNames}));}catch(e){}
+}
 function upBadge(){document.getElementById('nbadge').textContent=getSts().length;}
 
 function onUchChange(){curUch=document.getElementById('sel-uch').value;curOdd=0;curPar='';buildOddMenu();buildParMenu();renderL();upBadge();}
@@ -632,7 +851,7 @@ function buildSG(gr={}){
       </div>
     </div>`).join('')+'</div>';
 }
-function saveEN(k,v){const en=getEN();en[k]=v||(k==='s1'?'Слободен изборен предмет 1':(k==='s2'?'Слободен изборен предмет 2':'Изборен предмет'));setEN(en);persist();}
+function saveEN(k,v){const en=getEN();en[k]=v||(k==='s1'?'Слободен изборен предмет 1':(k==='s2'?'Слободен изборен предмет 2':'Изборен предмет'));setEN(en);persist();persistElective(stKey(),getEN());}
 
 function applyQF(){
   const v=document.getElementById('qfval').value;if(!v)return;
@@ -648,7 +867,7 @@ function getGr(){
 }
 function showMsg(id,t,type){const e=document.getElementById(id);e.textContent=t;e.className='fmsg '+type;setTimeout(()=>e.className='fmsg',3200);}
 
-function saveSt(){
+async function saveSt(){
   const rn=parseInt(document.getElementById('frn').value)||null;
   if(!rn){showMsg('fmsg','Внесете го редниот број!','err');return;}
   const ime=document.getElementById('fi').value.trim();
@@ -665,7 +884,7 @@ function saveSt(){
   const emptyGrades=document.querySelectorAll('#sgw .gr-sel');
   for(const sel of emptyGrades){
     if(sel.value===''){
-      const subjName=sel.closest('.srow')?.querySelector('.srow-name,.el-inp')?.textContent||sel.closest('.srow')?.querySelector('.el-inp')?.value||sel.dataset.s||'предмет';
+      const subjName=sel.closest('.srow')?.querySelector('.srow-name,.el-inp')?.textContent||sel.closest('.srow')?.querySelector('.el-inp')?.value||sel.dataset.s||'predmet';
       showMsg('fmsg','Внесете оценка за: '+subjName.trim(),'err');
       sel.closest('.srow')?.scrollIntoView({behavior:'smooth',block:'center'});
       return;
@@ -679,7 +898,9 @@ function saveSt(){
     nop:parseInt(document.getElementById('fnp').value)||0,
     gr:getGr(),merki:getMerki(),extra:getExtra()};
   if(editIdx>=0)sts[editIdx]=s; else sts.push(s);
-  setSts(sts);persist();upBadge();showMsg('fmsg','Зачувано!','ok');
+  setSts(sts);persist();
+  await persistStudent(s,stKey());
+  upBadge();showMsg('fmsg','Зачувано!','ok');
   setTimeout(()=>{closeModal();renderL();},600);
 }
 
@@ -729,7 +950,9 @@ function renderL(){
 
 function delSt(i){
   const sts=getSts();if(!confirm(`Избриши го ${sts[i].ime} ${sts[i].prz}?`))return;
+  const dbid=sts[i]._dbid;
   sts.splice(i,1);setSts(sts);persist();upBadge();renderL();
+  deleteStudent(dbid);
 }
 
 /* ══ REPORT ══ */
@@ -1541,20 +1764,18 @@ function updateRealRow(inp){
   const subj=inp.dataset.subj;
   const field=inp.dataset.f;
   const val=parseInt(inp.value)||0;
-  const d=getRealData();
-  const k=realKey();
-  if(!d[k])d[k]={};
-  if(!d[k][subj])d[k][subj]={real:0,nereal:0,dop:0,dod:0};
-  d[k][subj][field]=val;
-  setRealData(d);
-  // Ажурирај вкупни
+  if(!realData[realKey()])realData[realKey()]={};
+  if(!realData[realKey()][subj])realData[realKey()][subj]={real:0,nereal:0,dop:0,dod:0};
+  realData[realKey()][subj][field]=val;
+  // Update totals
   const subjs=allSubjs(curOdd);
-  const saved=d[k];
+  const saved=realData[realKey()];
   ['real','nereal','dop','dod'].forEach(f=>{
     const tot=subjs.reduce((a,s)=>a+((saved[s]?.[f])||0),0);
     const el=document.getElementById('tot-'+f);
     if(el)el.textContent=tot;
   });
+  persistReal(realKey(),subj,realData[realKey()][subj]);
 }
 
 function saveReal(){
@@ -1581,6 +1802,6 @@ function gT(id,btn){
   if(id==='real')renderReal();
   if(id==='rep')renderR();
 }
-renderL();upBadge();
+initAuth();
 </script>
 </html>
