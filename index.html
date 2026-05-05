@@ -2141,7 +2141,7 @@ function renderAdmin(){
       <tbody>${povtoruvanje.map(s=>{
         const ki=katInfo(s.gr||{});
         const slabi=allSubjs(s._odd||curOdd).filter(subj=>Number((s.gr||{})[subj])===1);
-        return\`<tr>
+        return`<tr>
           <td style="font-family:var(--FD);font-weight:500;color:var(--tx3);text-align:center;">\${s.rn!=null?s.rn:'—'}</td>
           <td style="font-family:var(--FC);font-weight:600;">\${s.ime} \${s.prz}</td>
           <td style="color:var(--tx2);">\${ODD_LBL[s._odd]||s._odd} · \${s._par}</td>
@@ -2152,7 +2152,7 @@ function renderAdmin(){
           <td style="text-align:center;font-weight:700;font-family:var(--FD);">\${(s.op||0)+(s.nop||0)}</td>
           <td style="text-align:center;"><span class="kat \${ki.cls}">\${ki.lbl}</span></td>
           <td><div style="display:flex;gap:4px;flex-wrap:wrap;">\${slabi.length?slabi.map(subj=>'<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;background:rgba(248,113,113,.15);color:#F87171;">'+subj+'</span>').join(''):'<span style="font-size:11px;color:var(--tx3);">—</span>'}</div></td>
-        </tr>\`;
+        </tr>`;
       }).join('')}</tbody>
     </table>
   </div>`:''}`;
