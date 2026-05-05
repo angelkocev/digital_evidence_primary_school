@@ -433,9 +433,10 @@ async function doLogout(){
 }
 
 /* ── SESSION ── */
+let authInitialized=false;
 async function initAuth(){
   try{
-    const {data:{session},error}=await sb.auth.getSession();
+    const{data:{session},error}=await sb.auth.getSession();
     if(error||!session||!session.user){
       await sb.auth.signOut();
       showLoginScreen();
@@ -443,57 +444,70 @@ async function initAuth(){
       await onLogin(session.user);
     }
   } catch(e){
+    console.error('initAuth error:',e);
     showLoginScreen();
   }
   sb.auth.onAuthStateChange(async(event,session)=>{
-    if(event==='SIGNED_IN'&&session){await onLogin(session.user);}
+    if(event==='SIGNED_IN'&&session&&!authInitialized){
+      await onLogin(session.user);
+    }
     if(event==='SIGNED_OUT'){onLogout();}
   });
 }
 
 async function onLogin(user){
+  if(authInitialized)return;
+  authInitialized=true;
   currentUser=user;
-  document.getElementById('loading-screen').style.display='none';
-  document.getElementById('login-screen').style.display='none';
-  document.getElementById('main-app').style.display='block';
-  // Show user badge
-  const name=user.user_metadata?.full_name||user.email;
-  document.getElementById('hdr-right-content').insertAdjacentHTML('afterbegin',
-    `<div class="user-badge"><span>👤 ${name}</span><span class="save-indicator" id="save-ind">✓ Зачувано</span><button onclick="doLogout()">Одјави се</button></div>`
-  );
-  // Load profile
-  const{data:profile}=await sb.from('profiles').select('uciliste,oddelenie,paralelka,is_admin').eq('id',user.id).single();
-  currentUser.is_admin=profile?.is_admin||false;
+  try{
+    document.getElementById('loading-screen').style.display='none';
+    document.getElementById('login-screen').style.display='none';
+    document.getElementById('main-app').style.display='block';
 
-  if(currentUser.is_admin){
-    // Admin — слободни мениа, преглед на сè
-    const badge=document.querySelector('.user-badge span');
-    if(badge)badge.textContent='👑 '+name+' (Администратор)';
-    const nb=document.getElementById('nb-admin');
-    if(nb)nb.style.display='block';
-  } else if(profile&&profile.uciliste&&profile.oddelenie&&profile.paralelka){
-    // Наставник — заклучи мениа на неговата паралелка
-    curUch=profile.uciliste;
-    curOdd=profile.oddelenie;
-    curPar=profile.paralelka;
-    const selUch=document.getElementById('sel-uch');
-    selUch.value=curUch;
-    selUch.disabled=true;
-    buildOddMenu();
-    const selOdd=document.getElementById('sel-odd');
-    selOdd.value=curOdd;
-    selOdd.disabled=true;
-    buildParMenu();
-    const selPar=document.getElementById('sel-par');
-    selPar.value=curPar;
-    selPar.disabled=true;
-    [selUch,selOdd,selPar].forEach(s=>{s.style.opacity='0.7';s.style.cursor='not-allowed';});
+    const name=user.user_metadata?.full_name||user.email;
+    const hdrRight=document.getElementById('hdr-right-content');
+    if(hdrRight&&!hdrRight.querySelector('.user-badge')){
+      hdrRight.insertAdjacentHTML('afterbegin',
+        `<div class="user-badge"><span>👤 ${name}</span><span class="save-indicator" id="save-ind">✓ Зачувано</span><button onclick="doLogout()">Одјави се</button></div>`
+      );
+    }
+
+    const{data:profile,error:pErr}=await sb.from('profiles').select('uciliste,oddelenie,paralelka,is_admin').eq('id',user.id).single();
+    if(pErr)console.error('Profile error:',pErr);
+    currentUser.is_admin=profile?.is_admin||false;
+
+    if(currentUser.is_admin){
+      const badge=document.querySelector('.user-badge span');
+      if(badge)badge.textContent='👑 '+name+' (Администратор)';
+      const nb=document.getElementById('nb-admin');
+      if(nb)nb.style.display='block';
+    } else if(profile&&profile.uciliste&&profile.oddelenie&&profile.paralelka){
+      curUch=profile.uciliste;
+      curOdd=profile.oddelenie;
+      curPar=profile.paralelka;
+      const selUch=document.getElementById('sel-uch');
+      selUch.value=curUch;selUch.disabled=true;
+      buildOddMenu();
+      const selOdd=document.getElementById('sel-odd');
+      selOdd.value=curOdd;selOdd.disabled=true;
+      buildParMenu();
+      const selPar=document.getElementById('sel-par');
+      selPar.value=curPar;selPar.disabled=true;
+      [selUch,selOdd,selPar].forEach(s=>{s.style.opacity='0.7';s.style.cursor='not-allowed';});
+    }
+
+    await loadFromSupabase();
+    renderL();upBadge();
+  } catch(e){
+    console.error('onLogin error:',e);
+    document.getElementById('loading-screen').style.display='none';
+    document.getElementById('main-app').style.display='block';
+    renderL();upBadge();
   }
-  await loadFromSupabase();
-  renderL();upBadge();
 }
 
 function onLogout(){
+  authInitialized=false;
   currentUser=null;allData={};electiveNames={};
   document.getElementById('main-app').style.display='none';
   document.getElementById('hdr-right-content').innerHTML='';
