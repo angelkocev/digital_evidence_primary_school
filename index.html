@@ -448,10 +448,8 @@ async function initAuth(){
     showLoginScreen();
   }
   sb.auth.onAuthStateChange(async(event,session)=>{
-    if(event==='SIGNED_IN'&&session&&!authInitialized){
-      await onLogin(session.user);
-    }
     if(event==='SIGNED_OUT'){onLogout();}
+    // TOKEN_REFRESHED и SIGNED_IN после почетното логирање — игнорирај
   });
 }
 
@@ -534,29 +532,38 @@ function showSaveInd(){
 /* ── SUPABASE DATA SYNC ── */
 async function loadFromSupabase(){
   if(!currentUser)return;
-  allData={};electiveNames={};
-  // Admin гледа сè, наставник само свое
+  allData={};electiveNames={};realData={};
   const isAdmin=currentUser.is_admin||false;
   let q=sb.from('ucenici').select('*');
   if(!isAdmin)q=q.eq('teacher_id',currentUser.id);
   const{data:sts,error:e1}=await q;
-  if(!e1&&sts){
+  if(e1){console.error('Load ucenici error:',e1);return;}
+  if(sts){
     sts.forEach(s=>{
       const k=`${s.uciliste}|${s.oddelenie}|${s.paralelka}`;
       if(!allData[k])allData[k]=[];
-      allData[k].push({rn:s.rn,ime:s.ime,prz:s.prz,pol:s.pol,mol:s.mol,etnik:s.etnik,op:s.op,nop:s.nop,gr:s.gr||{},merki:s.merki||[],extra:s.extra||[],_dbid:s.id});
+      allData[k].push({
+        rn:s.rn,ime:s.ime,prz:s.prz,pol:s.pol,
+        mol:s.mol,etnik:s.etnik,op:s.op,nop:s.nop,
+        gr:s.gr||{},merki:s.merki||[],extra:s.extra||[],
+        _dbid:s.id  // секогаш го зачувај ID-от
+      });
     });
-    Object.keys(allData).forEach(k=>{allData[k].sort((a,b)=>(a.rn||999)-(b.rn||999));});
+    Object.keys(allData).forEach(k=>{
+      allData[k].sort((a,b)=>(a.rn||999)-(b.rn||999));
+    });
   }
   let qe=sb.from('elective_names').select('*');
   if(!isAdmin)qe=qe.eq('teacher_id',currentUser.id);
   const{data:en}=await qe;
-  if(en){en.forEach(e=>{const k=`${e.uciliste}|${e.oddelenie}|${e.paralelka}`;electiveNames[k]={s1:e.s1,s2:e.s2,i9:e.i9};});}
+  if(en){en.forEach(e=>{
+    const k=`${e.uciliste}|${e.oddelenie}|${e.paralelka}`;
+    electiveNames[k]={s1:e.s1,s2:e.s2,i9:e.i9};
+  });}
   let qr=sb.from('realizacija').select('*');
   if(!isAdmin)qr=qr.eq('teacher_id',currentUser.id);
   const{data:real}=await qr;
   if(real){
-    realData={};
     real.forEach(r=>{
       const k=`${r.uciliste}|${r.oddelenie}|${r.paralelka}`;
       if(!realData[k])realData[k]={};
@@ -574,27 +581,13 @@ async function persistStudent(s,k){
   const[uch,odd,par]=k.split('|');
   const row={teacher_id:currentUser.id,uciliste:uch,oddelenie:parseInt(odd),paralelka:par,rn:s.rn,ime:s.ime,prz:s.prz,pol:s.pol,mol:s.mol||'',etnik:s.etnik||'',op:s.op||0,nop:s.nop||0,gr:s.gr||{},merki:s.merki||[],extra:s.extra||[]};
   if(s._dbid){
-    // Познат запис — само ажурирај
     await sb.from('ucenici').update(row).eq('id',s._dbid);
   } else {
-    // Нема _dbid — провери дали веќе постои по teacher+uciliste+oddelenie+paralelka+rn
-    const{data:existing}=await sb.from('ucenici')
-      .select('id')
-      .eq('teacher_id',currentUser.id)
-      .eq('uciliste',uch)
-      .eq('oddelenie',parseInt(odd))
-      .eq('paralelka',par)
-      .eq('rn',s.rn)
-      .single();
-    if(existing){
-      // Постои — ажурирај го
-      s._dbid=existing.id;
-      await sb.from('ucenici').update(row).eq('id',existing.id);
-    } else {
-      // Не постои — создај нов
-      const{data}=await sb.from('ucenici').insert(row).select().single();
-      if(data)s._dbid=data.id;
-    }
+    // Користи upsert — ако постои запис со ист rn+paralelka+oddelenie+uciliste+teacher_id, ажурирај го
+    const{data,error}=await sb.from('ucenici')
+      .upsert(row,{onConflict:'teacher_id,uciliste,oddelenie,paralelka,rn',ignoreDuplicates:false})
+      .select().single();
+    if(data)s._dbid=data.id;
   }
   showSaveInd();
 }
