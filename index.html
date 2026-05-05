@@ -17,6 +17,44 @@
   --teal:#2DD4BF;--rose:#F87171;--rose-d:rgba(248,113,113,0.15);
   --amber:#FBBF24;
 }
+/* Тема 2 — Полноќно сино */
+body.theme-navy{
+  --bg:#0A0F1E;--bg2:#111827;--bg3:#1A2540;--bg4:#1E3A5F;
+  --bdr:#1E3A5F;--bdr2:#2A4A7A;
+  --tx:#E0EAFF;--tx2:#8BA3D4;--tx3:#5570A0;
+  --acc:#60A5FA;--acc2:#3B82F6;
+}
+/* Тема 3 — Темно зелена */
+body.theme-forest{
+  --bg:#0A130E;--bg2:#0F1F15;--bg3:#162B1E;--bg4:#1A3524;
+  --bdr:#1A3524;--bdr2:#254A32;
+  --tx:#DDF2E6;--tx2:#7DB897;--tx3:#4A7A5F;
+  --acc:#34D399;--acc2:#10B981;
+}
+/* Тема 4 — Slate светла */
+body.theme-slate{
+  --bg:#F1F5F9;--bg2:#FFFFFF;--bg3:#E2E8F0;--bg4:#CBD5E1;
+  --bdr:#CBD5E1;--bdr2:#94A3B8;
+  --tx:#0F172A;--tx2:#334155;--tx3:#64748B;
+  --acc:#3B6EE8;--acc2:#2563EB;--accl:rgba(59,110,232,0.1);
+  --teal:#0D9488;--rose:#DC2626;--rose-d:rgba(220,38,38,0.1);
+  --amber:#D97706;
+}
+/* Тема 5 — Виолетова */
+body.theme-purple{
+  --bg:#0E0A1E;--bg2:#16102B;--bg3:#1E1638;--bg4:#271D4A;
+  --bdr:#2D2060;--bdr2:#3D2E7A;
+  --tx:#EDE9FF;--tx2:#A89ED4;--tx3:#6B5FA0;
+  --acc:#A78BFA;--acc2:#7C3AED;
+}
+/* Theme switcher */
+.theme-switcher{display:flex;align-items:center;gap:6px;}
+.theme-switcher label{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--tx3);white-space:nowrap;}
+.theme-btn{width:20px;height:20px;border-radius:50%;border:2px solid transparent;cursor:pointer;transition:all .15s;flex-shrink:0;}
+.theme-btn:hover,.theme-btn.active{border-color:var(--tx);transform:scale(1.2);}
+.theme-btn.active{box-shadow:0 0 0 2px var(--acc);}
+input#fop::-webkit-outer-spin-button,input#fop::-webkit-inner-spin-button,
+input#fnp::-webkit-outer-spin-button,input#fnp::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
 body{font-family:var(--F);color:var(--tx);background:var(--bg);font-size:14px;padding:1rem 1.5rem 3rem;}
 .app{max-width:980px;margin:0 auto;}
 
@@ -219,6 +257,7 @@ body{font-family:var(--F);color:var(--tx);background:var(--bg);font-size:14px;pa
 .user-badge button:hover{background:var(--rose-d);color:var(--rose);border-color:var(--rose);}
 .save-indicator{font-size:11px;color:var(--teal);display:none;}
 .save-indicator.show{display:inline;}
+input#fop::-webkit-outer-spin-button,input#fop::-webkit-inner-spin-button,input#fnp::-webkit-outer-spin-button,input#fnp::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
 </style>
 
 <!-- LOGIN SCREEN -->
@@ -252,7 +291,16 @@ body{font-family:var(--F);color:var(--tx);background:var(--bg);font-size:14px;pa
       <div class="eyebrow">Дигитална евиденција · 2025/2026</div>
       <h1>Евиденција на паралелка</h1>
     </div>
-    <div id="hdr-right-content" style="display:flex;align-items:center;gap:8px;"></div>
+    <div id="hdr-right-content" style="display:flex;align-items:center;gap:8px;">
+      <div class="theme-switcher">
+        <label>Тема</label>
+        <button class="theme-btn active" style="background:#4F8EF7;" onclick="setTheme('')" title="Стандардна темна" id="tbtn-0"></button>
+        <button class="theme-btn" style="background:#60A5FA;" onclick="setTheme('navy')" title="Полноќно сино" id="tbtn-navy"></button>
+        <button class="theme-btn" style="background:#34D399;" onclick="setTheme('forest')" title="Темно зелена" id="tbtn-forest"></button>
+        <button class="theme-btn" style="background:#3B6EE8;" onclick="setTheme('slate')" title="Светла" id="tbtn-slate"></button>
+        <button class="theme-btn" style="background:#A78BFA;" onclick="setTheme('purple')" title="Виолетова" id="tbtn-purple"></button>
+      </div>
+    </div>
   </div>
   <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;margin-top:10px;">
     <div class="hdr-sel"><label>Училиште</label>
@@ -333,8 +381,8 @@ body{font-family:var(--F);color:var(--tx);background:var(--bg);font-size:14px;pa
 
   <div class="sl">Изостаноци</div>
   <div class="abs-trio">
-    <div class="atile op"><div class="al">Оправдани</div><input id="fop" type="number" min="0" value="0" oninput="updTot()"></div>
-    <div class="atile nop"><div class="al">Неоправдани</div><input id="fnp" type="number" min="0" value="0" oninput="updTot()"></div>
+    <div class="atile op"><div class="al">Оправдани</div><input id="fop" type="number" min="0" value="0" oninput="updTot()" style="-moz-appearance:textfield;" onwheel="this.blur()"></div>
+    <div class="atile nop"><div class="al">Неоправдани</div><input id="fnp" type="number" min="0" value="0" oninput="updTot()" style="-moz-appearance:textfield;" onwheel="this.blur()"></div>
     <div class="atile tot"><div class="al">Вкупно</div><div class="tot-v" id="atot">0</div></div>
   </div>
 
@@ -354,20 +402,20 @@ body{font-family:var(--F);color:var(--tx);background:var(--bg);font-size:14px;pa
   <div class="sl">Дополнителни белешки</div>
   <div class="merki-grid" id="extra-wrap">
     <div class="merka-item" id="ex-wrap-0" onclick="toggleExtra(0,event)">
-      <input type="checkbox" id="ex-0" onclick="event.preventDefault()">
+      <input type="checkbox" id="ex-0" onclick="event.stopPropagation();">
       <span class="merka-lbl">Поправен испит</span>
     </div>
     <div class="merka-item" id="ex-wrap-1" onclick="toggleExtra(1,event)">
-      <input type="checkbox" id="ex-1" onclick="event.preventDefault()">
+      <input type="checkbox" id="ex-1" onclick="event.stopPropagation();">
       <span class="merka-lbl">Одделенски испит</span>
     </div>
     <div class="merka-item" id="ex-wrap-2" onclick="toggleExtra(2,event)">
-      <input type="checkbox" id="ex-2" onclick="event.preventDefault()">
+      <input type="checkbox" id="ex-2" onclick="event.stopPropagation();">
       <span class="merka-lbl">Повторување на одделение</span>
     </div>
     <div class="merka-item" id="ex-wrap-3" onclick="toggleExtra(3,event)">
-      <input type="checkbox" id="ex-3" onclick="event.preventDefault()">
-      <span class="merka-lbl">Талентиран ученик</span>
+      <input type="checkbox" id="ex-3" onclick="event.stopPropagation();">
+      <span class="merka-lbl">Успешна реализација</span>
     </div>
   </div>
 
@@ -421,8 +469,22 @@ async function doAuth(){
   }
 }
 
+function setTheme(name){
+  const themes=['','navy','forest','slate','purple'];
+  themes.forEach(t=>{
+    if(t)document.body.classList.remove('theme-'+t);
+    const btn=document.getElementById('tbtn-'+(t||'0'));
+    if(btn)btn.classList.remove('active');
+  });
+  if(name)document.body.classList.add('theme-'+name);
+  const activeBtn=document.getElementById('tbtn-'+(name||'0'));
+  if(activeBtn)activeBtn.classList.add('active');
+  try{localStorage.setItem('ev_theme',name);}catch(e){}
+}
+// Вчитај зачувана тема
+try{const t=localStorage.getItem('ev_theme');if(t!==null)setTheme(t);}catch(e){}
+
 function showAuthErr(msg,type='err'){
-  const el=document.getElementById('auth-err');
   el.textContent=msg;
   el.style.display='block';
   el.style.background=type==='info'?'rgba(79,142,247,.15)':'var(--rose-d)';
@@ -867,7 +929,7 @@ function closeModal(){document.getElementById('modal').style.display='none';edit
 function buildMerkiWrap(sel=[]){
   document.getElementById('merki-wrap').innerHTML=MERKI_LIST.map((m,i)=>`
     <div class="merka-item${sel.includes(m)?' sel':''}" id="mw-${i}" onclick="toggleMerka(${i},event)">
-      <input type="checkbox" id="mcb-${i}" ${sel.includes(m)?'checked':''} onclick="event.preventDefault()">
+      <input type="checkbox" id="mcb-${i}" ${sel.includes(m)?'checked':''} onclick="event.stopPropagation();">
       <span class="merka-lbl">${m}</span>
     </div>`).join('');
 }
@@ -880,11 +942,11 @@ function toggleExtra(i,ev){
   wrap.classList.toggle('sel',cb.checked);
 }
 function getExtra(){
-  const labels=['Поправен испит','Одделенски испит','Повторување на одделение','Талентиран ученик'];
+  const labels=['Поправен испит','Одделенски испит','Повторување на одделение','Успешна реализација'];
   return labels.filter((l,i)=>{const cb=document.getElementById('ex-'+i);return cb&&cb.checked;});
 }
 function loadExtra(extra=[]){
-  const labels=['Поправен испит','Одделенски испит','Повторување на одделение','Талентиран ученик'];
+  const labels=['Поправен испит','Одделенски испит','Повторување на одделение','Успешна реализација'];
   labels.forEach((l,i)=>{
     const cb=document.getElementById('ex-'+i);
     const wrap=document.getElementById('ex-wrap-'+i);
@@ -1011,7 +1073,7 @@ function renderL(){
     const barC=s.pol==='М'?'#60A5FA':'#F9A8D4';
     const mH=(s.merki||[]).map(m=>`<span class="mbadge">${m}</span>`).join('');
     const exH=(s.extra||[]).map(e=>{
-      const isTal=e==='Талентиран ученик';
+      const isTal=e==='Успешна реализација';
       return`<span class="mbadge" style="background:rgba(${isTal?'251,191,36':'96,165,250'},.15);color:${isTal?'#FBBF24':'#60A5FA'};border-color:rgba(${isTal?'251,191,36':'96,165,250'},.3);">${e}</span>`;
     }).join('');
     const allBadges=mH+exH;
@@ -1939,7 +2001,7 @@ function renderAdmin(){
     if(gradeStatus(s.gr||{})==='ok'){const a=computeAvg(s.gr);if(a!==null)byClass[k].okAvgs.push(a);}
   });
   // Sort descending by avg
-  const classList=Object.values(byClass).sort((a,b)=>{
+  const classList=Object.values(byClass).filter(c=>c.par!=='IV одделение со ПОП').sort((a,b)=>{
     const aA=a.okAvgs.length?a.okAvgs.reduce((x,y)=>x+y,0)/a.okAvgs.length:0;
     const bA=b.okAvgs.length?b.okAvgs.reduce((x,y)=>x+y,0)/b.okAvgs.length:0;
     return bA-aA;
@@ -1967,8 +2029,8 @@ function renderAdmin(){
     'Преместување во друга паралелка':'#F87171','Добро поведение':'#34D399','Незадоволително поведение':'#F87171'};
 
   // Дополнителни белешки
-  const extraKeys=['Одделенски испит','Поправен испит','Повторување на одделение','Талентиран ученик'];
-  const extraColors={'Одделенски испит':'#60A5FA','Поправен испит':'#FBBF24','Повторување на одделение':'#F87171','Талентиран ученик':'#34D399'};
+  const extraKeys=['Одделенски испит','Поправен испит','Повторување на одделение','Успешна реализација'];
+  const extraColors={'Одделенски испит':'#60A5FA','Поправен испит':'#FBBF24','Повторување на одделение':'#F87171','Успешна реализација':'#34D399'};
   const ec={};sts.forEach(s=>(s.extra||[]).forEach(e=>{ec[e]=(ec[e]||0)+1;}));
 
   // Просечен успех по пол
