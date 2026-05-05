@@ -773,7 +773,7 @@ function katInfo(gr){
   const st=gradeStatus(gr||{});
   if(st==='no-data')return{lbl:'—',cls:'kat-n'};
   if(st==='celoso')return{lbl:'Целосно неоценет',cls:'kat-cn'};
-  if(st==='delumno')return{lbl:'Делумно неоценет',cls:'kat-dn'};
+  if(st==='delumno')return{lbl:'Делумно оценет',cls:'kat-dn'};
   if(st==='slab'){const c=countOnes(gr);return{lbl:`${c} ${c===1?'слаба оценка':'слаби оценки'}`,cls:'kat-slab'};}
   // Описно оценување
   if(isOpisnoGr(gr)){
@@ -1461,7 +1461,7 @@ function renderRepBody(sts){
         const a=computeAvg(s.gr||{}),gs4=gStyle(a),ki=katInfo(s.gr||{});
         const st=gradeStatus(s.gr||{});
         const totAbs=(s.op||0)+(s.nop||0);
-        // Забелешка: слаби оценки или делумно неоценети предмети
+        // Забелешка: слаби оценки или делумно оценети предмети
         let beleshka='';
         if(st==='slab'){
           const slabi=allSubjs(curOdd).filter(subj=>Number((s.gr||{})[subj])===1);
@@ -2037,9 +2037,9 @@ function renderAdmin(){
         <th style="width:68px;text-align:center;">Многу добар</th>
         <th style="width:50px;text-align:center;">Добар</th>
         <th style="width:55px;text-align:center;">Доволен</th>
-        <th style="width:65px;text-align:center;">Слаби оц.</th>
-        <th style="width:65px;text-align:center;">Дел. неоц.</th>
-        <th style="width:65px;text-align:center;">Цел. неоц.</th>
+        <th style="width:80px;text-align:center;">Слаби оценки</th>
+        <th style="width:65px;text-align:center;">Делумно оценети</th>
+        <th style="width:80px;text-align:center;">Целосно неоценети</th>
       </tr></thead>
       <tbody>${classList.map(c=>{
         const cnt=(fn)=>c.sts.filter(fn).length;
@@ -2142,16 +2142,16 @@ function renderAdmin(){
         const ki=katInfo(s.gr||{});
         const slabi=allSubjs(s._odd||curOdd).filter(subj=>Number((s.gr||{})[subj])===1);
         return`<tr>
-          <td style="font-family:var(--FD);font-weight:500;color:var(--tx3);text-align:center;">\${s.rn!=null?s.rn:'—'}</td>
-          <td style="font-family:var(--FC);font-weight:600;">\${s.ime} \${s.prz}</td>
-          <td style="color:var(--tx2);">\${ODD_LBL[s._odd]||s._odd} · \${s._par}</td>
-          <td><span class="tag \${s.pol==='М'?'mt':'ft'}">\${s.pol}</span></td>
-          <td style="color:var(--tx3);">\${s.etnik||'—'}</td>
-          <td style="text-align:center;font-weight:600;color:var(--teal);">\${s.op||0}</td>
-          <td style="text-align:center;font-weight:600;color:\${(s.nop||0)>0?'var(--rose)':'var(--tx3)'};">\${s.nop||0}</td>
-          <td style="text-align:center;font-weight:700;font-family:var(--FD);">\${(s.op||0)+(s.nop||0)}</td>
-          <td style="text-align:center;"><span class="kat \${ki.cls}">\${ki.lbl}</span></td>
-          <td><div style="display:flex;gap:4px;flex-wrap:wrap;">\${slabi.length?slabi.map(subj=>'<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;background:rgba(248,113,113,.15);color:#F87171;">'+subj+'</span>').join(''):'<span style="font-size:11px;color:var(--tx3);">—</span>'}</div></td>
+          <td style="font-family:var(--FD);font-weight:500;color:var(--tx3);text-align:center;">${s.rn!=null?s.rn:'—'}</td>
+          <td style="font-family:var(--FC);font-weight:600;">${s.ime} ${s.prz}</td>
+          <td style="color:var(--tx2);">${ODD_LBL[s._odd]||s._odd} · ${s._par}</td>
+          <td><span class="tag ${s.pol==='М'?'mt':'ft'}">${s.pol}</span></td>
+          <td style="color:var(--tx3);">${s.etnik||'—'}</td>
+          <td style="text-align:center;font-weight:600;color:var(--teal);">${s.op||0}</td>
+          <td style="text-align:center;font-weight:600;color:${(s.nop||0)>0?'var(--rose)':'var(--tx3)'};">${s.nop||0}</td>
+          <td style="text-align:center;font-weight:700;font-family:var(--FD);">${(s.op||0)+(s.nop||0)}</td>
+          <td style="text-align:center;"><span class="kat ${ki.cls}">${ki.lbl}</span></td>
+          <td><div style="display:flex;gap:4px;flex-wrap:wrap;">${slabi.length?slabi.map(subj=>'<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;background:rgba(248,113,113,.15);color:#F87171;">'+subj+'</span>').join(''):'<span style="font-size:11px;color:var(--tx3);">—</span>'}</div></td>
         </tr>`;
       }).join('')}</tbody>
     </table>
