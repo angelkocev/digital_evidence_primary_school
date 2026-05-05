@@ -282,7 +282,7 @@ body{font-family:var(--F);color:var(--tx);background:var(--bg);font-size:14px;pa
 </div>
 
 <div id="p-lst" class="panel on">
-  <div style="display:flex;justify-content:flex-end;margin-bottom:1rem;">
+  <div style="display:flex;justify-content:flex-end;margin-bottom:1rem;" id="add-btn-wrap">
     <button class="btn btn-acc" onclick="openModal(-1)">+ Додај ученик</button>
   </div>
   <div id="lwrap"><div class="empty-s">Изберете училиште, одделение и паралелка за да започнете.</div></div>
@@ -481,19 +481,24 @@ async function onLogin(user){
       if(badge)badge.textContent='👑 '+name+' (Администратор)';
       const nb=document.getElementById('nb-admin');
       if(nb)nb.style.display='block';
-    } else if(profile&&profile.uciliste&&profile.oddelenie&&profile.paralelka){
-      curUch=profile.uciliste;
-      curOdd=profile.oddelenie;
-      curPar=profile.paralelka;
-      const selUch=document.getElementById('sel-uch');
-      selUch.value=curUch;selUch.disabled=true;
-      buildOddMenu();
-      const selOdd=document.getElementById('sel-odd');
-      selOdd.value=curOdd;selOdd.disabled=true;
-      buildParMenu();
-      const selPar=document.getElementById('sel-par');
-      selPar.value=curPar;selPar.disabled=true;
-      [selUch,selOdd,selPar].forEach(s=>{s.style.opacity='0.7';s.style.cursor='not-allowed';});
+    } else {
+      // Скриј „Додај ученик" за наставници
+      const addBtn=document.getElementById('add-btn-wrap');
+      if(addBtn)addBtn.style.display='none';
+      if(profile&&profile.uciliste&&profile.oddelenie&&profile.paralelka){
+        curUch=profile.uciliste;
+        curOdd=profile.oddelenie;
+        curPar=profile.paralelka;
+        const selUch=document.getElementById('sel-uch');
+        selUch.value=curUch;selUch.disabled=true;
+        buildOddMenu();
+        const selOdd=document.getElementById('sel-odd');
+        selOdd.value=curOdd;selOdd.disabled=true;
+        buildParMenu();
+        const selPar=document.getElementById('sel-par');
+        selPar.value=curPar;selPar.disabled=true;
+        [selUch,selOdd,selPar].forEach(s=>{s.style.opacity='0.7';s.style.cursor='not-allowed';});
+      }
     }
 
     await loadFromSupabase();
@@ -569,10 +574,27 @@ async function persistStudent(s,k){
   const[uch,odd,par]=k.split('|');
   const row={teacher_id:currentUser.id,uciliste:uch,oddelenie:parseInt(odd),paralelka:par,rn:s.rn,ime:s.ime,prz:s.prz,pol:s.pol,mol:s.mol||'',etnik:s.etnik||'',op:s.op||0,nop:s.nop||0,gr:s.gr||{},merki:s.merki||[],extra:s.extra||[]};
   if(s._dbid){
+    // Познат запис — само ажурирај
     await sb.from('ucenici').update(row).eq('id',s._dbid);
   } else {
-    const{data}=await sb.from('ucenici').insert(row).select().single();
-    if(data)s._dbid=data.id;
+    // Нема _dbid — провери дали веќе постои по teacher+uciliste+oddelenie+paralelka+rn
+    const{data:existing}=await sb.from('ucenici')
+      .select('id')
+      .eq('teacher_id',currentUser.id)
+      .eq('uciliste',uch)
+      .eq('oddelenie',parseInt(odd))
+      .eq('paralelka',par)
+      .eq('rn',s.rn)
+      .single();
+    if(existing){
+      // Постои — ажурирај го
+      s._dbid=existing.id;
+      await sb.from('ucenici').update(row).eq('id',existing.id);
+    } else {
+      // Не постои — создај нов
+      const{data}=await sb.from('ucenici').insert(row).select().single();
+      if(data)s._dbid=data.id;
+    }
   }
   showSaveInd();
 }
@@ -992,7 +1014,7 @@ function renderL(){
           <div class="pill" style="background:${gs.bg};color:${gs.c};">${a?a.toFixed(2):'—'}</div>
           <div class="sc-acts">
             <button class="ib edit" onclick="openModal(${s._i})" title="Уреди">✎</button>
-            <button class="ib del" onclick="delSt(${s._i})" title="Избриши">✕</button>
+            ${currentUser?.is_admin?`<button class="ib del" onclick="delSt(${s._i})" title="Избриши">✕</button>`:''}
           </div>
         </div>
       </div>
