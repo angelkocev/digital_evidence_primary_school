@@ -479,6 +479,20 @@ async function onLogin(user){
       if(badge)badge.textContent='👑 '+name+' (Администратор)';
       const nb=document.getElementById('nb-admin');
       if(nb)nb.style.display='block';
+      // Ако администраторот има назначена паралелка, постави ја по default (без заклучување)
+      if(profile&&profile.uciliste&&profile.oddelenie&&profile.paralelka){
+        curUch=profile.uciliste;
+        curOdd=profile.oddelenie;
+        curPar=profile.paralelka;
+        const selUch=document.getElementById('sel-uch');
+        if(selUch)selUch.value=curUch;
+        buildOddMenu();
+        const selOdd=document.getElementById('sel-odd');
+        if(selOdd)selOdd.value=curOdd;
+        buildParMenu();
+        const selPar=document.getElementById('sel-par');
+        if(selPar)selPar.value=curPar;
+      }
     } else {
       // Скриј „Додај ученик" за наставници
       const addBtn=document.getElementById('add-btn-wrap');
