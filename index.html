@@ -1721,10 +1721,20 @@ function updateMerki(){
 }
 
 function doPrint(){
-  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
-  document.getElementById('p-rep').classList.add('on');
-  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));
-  document.querySelectorAll('.nb')[1].classList.add('on');
+  // Find active tab
+  const activePanel=document.querySelector('.panel.on');
+  if(activePanel&&activePanel.id==='p-rep'){
+    // already on rep tab
+  } else if(activePanel&&activePanel.id==='p-admin'){
+    // already on admin tab — print as-is
+  } else {
+    // Switch to rep tab
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
+    document.getElementById('p-rep').classList.add('on');
+    document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));
+    document.querySelectorAll('.nb')[2].classList.add('on');
+    renderR();
+  }
   setTimeout(()=>window.print(),300);
 }
 /* ══ ФОНД НА ЧАСОВИ 2025/2026 ══ */
@@ -2161,9 +2171,12 @@ function renderAdmin(){
 function buildAdminFilters(uchs,odds,pars,mols,fUch,fOdd,fPar,fPol,fEtn,fMol,UCH_NAMES){
   const selStyle='font-family:var(--F);font-size:12px;border:1px solid var(--bdr);border-radius:7px;padding:5px 9px;color:var(--tx);background:var(--bg3);outline:none;cursor:pointer;width:100%;';
   const labelStyle='font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--tx3);margin-bottom:4px;';
-  return`<div style="margin-bottom:1.5rem;">
-    <div style="font-size:9px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--acc);margin-bottom:5px;">Преглед на ниво на училиште · 2025/2026</div>
-    <div style="font-family:var(--FD);font-size:19px;font-weight:500;color:var(--tx);">Сумиран извештај</div>
+  return`<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:12px;">
+    <div>
+      <div style="font-size:9px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--acc);margin-bottom:5px;">Преглед на ниво на училиште · 2025/2026</div>
+      <div style="font-family:var(--FD);font-size:19px;font-weight:500;color:var(--tx);">Сумиран извештај</div>
+    </div>
+    <button class="btn btn-sm" onclick="doPrint()">Печати / PDF</button>
   </div>
   <div style="background:var(--bg2);border:1px solid var(--bdr);border-radius:10px 10px 0 0;padding:10px 14px 8px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
     <div><div style="${labelStyle}">Училиште</div><select id="af-uch" onchange="renderAdmin()" style="${selStyle}"><option value="__svi__">Сите училишта</option>${uchs.map(u=>`<option value="${u}" ${fUch===u?'selected':''}>${UCH_NAMES[u]||u}</option>`).join('')}</select></div>
