@@ -278,6 +278,7 @@ body{font-family:var(--F);color:var(--tx);background:var(--bg);font-size:14px;pa
   <button class="nb on" onclick="gT('lst',this)">Список на ученици <span class="nbdot" id="nbadge">0</span></button>
   <button class="nb" onclick="gT('real',this)">Реализација на настава</button>
   <button class="nb" onclick="gT('rep',this)">Извештај</button>
+  <button class="nb" id="nb-admin" style="display:none;" onclick="gT('admin',this)">Преглед на ниво на училиште</button>
 </div>
 
 <div id="p-lst" class="panel on">
@@ -290,6 +291,8 @@ body{font-family:var(--F);color:var(--tx);background:var(--bg);font-size:14px;pa
 <div id="p-real" class="panel"><div id="realwrap"><div class="empty-s">Изберете училиште, одделение и паралелка за да започнете.</div></div></div>
 
 <div id="p-rep" class="panel"><div id="rwrap"><div class="empty-s">Нема ученици за извештај.</div></div></div>
+
+<div id="p-admin" class="panel"><div id="adminwrap"><div class="empty-s">Се вчитува...</div></div></div>
 
 <!-- MODAL -->
 <div class="overlay" id="modal" style="display:none;" onclick="if(event.target===this)closeModal()">
@@ -466,6 +469,8 @@ async function onLogin(user){
     // Admin — слободни мениа, преглед на сè
     const badge=document.querySelector('.user-badge span');
     if(badge)badge.textContent='👑 '+name+' (Администратор)';
+    const nb=document.getElementById('nb-admin');
+    if(nb)nb.style.display='block';
   } else if(profile&&profile.uciliste&&profile.oddelenie&&profile.paralelka){
     // Наставник — заклучи мениа на неговата паралелка
     curUch=profile.uciliste;
@@ -1827,6 +1832,200 @@ function saveReal(){
   if(btn){const orig=btn.textContent;btn.textContent='✓ Зачувано';btn.style.background='#34D399';setTimeout(()=>{btn.textContent=orig;btn.style.background='';},2000);}
 }
 
+function renderAdmin(){
+  const el=document.getElementById('adminwrap');
+  if(!currentUser?.is_admin){el.innerHTML='<div class="empty-s">Немате пристап.</div>';return;}
+
+  // Собери ги сите ученици
+  const allSts=Object.entries(allData).flatMap(([k,sts])=>sts.map(s=>{
+    const[uch,odd,par]=k.split('|');
+    return{...s,_uch:uch,_odd:parseInt(odd),_par:par};
+  }));
+
+  if(!allSts.length){el.innerHTML='<div class="empty-s">Нема внесени ученици.</div>';return;}
+
+  // Земи тековни вредности на филтри
+  const fUch=document.getElementById('af-uch')?.value||'__svi__';
+  const fOdd=document.getElementById('af-odd')?.value||'__svi__';
+  const fPar=document.getElementById('af-par')?.value||'__svi__';
+
+  // Филтрирај
+  let sts=allSts;
+  if(fUch!=='__svi__')sts=sts.filter(s=>s._uch===fUch);
+  if(fOdd!=='__svi__')sts=sts.filter(s=>s._odd===parseInt(fOdd));
+  if(fPar!=='__svi__')sts=sts.filter(s=>s._par===fPar);
+
+  const n=sts.length;
+  const males=sts.filter(s=>s.pol==='М').length;
+  const totOp=sts.reduce((a,s)=>a+(s.op||0),0);
+  const totNop=sts.reduce((a,s)=>a+(s.nop||0),0);
+  const okSts=sts.filter(s=>gradeStatus(s.gr||{})==='ok');
+  const allA=okSts.map(s=>computeAvg(s.gr)).filter(x=>x!==null);
+  const cAvg=allA.length?allA.reduce((a,b)=>a+b,0)/allA.length:null;
+  const gs=gStyle(cAvg);
+
+  // Паралелки список за филтер
+  const uchs=[...new Set(allSts.map(s=>s._uch))].sort();
+  const odds=[...new Set(allSts.filter(s=>fUch==='__svi__'||s._uch===fUch).map(s=>s._odd))].sort((a,b)=>a-b);
+  const pars=[...new Set(allSts.filter(s=>(fUch==='__svi__'||s._uch===fUch)&&(fOdd==='__svi__'||s._odd===parseInt(fOdd))).map(s=>s._par))].sort();
+
+  const UCH_NAMES={C:'Централно училиште',K:'ПУ с. Криволак',P:'ПУ с. Пепелиште',V:'ПУ с. Војшанци',CR:'ПУ с. Црвени Брегови'};
+
+  // Статистики по паралелка
+  const byClass={};
+  sts.forEach(s=>{
+    const k=`${s._uch}|${s._odd}|${s._par}`;
+    if(!byClass[k])byClass[k]={uch:s._uch,odd:s._odd,par:s._par,sts:[],okAvgs:[]};
+    byClass[k].sts.push(s);
+    if(gradeStatus(s.gr||{})==='ok'){const a=computeAvg(s.gr);if(a!==null)byClass[k].okAvgs.push(a);}
+  });
+  const classList=Object.values(byClass).sort((a,b)=>a.odd-b.odd||a.par.localeCompare(b.par));
+  const maxClassAvg=Math.max(...classList.map(c=>c.okAvgs.length?c.okAvgs.reduce((x,y)=>x+y,0)/c.okAvgs.length:0),0.01);
+
+  // Успех chart
+  const uspehChart=buildUspehChart(sts);
+
+  el.innerHTML=`
+  <div style="margin-bottom:1.5rem;">
+    <div style="font-size:9px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--acc);margin-bottom:5px;">Преглед на ниво на училиште · 2025/2026</div>
+    <div style="font-family:var(--FD);font-size:19px;font-weight:500;color:var(--tx);">Сумиран извештај</div>
+  </div>
+
+  <!-- ФИЛТРИ -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;background:var(--bg2);border:1px solid var(--bdr);border-radius:10px;padding:10px 14px;margin-bottom:1.5rem;">
+    <div>
+      <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--tx3);margin-bottom:4px;">Училиште</div>
+      <select id="af-uch" onchange="renderAdmin()" style="font-family:var(--F);font-size:12px;border:1px solid var(--bdr);border-radius:7px;padding:5px 9px;color:var(--tx);background:var(--bg3);outline:none;cursor:pointer;width:100%;">
+        <option value="__svi__">Сите училишта</option>
+        ${uchs.map(u=>`<option value="${u}" ${fUch===u?'selected':''}>${UCH_NAMES[u]||u}</option>`).join('')}
+      </select>
+    </div>
+    <div>
+      <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--tx3);margin-bottom:4px;">Одделение</div>
+      <select id="af-odd" onchange="renderAdmin()" style="font-family:var(--F);font-size:12px;border:1px solid var(--bdr);border-radius:7px;padding:5px 9px;color:var(--tx);background:var(--bg3);outline:none;cursor:pointer;width:100%;">
+        <option value="__svi__">Сите одделенија</option>
+        ${odds.map(o=>`<option value="${o}" ${fOdd==o?'selected':''}>${ODD_LBL[o]||o}</option>`).join('')}
+      </select>
+    </div>
+    <div>
+      <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--tx3);margin-bottom:4px;">Паралелка</div>
+      <select id="af-par" onchange="renderAdmin()" style="font-family:var(--F);font-size:12px;border:1px solid var(--bdr);border-radius:7px;padding:5px 9px;color:var(--tx);background:var(--bg3);outline:none;cursor:pointer;width:100%;">
+        <option value="__svi__">Сите паралелки</option>
+        ${pars.map(p=>`<option value="${p}" ${fPar===p?'selected':''}>${p}</option>`).join('')}
+      </select>
+    </div>
+  </div>
+
+  <!-- KPI -->
+  <div class="kpis" style="grid-template-columns:repeat(5,1fr);">
+    <div class="kpi"><div class="kpi-l">Ученици</div><div class="kpi-v">${n}</div><div class="kpi-bot" style="background:var(--acc);width:100%;"></div></div>
+    <div class="kpi"><div class="kpi-l">Машки</div><div class="kpi-v" style="color:#60A5FA;">${males}</div><div class="kpi-bot" style="background:#60A5FA;width:${n?bw(Math.round(males/n*100)):0}%;"></div></div>
+    <div class="kpi"><div class="kpi-l">Женски</div><div class="kpi-v" style="color:#F9A8D4;">${n-males}</div><div class="kpi-bot" style="background:#F9A8D4;width:${n?bw(Math.round((n-males)/n*100)):0}%;"></div></div>
+    <div class="kpi"><div class="kpi-l">Просечен успех</div><div class="kpi-v" style="color:${gs.c}">${cAvg?cAvg.toFixed(2):'—'}</div><div class="kpi-bot" style="background:${gs.bar};width:${cAvg?bw(Math.round(((cAvg-1)/4)*100)):0}%;"></div></div>
+    <div class="kpi"><div class="kpi-l">Паралелки</div><div class="kpi-v">${classList.length}</div><div class="kpi-bot" style="background:var(--teal);width:100%;"></div></div>
+  </div>
+
+  <!-- Успех + просек по паралелка -->
+  <div class="rep-duo">
+    <div class="rcard" style="margin-bottom:0;">
+      <div class="rttl">Успех на учениците</div>
+      ${uspehChart}
+    </div>
+    <div class="rcard" style="margin-bottom:0;">
+      <div class="rttl">Просечен успех по паралелка</div>
+      ${classList.map(c=>{
+        const a=c.okAvgs.length?c.okAvgs.reduce((x,y)=>x+y,0)/c.okAvgs.length:null;
+        const pct=a?bw(Math.round((a/maxClassAvg)*100)):0;
+        const gs2=gStyle(a);
+        const lbl=`${UCH_NAMES[c.uch]?.replace('Централно училиште','Цент.')?.replace('ПУ с. ','') || c.uch} · ${ODD_LBL[c.odd]||c.odd} · ${c.par}`;
+        return`<div class="brow">
+          <span class="blbl" title="${lbl}" style="width:200px;">${lbl} <span style="font-size:10px;color:var(--tx3);">(${c.sts.length})</span></span>
+          <div class="btrk"><div class="bfil" style="width:${pct}%;background:${gs2.bar};opacity:.85;"></div></div>
+          <span class="bval" style="color:${gs2.c};">${a?a.toFixed(2):'—'}</span>
+        </div>`;
+      }).join('')||'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>'}
+    </div>
+  </div>
+
+  <!-- Изостаноци по паралелка -->
+  <div class="rcard">
+    <div class="rttl">Изостаноци по паралелка</div>
+    <table class="rtbl" style="table-layout:fixed;">
+      <thead><tr>
+        <th>Паралелка</th>
+        <th style="width:60px;text-align:center;">Ученици</th>
+        <th style="width:80px;text-align:center;">Оправдани</th>
+        <th style="width:88px;text-align:center;">Неоправдани</th>
+        <th style="width:70px;text-align:center;">Вкупно</th>
+        <th style="width:90px;text-align:center;">Просек/ученик</th>
+      </tr></thead>
+      <tbody>${classList.map(c=>{
+        const op=c.sts.reduce((a,s)=>a+(s.op||0),0);
+        const nop=c.sts.reduce((a,s)=>a+(s.nop||0),0);
+        const tot=op+nop;
+        const avg=(tot/c.sts.length).toFixed(1);
+        return`<tr>
+          <td style="font-family:var(--FC);font-weight:600;">${UCH_NAMES[c.uch]?.replace('Централно училиште','Цент.')?.replace('ПУ с. ','')||c.uch} · ${ODD_LBL[c.odd]||c.odd} · ${c.par}</td>
+          <td style="text-align:center;font-family:var(--FD);">${c.sts.length}</td>
+          <td style="text-align:center;font-weight:600;color:var(--teal);">${op}</td>
+          <td style="text-align:center;font-weight:600;color:${nop>0?'var(--rose)':'var(--tx3)'};">${nop}</td>
+          <td style="text-align:center;font-weight:700;font-family:var(--FD);">${tot}</td>
+          <td style="text-align:center;color:var(--tx3);">${avg}</td>
+        </tr>`;
+      }).join('')}
+      <tr style="background:var(--bg3);font-weight:700;">
+        <td>Вкупно</td>
+        <td style="text-align:center;font-family:var(--FD);">${n}</td>
+        <td style="text-align:center;color:var(--teal);">${totOp}</td>
+        <td style="text-align:center;color:${totNop>0?'var(--rose)':'var(--tx3)'};">${totNop}</td>
+        <td style="text-align:center;font-family:var(--FD);">${totOp+totNop}</td>
+        <td style="text-align:center;color:var(--tx3);">${((totOp+totNop)/n).toFixed(1)}</td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Успех по паралелка — детали -->
+  <div class="rcard">
+    <div class="rttl">Статус на оценување по паралелка</div>
+    <table class="rtbl" style="table-layout:fixed;">
+      <thead><tr>
+        <th>Паралелка</th>
+        <th style="width:55px;text-align:center;">Вкупно</th>
+        <th style="width:60px;text-align:center;">Одличен</th>
+        <th style="width:68px;text-align:center;">Многу добар</th>
+        <th style="width:50px;text-align:center;">Добар</th>
+        <th style="width:55px;text-align:center;">Доволен</th>
+        <th style="width:65px;text-align:center;">Слаби оц.</th>
+        <th style="width:65px;text-align:center;">Дел. неоц.</th>
+        <th style="width:65px;text-align:center;">Цел. неоц.</th>
+      </tr></thead>
+      <tbody>${classList.map(c=>{
+        const cnt=(fn)=>c.sts.filter(fn).length;
+        const odl=cnt(s=>{const a=computeAvg(s.gr||{});return a!==null&&a>=4.5;});
+        const mnDob=cnt(s=>{const a=computeAvg(s.gr||{});return a!==null&&a>=3.5&&a<4.5;});
+        const dob=cnt(s=>{const a=computeAvg(s.gr||{});return a!==null&&a>=2.5&&a<3.5;});
+        const dov=cnt(s=>{const a=computeAvg(s.gr||{});return a!==null&&a<2.5;});
+        const slab=cnt(s=>gradeStatus(s.gr||{})==='slab');
+        const delumno=cnt(s=>gradeStatus(s.gr||{})==='delumno');
+        const celoso=cnt(s=>{const st=gradeStatus(s.gr||{});return st==='celoso'||st==='no-data';});
+        return`<tr>
+          <td style="font-family:var(--FC);font-weight:600;">${UCH_NAMES[c.uch]?.replace('Централно училиште','Цент.')?.replace('ПУ с. ','')||c.uch} · ${ODD_LBL[c.odd]||c.odd} · ${c.par}</td>
+          <td style="text-align:center;font-family:var(--FD);">${c.sts.length}</td>
+          <td style="text-align:center;color:#34D399;font-weight:600;">${odl}</td>
+          <td style="text-align:center;color:#60A5FA;font-weight:600;">${mnDob}</td>
+          <td style="text-align:center;color:#FBBF24;font-weight:600;">${dob}</td>
+          <td style="text-align:center;color:#F87171;font-weight:600;">${dov}</td>
+          <td style="text-align:center;color:#FCA5A5;font-weight:600;">${slab}</td>
+          <td style="text-align:center;color:#FBBF24;font-weight:600;">${delumno}</td>
+          <td style="text-align:center;color:#94A3B8;font-weight:600;">${celoso}</td>
+        </tr>`;
+      }).join('')}
+      </tbody>
+    </table>
+  </div>`;
+}
+
 function gT(id,btn){
   document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
@@ -1834,6 +2033,7 @@ function gT(id,btn){
   if(id==='lst')renderL();
   if(id==='real')renderReal();
   if(id==='rep')renderR();
+  if(id==='admin')renderAdmin();
 }
 initAuth();
 </script>
