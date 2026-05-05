@@ -2007,7 +2007,7 @@ function renderAdmin(){
       ${buildUspehChart(sts)}
     </div>
     <div class="rcard" style="margin-bottom:0;">
-      <div class="rttl">Просечен успех по паралелка (опаѓачки)</div>
+      <div class="rttl">Просечен успех по паралелка</div>
       ${classList.map(c=>{
         const a=c.okAvgs.length?c.okAvgs.reduce((x,y)=>x+y,0)/c.okAvgs.length:null;
         const pct=a?bw(Math.round((a/maxClassAvg)*100)):0;
@@ -2165,7 +2165,66 @@ function renderAdmin(){
         </tr>`;
       }).join('')}</tbody>
     </table>
-  </div>`:''}`;
+  </div>`:''}
+
+  ${(()=>{
+    const extraLists=[
+      {key:'Одделенски испит',lbl:'Ученици упатени на одделенски испит',col:'#60A5FA',
+       bg:'rgba(96,165,250,.05)',border:'rgba(96,165,250,.25)',
+       extraTh:'<th style="width:55px;text-align:center;">Бр. предмети</th><th>Предмети без оценка</th>'},
+      {key:'Поправен испит',lbl:'Ученици упатени на поправен испит',col:'#FBBF24',
+       bg:'rgba(251,191,36,.05)',border:'rgba(251,191,36,.25)',
+       extraTh:'<th>Предмети со слаба оценка</th>'},
+    ];
+    return extraLists.map(cfg=>{
+      const list=sts.filter(s=>(s.extra||[]).includes(cfg.key)).sort((a,b)=>(a.rn||999)-(b.rn||999));
+      if(!list.length)return'';
+      const isOdd=cfg.key==='Одделенски испит';
+      return`<div class="rcard" style="border-color:${cfg.border};background:${cfg.bg};">
+        <div class="rttl" style="color:${cfg.col};">${cfg.lbl} <span style="font-family:var(--FD);font-size:13px;margin-left:6px;">${list.length}</span></div>
+        <table class="rtbl" style="table-layout:auto;">
+          <thead><tr>
+            <th style="width:30px;">Бр.</th>
+            <th style="width:155px;">Ученик</th>
+            <th style="width:100px;">Паралелка</th>
+            <th style="width:34px;">Пол</th>
+            <th style="width:78px;">Етникум</th>
+            <th style="width:65px;text-align:center;">Оправдани</th>
+            <th style="width:72px;text-align:center;">Неоправдани</th>
+            <th style="width:58px;text-align:center;">Вкупно</th>
+            <th style="width:108px;text-align:center;">Категорија</th>
+            ${cfg.extraTh}
+          </tr></thead>
+          <tbody>${list.map(s=>{
+            const ki=katInfo(s.gr||{});
+            const gr=s.gr||{};
+            const totAbs=(s.op||0)+(s.nop||0);
+            let extraCols='';
+            if(isOdd){
+              const neoc=allSubjs(s._odd||0).filter(subj=>gr[subj]==='/'||gr[subj]===undefined||gr[subj]===''||gr[subj]===null);
+              extraCols='<td style="text-align:center;font-family:var(--FD);font-size:14px;font-weight:600;color:#60A5FA;">'+neoc.length+'</td>'+
+                '<td><div style="display:flex;gap:4px;flex-wrap:wrap;">'+(neoc.length?neoc.map(subj=>'<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;background:rgba(96,165,250,.15);color:#60A5FA;">'+subj+'</span>').join(''):'<span style="font-size:11px;color:var(--tx3);">—</span>')+'</div></td>';
+            } else {
+              const slabi=allSubjs(s._odd||0).filter(subj=>Number(gr[subj])===1);
+              extraCols='<td><div style="display:flex;gap:4px;flex-wrap:wrap;">'+(slabi.length?slabi.map(subj=>'<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;background:rgba(248,113,113,.15);color:#F87171;">'+subj+'</span>').join(''):'<span style="font-size:11px;color:var(--tx3);">—</span>')+'</div></td>';
+            }
+            return`<tr>
+              <td style="font-family:var(--FD);font-weight:500;color:var(--tx3);text-align:center;">${s.rn!=null?s.rn:'—'}</td>
+              <td style="font-family:var(--FC);font-weight:600;">${s.ime} ${s.prz}</td>
+              <td style="color:var(--tx2);">${ODD_LBL[s._odd]||s._odd} · ${s._par}</td>
+              <td><span class="tag ${s.pol==='М'?'mt':'ft'}">${s.pol}</span></td>
+              <td style="color:var(--tx3);">${s.etnik||'—'}</td>
+              <td style="text-align:center;font-weight:600;color:var(--teal);">${s.op||0}</td>
+              <td style="text-align:center;font-weight:600;color:${(s.nop||0)>0?'var(--rose)':'var(--tx3)'};">${s.nop||0}</td>
+              <td style="text-align:center;font-weight:700;font-family:var(--FD);">${totAbs}</td>
+              <td style="text-align:center;"><span class="kat ${ki.cls}">${ki.lbl}</span></td>
+              ${extraCols}
+            </tr>`;
+          }).join('')}</tbody>
+        </table>
+      </div>`;
+    }).join('');
+  })()}`;
 }
 
 function buildAdminFilters(uchs,odds,pars,mols,fUch,fOdd,fPar,fPol,fEtn,fMol,UCH_NAMES){
