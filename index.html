@@ -435,8 +435,15 @@ async function doLogout(){
 /* ── SESSION ── */
 let authInitialized=false;
 async function initAuth(){
+  // Ако за 10 секунди нема одговор — прикажи логин екран
+  const safetyTimeout=setTimeout(()=>{
+    console.warn('Auth timeout — showing login screen');
+    authInitialized=false;
+    showLoginScreen();
+  },10000);
   try{
     const{data:{session},error}=await sb.auth.getSession();
+    clearTimeout(safetyTimeout);
     if(error||!session||!session.user){
       await sb.auth.signOut();
       showLoginScreen();
@@ -444,12 +451,12 @@ async function initAuth(){
       await onLogin(session.user);
     }
   } catch(e){
+    clearTimeout(safetyTimeout);
     console.error('initAuth error:',e);
     showLoginScreen();
   }
   sb.auth.onAuthStateChange(async(event,session)=>{
     if(event==='SIGNED_OUT'){onLogout();}
-    // TOKEN_REFRESHED и SIGNED_IN после почетното логирање — игнорирај
   });
 }
 
@@ -457,10 +464,11 @@ async function onLogin(user){
   if(authInitialized)return;
   authInitialized=true;
   currentUser=user;
+  // Секогаш прикажи ја апликацијата — дури и ако нешто не успее
+  document.getElementById('loading-screen').style.display='none';
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('main-app').style.display='block';
   try{
-    document.getElementById('loading-screen').style.display='none';
-    document.getElementById('login-screen').style.display='none';
-    document.getElementById('main-app').style.display='block';
 
     const name=user.user_metadata?.full_name||user.email;
     const hdrRight=document.getElementById('hdr-right-content');
