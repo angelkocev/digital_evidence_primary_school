@@ -1836,9 +1836,8 @@ function renderAdmin(){
   const el=document.getElementById('adminwrap');
   if(!currentUser?.is_admin){el.innerHTML='<div class="empty-s">Немате пристап.</div>';return;}
 
-  const allSts=Object.entries(allData).flatMap(([k,sts])=>sts.map(s=>{
-    const[uch,odd,par]=k.split('|');
-    return{...s,_uch:uch,_odd:parseInt(odd),_par:par};
+  const allSts=Object.entries(allData).flatMap(([k,arr])=>arr.map(s=>{
+    const[uch,odd,par]=k.split('|');return{...s,_uch:uch,_odd:parseInt(odd),_par:par};
   }));
   if(!allSts.length){el.innerHTML='<div class="empty-s">Нема внесени ученици.</div>';return;}
 
@@ -1858,7 +1857,37 @@ function renderAdmin(){
   if(fMol!=='__svi__')sts=sts.filter(s=>s.mol===fMol);
 
   const n=sts.length;
-  if(!n){el.innerHTML='<div style="background:var(--bg2);border:1px solid var(--bdr);border-radius:10px;padding:10px 14px;margin-bottom:1.5rem;"><select id="af-uch" onchange="renderAdmin()"><option value="__svi__">Сите училишта</option></select></div><div class="empty-s">Нема ученици за избраните филтри.</div>';return;}
+
+  const UCH_NAMES={C:'Централно училиште',K:'ПУ с. Криволак',P:'ПУ с. Пепелиште',V:'ПУ с. Војшанци',CR:'ПУ с. Црвени Брегови'};
+  const uchs=[...new Set(allSts.map(s=>s._uch))].sort();
+  const odds=[...new Set(allSts.filter(s=>fUch==='__svi__'||s._uch===fUch).map(s=>s._odd))].sort((a,b)=>a-b);
+  const pars=[...new Set(allSts.filter(s=>(fUch==='__svi__'||s._uch===fUch)&&(fOdd==='__svi__'||s._odd===parseInt(fOdd))).map(s=>s._par))].sort();
+  const mols=[...new Set(allSts.map(s=>s.mol||'').filter(Boolean))].sort();
+
+  // Per-class data (uses only uch/odd/par filters)
+  let stsByClass=allSts;
+  if(fUch!=='__svi__')stsByClass=stsByClass.filter(s=>s._uch===fUch);
+  if(fOdd!=='__svi__')stsByClass=stsByClass.filter(s=>s._odd===parseInt(fOdd));
+  if(fPar!=='__svi__')stsByClass=stsByClass.filter(s=>s._par===fPar);
+  const byClass={};
+  stsByClass.forEach(s=>{
+    const k=s._uch+'|'+s._odd+'|'+s._par;
+    if(!byClass[k])byClass[k]={uch:s._uch,odd:s._odd,par:s._par,sts:[],okAvgs:[]};
+    byClass[k].sts.push(s);
+    if(gradeStatus(s.gr||{})==='ok'){const a=computeAvg(s.gr);if(a!==null)byClass[k].okAvgs.push(a);}
+  });
+  // Sort descending by avg
+  const classList=Object.values(byClass).sort((a,b)=>{
+    const aA=a.okAvgs.length?a.okAvgs.reduce((x,y)=>x+y,0)/a.okAvgs.length:0;
+    const bA=b.okAvgs.length?b.okAvgs.reduce((x,y)=>x+y,0)/b.okAvgs.length:0;
+    return bA-aA;
+  });
+  const maxClassAvg=Math.max(...classList.map(c=>c.okAvgs.length?c.okAvgs.reduce((x,y)=>x+y,0)/c.okAvgs.length:0),0.01);
+
+  if(!n){
+    el.innerHTML=buildAdminFilters(uchs,odds,pars,mols,fUch,fOdd,fPar,fPol,fEtn,fMol,UCH_NAMES)+
+      '<div class="empty-s">Нема ученици за избраните филтри.</div>';return;
+  }
 
   const males=sts.filter(s=>s.pol==='М').length;
   const totOp=sts.reduce((a,s)=>a+(s.op||0),0);
@@ -1868,100 +1897,78 @@ function renderAdmin(){
   const cAvg=allA.length?allA.reduce((a,b)=>a+b,0)/allA.length:null;
   const gs=gStyle(cAvg);
 
-  const UCH_NAMES={C:'Централно училиште',K:'ПУ с. Криволак',P:'ПУ с. Пепелиште',V:'ПУ с. Војшанци',CR:'ПУ с. Црвени Брегови'};
-  const uchs=[...new Set(allSts.map(s=>s._uch))].sort();
-  const odds=[...new Set(allSts.filter(s=>fUch==='__svi__'||s._uch===fUch).map(s=>s._odd))].sort((a,b)=>a-b);
-  const pars=[...new Set(allSts.filter(s=>(fUch==='__svi__'||s._uch===fUch)&&(fOdd==='__svi__'||s._odd===parseInt(fOdd))).map(s=>s._par))].sort();
-  const etns=[...new Set(allSts.map(s=>s.etnik||'Останато'))].filter(Boolean).sort();
-  const mols=[...new Set(allSts.map(s=>s.mol||'').filter(Boolean))].sort();
-
-  // По паралелка — само врз основа на UCH/ODD/PAR филтри (без пол/etn/mol)
-  let stsByClass=allSts;
-  if(fUch!=='__svi__')stsByClass=stsByClass.filter(s=>s._uch===fUch);
-  if(fOdd!=='__svi__')stsByClass=stsByClass.filter(s=>s._odd===parseInt(fOdd));
-  if(fPar!=='__svi__')stsByClass=stsByClass.filter(s=>s._par===fPar);
-
-  const byClass={};
-  stsByClass.forEach(s=>{
-    const k=`${s._uch}|${s._odd}|${s._par}`;
-    if(!byClass[k])byClass[k]={uch:s._uch,odd:s._odd,par:s._par,sts:[],okAvgs:[]};
-    byClass[k].sts.push(s);
-    if(gradeStatus(s.gr||{})==='ok'){const a=computeAvg(s.gr);if(a!==null)byClass[k].okAvgs.push(a);}
-  });
-  const classList=Object.values(byClass).sort((a,b)=>a.odd-b.odd||a.par.localeCompare(b.par));
-  const maxClassAvg=Math.max(...classList.map(c=>c.okAvgs.length?c.okAvgs.reduce((x,y)=>x+y,0)/c.okAvgs.length:0),0.01);
-
   // Педагошки мерки
-  const mc={};
-  sts.forEach(s=>(s.merki||[]).forEach(m=>{mc[m]=(mc[m]||0)+1;}));
+  const mc={};sts.forEach(s=>(s.merki||[]).forEach(m=>{mc[m]=(mc[m]||0)+1;}));
   const totMerki=Object.values(mc).reduce((a,b)=>a+b,0);
+  const maxMerki=Math.max(...Object.values(mc),1);
   const merkiColors={'Усна опомена':'#60A5FA','Писмена опомена':'#FBBF24','Укор':'#F87171',
     'Преместување во друга паралелка':'#F87171','Добро поведение':'#34D399','Незадоволително поведение':'#F87171'};
-  const maxMerki=Math.max(...Object.values(mc),1);
 
   // Дополнителни белешки
   const extraKeys=['Одделенски испит','Поправен испит','Повторување на одделение','Талентиран ученик'];
   const extraColors={'Одделенски испит':'#60A5FA','Поправен испит':'#FBBF24','Повторување на одделение':'#F87171','Талентиран ученик':'#34D399'};
-  const ec={};
-  sts.forEach(s=>(s.extra||[]).forEach(e=>{ec[e]=(ec[e]||0)+1;}));
+  const ec={};sts.forEach(s=>(s.extra||[]).forEach(e=>{ec[e]=(ec[e]||0)+1;}));
 
-  el.innerHTML=`
-  <div style="margin-bottom:1.5rem;">
-    <div style="font-size:9px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--acc);margin-bottom:5px;">Преглед на ниво на училиште · 2025/2026</div>
-    <div style="font-family:var(--FD);font-size:19px;font-weight:500;color:var(--tx);">Сумиран извештај</div>
-  </div>
+  // Просечен успех по пол
+  const polAvgData=[{lbl:'Машки',f:'#60A5FA',pk:'М'},{lbl:'Женски',f:'#F9A8D4',pk:'Ж'}].map(p=>{
+    const vals=okSts.filter(s=>s.pol===p.pk).map(s=>computeAvg(s.gr)).filter(x=>x!==null);
+    const a=vals.length?vals.reduce((x,y)=>x+y,0)/vals.length:null;
+    return{lbl:p.lbl,f:p.f,a,cnt:vals.length};
+  }).filter(p=>p.cnt>0);
+  const maxPolAvg=Math.max(...polAvgData.map(p=>p.a||0),0.01);
 
-  <!-- ФИЛТРИ РЕД 1 -->
-  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;background:var(--bg2);border:1px solid var(--bdr);border-radius:10px 10px 0 0;padding:10px 14px 8px;">
-    <div>
-      <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--tx3);margin-bottom:4px;">Училиште</div>
-      <select id="af-uch" onchange="renderAdmin()" style="font-family:var(--F);font-size:12px;border:1px solid var(--bdr);border-radius:7px;padding:5px 9px;color:var(--tx);background:var(--bg3);outline:none;cursor:pointer;width:100%;">
-        <option value="__svi__">Сите училишта</option>
-        ${uchs.map(u=>`<option value="${u}" ${fUch===u?'selected':''}>${UCH_NAMES[u]||u}</option>`).join('')}
-      </select>
-    </div>
-    <div>
-      <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--tx3);margin-bottom:4px;">Одделение</div>
-      <select id="af-odd" onchange="renderAdmin()" style="font-family:var(--F);font-size:12px;border:1px solid var(--bdr);border-radius:7px;padding:5px 9px;color:var(--tx);background:var(--bg3);outline:none;cursor:pointer;width:100%;">
-        <option value="__svi__">Сите одделенија</option>
-        ${odds.map(o=>`<option value="${o}" ${fOdd==o?'selected':''}>${ODD_LBL[o]||o}</option>`).join('')}
-      </select>
-    </div>
-    <div>
-      <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--tx3);margin-bottom:4px;">Паралелка</div>
-      <select id="af-par" onchange="renderAdmin()" style="font-family:var(--F);font-size:12px;border:1px solid var(--bdr);border-radius:7px;padding:5px 9px;color:var(--tx);background:var(--bg3);outline:none;cursor:pointer;width:100%;">
-        <option value="__svi__">Сите паралелки</option>
-        ${pars.map(p=>`<option value="${p}" ${fPar===p?'selected':''}>${p}</option>`).join('')}
-      </select>
-    </div>
-  </div>
-  <!-- ФИЛТРИ РЕД 2 -->
-  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;background:var(--bg2);border:1px solid var(--bdr);border-top:none;border-radius:0 0 10px 10px;padding:8px 14px 10px;margin-bottom:1.5rem;">
-    <div>
-      <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--tx3);margin-bottom:4px;">Пол</div>
-      <select id="af-pol" onchange="renderAdmin()" style="font-family:var(--F);font-size:12px;border:1px solid var(--bdr);border-radius:7px;padding:5px 9px;color:var(--tx);background:var(--bg3);outline:none;cursor:pointer;width:100%;">
-        <option value="__svi__">Сите</option>
-        <option value="М" ${fPol==='М'?'selected':''}>Машки</option>
-        <option value="Ж" ${fPol==='Ж'?'selected':''}>Женски</option>
-      </select>
-    </div>
-    <div>
-      <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--tx3);margin-bottom:4px;">Етничка припадност</div>
-      <select id="af-etn" onchange="renderAdmin()" style="font-family:var(--F);font-size:12px;border:1px solid var(--bdr);border-radius:7px;padding:5px 9px;color:var(--tx);background:var(--bg3);outline:none;cursor:pointer;width:100%;">
-        <option value="__svi__">Сите</option>
-        ${ETN_ORDER.map(e=>`<option value="${e}" ${fEtn===e?'selected':''}>${e}</option>`).join('')}
-      </select>
-    </div>
-    <div>
-      <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--tx3);margin-bottom:4px;">Место на живеење</div>
-      <select id="af-mol" onchange="renderAdmin()" style="font-family:var(--F);font-size:12px;border:1px solid var(--bdr);border-radius:7px;padding:5px 9px;color:var(--tx);background:var(--bg3);outline:none;cursor:pointer;width:100%;">
-        <option value="__svi__">Сите</option>
-        ${mols.map(m=>`<option value="${m}" ${fMol===m?'selected':''}>${m}</option>`).join('')}
-      </select>
-    </div>
-  </div>
+  // Просечен успех по етничка припадност
+  const etnAvgData=ETN_ORDER.map(e=>{
+    const vals=okSts.filter(s=>(s.etnik||'Останато')===e).map(s=>computeAvg(s.gr)).filter(x=>x!==null);
+    const a=vals.length?vals.reduce((x,y)=>x+y,0)/vals.length:null;
+    return{lbl:e,f:'#4F8EF7',a,cnt:vals.length};
+  }).filter(e=>e.cnt>0);
+  const maxEtnAvg=Math.max(...etnAvgData.map(e=>e.a||0),0.01);
 
-  <!-- KPI -->
+  // Просечен успех по пол и етникум
+  const combos={};
+  sts.forEach(s=>{
+    const e=s.etnik||'Останато',p=s.pol||'М';
+    const key=(p==='М'?'Машко':'Женско')+' · '+e;
+    if(!combos[key])combos[key]={avgs:[],ops:0,nops:0,cnt:0};
+    const st=gradeStatus(s.gr||{});
+    if(st==='ok'){const a=computeAvg(s.gr);if(a!==null)combos[key].avgs.push(a);}
+    combos[key].ops+=s.op||0;combos[key].nops+=s.nop||0;combos[key].cnt++;
+  });
+  function comboAvgVal(v){return v.avgs.length?v.avgs.reduce((a,b)=>a+b,0)/v.avgs.length:0;}
+  const comboList=Object.entries(combos).sort((a,b)=>comboAvgVal(b[1])-comboAvgVal(a[1]));
+  const maxComboAvg=Math.max(...comboList.map(([,v])=>comboAvgVal(v)),0.01);
+  const maxComboAbs=Math.max(...comboList.map(([,v])=>v.ops+v.nops),1);
+
+  // Изостаноци по пол
+  const polAbsData=[{lbl:'Машки',f:'#60A5FA',pk:'М'},{lbl:'Женски',f:'#F9A8D4',pk:'Ж'}].map(p=>{
+    const g=sts.filter(s=>s.pol===p.pk);
+    return{lbl:p.lbl,f:p.f,op:g.reduce((a,s)=>a+(s.op||0),0),nop:g.reduce((a,s)=>a+(s.nop||0),0),cnt:g.length};
+  }).filter(p=>p.cnt>0&&(p.op+p.nop)>0);
+  const etnAbsData=ETN_ORDER.map(e=>{
+    const g=sts.filter(s=>(s.etnik||'Останато')===e);
+    return{lbl:e,op:g.reduce((a,s)=>a+(s.op||0),0),nop:g.reduce((a,s)=>a+(s.nop||0),0),cnt:g.length};
+  }).filter(e=>e.cnt>0&&(e.op+e.nop)>0);
+  const maxPolAbs=Math.max(...polAbsData.map(p=>p.op+p.nop),1);
+  const maxEtnAbs=Math.max(...etnAbsData.map(e=>e.op+e.nop),1);
+
+  function hbar(lbl,a,maxV,fill,cnt){
+    const pct=a?bw(Math.round((a/maxV)*100)):0;const gs2=gStyle(a);
+    return'<div class="brow"><span class="blbl">'+lbl+(cnt!==undefined?' <span style="font-size:10px;color:var(--tx3);">('+cnt+')</span>':'')+'</span><div class="btrk"><div class="bfil" style="width:'+pct+'%;background:'+fill+';opacity:.8;"></div></div><span class="bval" style="color:'+gs2.c+';">'+(a?a.toFixed(2):'—')+'</span></div>';
+  }
+  function absHbar(lbl,op,nop,maxV){
+    const pOp=bw(Math.round((op/maxV)*100)),pNop=bw(Math.round((nop/maxV)*100));
+    return'<div style="margin-bottom:10px;"><div style="font-size:12px;font-weight:600;color:var(--tx2);margin-bottom:5px;">'+lbl+' <span style="font-size:10px;font-weight:400;color:var(--tx3);">(вкупно: '+(op+nop)+')</span></div>'+
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;"><span style="font-size:10px;color:var(--tx3);width:72px;flex-shrink:0;">Оправдани</span><div style="flex:1;height:10px;background:var(--bg3);border-radius:4px;position:relative;"><div style="position:absolute;left:0;top:0;height:100%;width:'+pOp+'%;background:var(--teal);opacity:.85;border-radius:4px;"></div></div><span style="font-size:11px;font-weight:600;color:var(--teal);min-width:22px;text-align:right;">'+op+'</span></div>'+
+      '<div style="display:flex;align-items:center;gap:8px;"><span style="font-size:10px;color:var(--tx3);width:72px;flex-shrink:0;">Неоправдани</span><div style="flex:1;height:10px;background:var(--bg3);border-radius:4px;position:relative;"><div style="position:absolute;left:0;top:0;height:100%;width:'+pNop+'%;background:var(--rose);opacity:.85;border-radius:4px;"></div></div><span style="font-size:11px;font-weight:600;color:var(--rose);min-width:22px;text-align:right;">'+nop+'</span></div></div>';
+  }
+
+  // Листа на ученици коишто повторуваат
+  const povtoruvanje=sts.filter(s=>(s.extra||[]).includes('Повторување на одделение'))
+    .sort((a,b)=>(a.rn||999)-(b.rn||999));
+
+  el.innerHTML=buildAdminFilters(uchs,odds,pars,mols,fUch,fOdd,fPar,fPol,fEtn,fMol,UCH_NAMES)+`
+
   <div class="kpis" style="grid-template-columns:repeat(5,1fr);">
     <div class="kpi"><div class="kpi-l">Ученици</div><div class="kpi-v">${n}</div><div class="kpi-bot" style="background:var(--acc);width:100%;"></div></div>
     <div class="kpi"><div class="kpi-l">Машки</div><div class="kpi-v" style="color:#60A5FA;">${males}</div><div class="kpi-bot" style="background:#60A5FA;width:${n?bw(Math.round(males/n*100)):0}%;"></div></div>
@@ -1970,24 +1977,22 @@ function renderAdmin(){
     <div class="kpi"><div class="kpi-l">Паралелки</div><div class="kpi-v">${classList.length}</div><div class="kpi-bot" style="background:var(--teal);width:100%;"></div></div>
   </div>
 
-  <!-- Успех + просек по паралелка -->
   <div class="rep-duo">
     <div class="rcard" style="margin-bottom:0;">
       <div class="rttl">Успех на учениците</div>
       ${buildUspehChart(sts)}
     </div>
     <div class="rcard" style="margin-bottom:0;">
-      <div class="rttl">Просечен успех по паралелка</div>
+      <div class="rttl">Просечен успех по паралелка (опаѓачки)</div>
       ${classList.map(c=>{
         const a=c.okAvgs.length?c.okAvgs.reduce((x,y)=>x+y,0)/c.okAvgs.length:null;
         const pct=a?bw(Math.round((a/maxClassAvg)*100)):0;
         const gs2=gStyle(a);
-        return'<div class="brow"><span class="blbl" title="'+c.par+'" style="width:80px;">'+c.par+'</span><div class="btrk"><div class="bfil" style="width:'+pct+'%;background:'+gs2.bar+';opacity:.85;"></div></div><span class="bval" style="color:'+gs2.c+';">'+(a?a.toFixed(2):'—')+'</span></div>';
+        return'<div class="brow"><span class="blbl" style="width:80px;">'+c.par+' <span style="font-size:10px;color:var(--tx3);">('+c.sts.length+')</span></span><div class="btrk"><div class="bfil" style="width:'+pct+'%;background:'+gs2.bar+';opacity:.85;"></div></div><span class="bval" style="color:'+gs2.c+';">'+(a?a.toFixed(2):'—')+'</span></div>';
       }).join('')||'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>'}
     </div>
   </div>
 
-  <!-- Изостаноци по паралелка -->
   <div class="rcard">
     <div class="rttl">Изостаноци по паралелка</div>
     <table class="rtbl" style="table-layout:fixed;">
@@ -1999,24 +2004,15 @@ function renderAdmin(){
         <th style="width:70px;text-align:center;">Вкупно</th>
         <th style="width:90px;text-align:center;">Просек/ученик</th>
       </tr></thead>
-      <tbody>${classList.map(c=>{
-        const op=c.sts.reduce((a,s)=>a+(s.op||0),0);
-        const nop=c.sts.reduce((a,s)=>a+(s.nop||0),0);
-        const tot=op+nop;
+      <tbody>${classList.sort((a,b)=>a.odd-b.odd||a.par.localeCompare(b.par)).map(c=>{
+        const op=c.sts.reduce((a,s)=>a+(s.op||0),0),nop=c.sts.reduce((a,s)=>a+(s.nop||0),0),tot=op+nop;
         return'<tr><td style="font-family:var(--FC);font-weight:600;">'+c.par+'</td><td style="text-align:center;font-family:var(--FD);">'+c.sts.length+'</td><td style="text-align:center;font-weight:600;color:var(--teal);">'+op+'</td><td style="text-align:center;font-weight:600;color:'+(nop>0?'var(--rose)':'var(--tx3)')+';">'+nop+'</td><td style="text-align:center;font-weight:700;font-family:var(--FD);">'+tot+'</td><td style="text-align:center;color:var(--tx3);">'+(tot/c.sts.length).toFixed(1)+'</td></tr>';
       }).join('')}
-      <tr style="background:var(--bg3);font-weight:700;">
-        <td>Вкупно</td><td style="text-align:center;font-family:var(--FD);">${stsByClass.length}</td>
-        <td style="text-align:center;color:var(--teal);">${stsByClass.reduce((a,s)=>a+(s.op||0),0)}</td>
-        <td style="text-align:center;color:var(--rose);">${stsByClass.reduce((a,s)=>a+(s.nop||0),0)}</td>
-        <td style="text-align:center;font-family:var(--FD);">${stsByClass.reduce((a,s)=>a+(s.op||0)+(s.nop||0),0)}</td>
-        <td style="text-align:center;color:var(--tx3);">${stsByClass.length?(stsByClass.reduce((a,s)=>a+(s.op||0)+(s.nop||0),0)/stsByClass.length).toFixed(1):'—'}</td>
-      </tr>
+      <tr style="background:var(--bg3);font-weight:700;"><td>Вкупно</td><td style="text-align:center;">${stsByClass.length}</td><td style="text-align:center;color:var(--teal);">${stsByClass.reduce((a,s)=>a+(s.op||0),0)}</td><td style="text-align:center;color:var(--rose);">${stsByClass.reduce((a,s)=>a+(s.nop||0),0)}</td><td style="text-align:center;">${stsByClass.reduce((a,s)=>a+(s.op||0)+(s.nop||0),0)}</td><td style="text-align:center;color:var(--tx3);">${stsByClass.length?(stsByClass.reduce((a,s)=>a+(s.op||0)+(s.nop||0),0)/stsByClass.length).toFixed(1):'—'}</td></tr>
       </tbody>
     </table>
   </div>
 
-  <!-- Статус на оценување по паралелка -->
   <div class="rcard">
     <div class="rttl">Статус на оценување по паралелка</div>
     <table class="rtbl" style="table-layout:fixed;">
@@ -2041,10 +2037,58 @@ function renderAdmin(){
           '<td style="text-align:center;color:#F87171;font-weight:600;">'+cnt(s=>{const a=computeAvg(s.gr||{});return a!==null&&a<2.5;})+'</td>'+
           '<td style="text-align:center;color:#FCA5A5;font-weight:600;">'+cnt(s=>gradeStatus(s.gr||{})==='slab')+'</td>'+
           '<td style="text-align:center;color:#FBBF24;font-weight:600;">'+cnt(s=>gradeStatus(s.gr||{})==='delumno')+'</td>'+
-          '<td style="text-align:center;color:#94A3B8;font-weight:600;">'+cnt(s=>{const st=gradeStatus(s.gr||{});return st==='celoso'||st==='no-data';})+'</td>'+
-        '</tr>';
+          '<td style="text-align:center;color:#94A3B8;font-weight:600;">'+cnt(s=>{const st=gradeStatus(s.gr||{});return st==='celoso'||st==='no-data';})+'</td></tr>';
       }).join('')}</tbody>
     </table>
+  </div>
+
+  <!-- Просечен успех: по пол | по етникум -->
+  <div class="rep-duo">
+    <div class="rcard" style="margin-bottom:0;">
+      <div class="rttl">Просечен успех по пол</div>
+      ${polAvgData.length?polAvgData.map(p=>hbar(p.lbl,p.a,maxPolAvg,p.f,p.cnt)).join(''):'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>'}
+    </div>
+    <div class="rcard" style="margin-bottom:0;">
+      <div class="rttl">Просечен успех по етничка припадност</div>
+      ${etnAvgData.length?etnAvgData.map(e=>hbar(e.lbl,e.a,maxEtnAvg,e.f,e.cnt)).join(''):'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>'}
+    </div>
+  </div>
+
+  <div class="rcard">
+    <div class="rttl">Просечен успех по пол и етничка припадност</div>
+    ${comboList.map(([key,val])=>{
+      const a=comboAvgVal(val)||null;
+      const pct=a?bw(Math.round((a/maxComboAvg)*100)):0;
+      const fill=key.startsWith('Машко')?'#60A5FA':'#F9A8D4';
+      const aStr=a?a.toFixed(2):'—';
+      return'<div class="crow"><span class="clbl">'+key+' <span style="font-size:10px;color:var(--tx3);">('+val.cnt+')</span></span><div class="ctrk"><div class="cfil" style="width:'+pct+'%;background:'+fill+';opacity:.8;">'+(pct>20?'<span class="cval-in">'+aStr+'</span>':'')+'</div>'+(pct<=20?'<span class="cval-out" style="left:'+(pct+2)+'%;">'+aStr+'</span>':'')+'</div></div>';
+    }).join('')||'<div style="font-size:13px;color:var(--tx3);">Нема доволно податоци.</div>'}
+  </div>
+
+  <!-- Изостаноци: по пол | по етникум -->
+  <div class="rep-duo">
+    <div class="rcard" style="margin-bottom:0;">
+      <div class="rttl">Изостаноци по пол</div>
+      ${polAbsData.length?polAbsData.map(p=>absHbar(p.lbl,p.op,p.nop,maxPolAbs)).join(''):'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>'}
+    </div>
+    <div class="rcard" style="margin-bottom:0;">
+      <div class="rttl">Изостаноци по етничка припадност</div>
+      ${etnAbsData.length?etnAbsData.map(e=>absHbar(e.lbl,e.op,e.nop,maxEtnAbs)).join(''):'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>'}
+    </div>
+  </div>
+
+  <div class="rcard">
+    <div class="rttl">Изостаноци по пол и етничка припадност</div>
+    <div style="display:flex;gap:16px;margin-bottom:1rem;">
+      <div style="display:flex;align-items:center;gap:5px;font-size:10px;font-weight:700;text-transform:uppercase;color:var(--teal);"><span style="width:10px;height:10px;border-radius:2px;background:var(--teal);display:inline-block;"></span>Оправдани</div>
+      <div style="display:flex;align-items:center;gap:5px;font-size:10px;font-weight:700;text-transform:uppercase;color:var(--rose);"><span style="width:10px;height:10px;border-radius:2px;background:var(--rose);display:inline-block;"></span>Неоправдани</div>
+    </div>
+    ${(()=>{
+      function absSortKeyA(key){const polPart=key.startsWith('Машко')?0:1;const etnik=key.split(' · ')[1]||'';const ei=ETN_ORDER.indexOf(etnik);return(ei>=0?ei:99)*2+polPart;}
+      const sorted=[...comboList].sort((a,b)=>absSortKeyA(a[0])-absSortKeyA(b[0])).filter(([,v])=>v.ops+v.nops>0);
+      const mxA=Math.max(...sorted.map(([,v])=>v.ops+v.nops),1);
+      return sorted.map(([key,val])=>absHbar(key,val.ops,val.nops,mxA)).join('')||'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>';
+    })()}
   </div>
 
   <!-- Педагошки мерки + Дополнителни белешки -->
@@ -2052,19 +2096,70 @@ function renderAdmin(){
     <div class="rcard" style="margin-bottom:0;">
       <div class="rttl">Педагошки мерки — преглед</div>
       ${totMerki>0?MERKI_LIST.filter(m=>mc[m]).map(m=>{
-        const pct=bw(Math.round((mc[m]/maxMerki)*100));
-        const col=merkiColors[m]||'#4F8EF7';
+        const pct=bw(Math.round((mc[m]/maxMerki)*100));const col=merkiColors[m]||'#4F8EF7';
         return'<div class="brow"><span class="blbl">'+m+'</span><div class="btrk"><div class="bfil" style="width:'+pct+'%;background:'+col+';opacity:.8;"></div></div><span class="bval" style="color:'+col+';">'+mc[m]+'</span></div>';
       }).join('')+'<div style="display:flex;justify-content:space-between;padding:7px 0 0;border-top:1px solid var(--bdr2);margin-top:4px;font-size:12px;"><span style="font-weight:700;color:var(--tx);">Вкупно</span><span style="font-weight:700;font-family:var(--FD);font-size:15px;color:var(--amber);">'+totMerki+'</span></div>':'<div style="font-size:13px;color:var(--tx3);">Нема изречени педагошки мерки.</div>'}
     </div>
     <div class="rcard" style="margin-bottom:0;">
       <div class="rttl">Одделенски испит · Поправен испит · Повторување</div>
       ${extraKeys.filter(k=>ec[k]).length?extraKeys.filter(k=>ec[k]).map(k=>{
-        const pct=bw(Math.round((ec[k]/n)*100));
-        const col=extraColors[k]||'#4F8EF7';
+        const pct=bw(Math.round((ec[k]/n)*100));const col=extraColors[k]||'#4F8EF7';
         return'<div class="brow"><span class="blbl">'+k+'</span><div class="btrk"><div class="bfil" style="width:'+pct+'%;background:'+col+';opacity:.8;"></div></div><span class="bval" style="color:'+col+';">'+ec[k]+'</span></div>';
       }).join(''):'<div style="font-size:13px;color:var(--tx3);">Нема ученици.</div>'}
     </div>
+  </div>
+
+  ${povtoruvanje.length?`<div class="rcard" style="border-color:rgba(248,113,113,.25);background:rgba(248,113,113,.05);">
+    <div class="rttl" style="color:#F87171;">Ученици кои повторуваат одделение <span style="font-family:var(--FD);font-size:13px;margin-left:6px;">${povtoruvanje.length}</span></div>
+    <table class="rtbl" style="table-layout:auto;">
+      <thead><tr>
+        <th style="width:30px;">Бр.</th>
+        <th style="width:155px;">Ученик</th>
+        <th style="width:100px;">Паралелка</th>
+        <th style="width:34px;">Пол</th>
+        <th style="width:78px;">Етникум</th>
+        <th style="width:65px;text-align:center;">Оправдани</th>
+        <th style="width:72px;text-align:center;">Неоправдани</th>
+        <th style="width:58px;text-align:center;">Вкупно</th>
+        <th style="width:108px;text-align:center;">Категорија</th>
+        <th>Предмети со слаба оценка</th>
+      </tr></thead>
+      <tbody>${povtoruvanje.map(s=>{
+        const ki=katInfo(s.gr||{});
+        const slabi=allSubjs(s._odd||curOdd).filter(subj=>Number((s.gr||{})[subj])===1);
+        return\`<tr>
+          <td style="font-family:var(--FD);font-weight:500;color:var(--tx3);text-align:center;">\${s.rn!=null?s.rn:'—'}</td>
+          <td style="font-family:var(--FC);font-weight:600;">\${s.ime} \${s.prz}</td>
+          <td style="color:var(--tx2);">\${ODD_LBL[s._odd]||s._odd} · \${s._par}</td>
+          <td><span class="tag \${s.pol==='М'?'mt':'ft'}">\${s.pol}</span></td>
+          <td style="color:var(--tx3);">\${s.etnik||'—'}</td>
+          <td style="text-align:center;font-weight:600;color:var(--teal);">\${s.op||0}</td>
+          <td style="text-align:center;font-weight:600;color:\${(s.nop||0)>0?'var(--rose)':'var(--tx3)'};">\${s.nop||0}</td>
+          <td style="text-align:center;font-weight:700;font-family:var(--FD);">\${(s.op||0)+(s.nop||0)}</td>
+          <td style="text-align:center;"><span class="kat \${ki.cls}">\${ki.lbl}</span></td>
+          <td><div style="display:flex;gap:4px;flex-wrap:wrap;">\${slabi.length?slabi.map(subj=>'<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;background:rgba(248,113,113,.15);color:#F87171;">'+subj+'</span>').join(''):'<span style="font-size:11px;color:var(--tx3);">—</span>'}</div></td>
+        </tr>\`;
+      }).join('')}</tbody>
+    </table>
+  </div>`:''}`;
+}
+
+function buildAdminFilters(uchs,odds,pars,mols,fUch,fOdd,fPar,fPol,fEtn,fMol,UCH_NAMES){
+  const selStyle='font-family:var(--F);font-size:12px;border:1px solid var(--bdr);border-radius:7px;padding:5px 9px;color:var(--tx);background:var(--bg3);outline:none;cursor:pointer;width:100%;';
+  const labelStyle='font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--tx3);margin-bottom:4px;';
+  return`<div style="margin-bottom:1.5rem;">
+    <div style="font-size:9px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--acc);margin-bottom:5px;">Преглед на ниво на училиште · 2025/2026</div>
+    <div style="font-family:var(--FD);font-size:19px;font-weight:500;color:var(--tx);">Сумиран извештај</div>
+  </div>
+  <div style="background:var(--bg2);border:1px solid var(--bdr);border-radius:10px 10px 0 0;padding:10px 14px 8px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+    <div><div style="${labelStyle}">Училиште</div><select id="af-uch" onchange="renderAdmin()" style="${selStyle}"><option value="__svi__">Сите училишта</option>${uchs.map(u=>`<option value="${u}" ${fUch===u?'selected':''}>${UCH_NAMES[u]||u}</option>`).join('')}</select></div>
+    <div><div style="${labelStyle}">Одделение</div><select id="af-odd" onchange="renderAdmin()" style="${selStyle}"><option value="__svi__">Сите одделенија</option>${odds.map(o=>`<option value="${o}" ${fOdd==o?'selected':''}>${ODD_LBL[o]||o}</option>`).join('')}</select></div>
+    <div><div style="${labelStyle}">Паралелка</div><select id="af-par" onchange="renderAdmin()" style="${selStyle}"><option value="__svi__">Сите паралелки</option>${pars.map(p=>`<option value="${p}" ${fPar===p?'selected':''}>${p}</option>`).join('')}</select></div>
+  </div>
+  <div style="background:var(--bg2);border:1px solid var(--bdr);border-top:none;border-radius:0 0 10px 10px;padding:8px 14px 10px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:1.5rem;">
+    <div><div style="${labelStyle}">Пол</div><select id="af-pol" onchange="renderAdmin()" style="${selStyle}"><option value="__svi__">Сите</option><option value="М" ${fPol==='М'?'selected':''}>Машки</option><option value="Ж" ${fPol==='Ж'?'selected':''}>Женски</option></select></div>
+    <div><div style="${labelStyle}">Етничка припадност</div><select id="af-etn" onchange="renderAdmin()" style="${selStyle}"><option value="__svi__">Сите</option>${ETN_ORDER.map(e=>`<option value="${e}" ${fEtn===e?'selected':''}>${e}</option>`).join('')}</select></div>
+    <div><div style="${labelStyle}">Место на живеење</div><select id="af-mol" onchange="renderAdmin()" style="${selStyle}"><option value="__svi__">Сите</option>${mols.map(m=>`<option value="${m}" ${fMol===m?'selected':''}>${m}</option>`).join('')}</select></div>
   </div>`;
 }
 
