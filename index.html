@@ -412,12 +412,13 @@ async function doAuth(){
   if(!email||!pass){showAuthErr('Внесете е-пошта и лозинка.');return;}
   btn.disabled=true;btn.textContent='Се најавува...';
   try{
-    const{error}=await sb.auth.signInWithPassword({email,password:pass});
+    const{data,error}=await sb.auth.signInWithPassword({email,password:pass});
     if(error)throw error;
+    if(data?.user)await onLogin(data.user);
   } catch(e){
     showAuthErr(e.message==='Invalid login credentials'?'Погрешна е-пошта или лозинка.':e.message);
+    btn.disabled=false;btn.textContent='Најави се';
   }
-  btn.disabled=false;btn.textContent='Најави се';
 }
 
 function showAuthErr(msg,type='err'){
@@ -429,42 +430,43 @@ function showAuthErr(msg,type='err'){
 }
 
 async function doLogout(){
+  authInitialized=false;
+  currentUser=null;
+  allData={};electiveNames={};
   await sb.auth.signOut();
+  document.getElementById('main-app').style.display='none';
+  document.getElementById('hdr-right-content').innerHTML='';
+  showLoginScreen();
 }
 
 /* ── SESSION ── */
 let authInitialized=false;
 async function initAuth(){
-  // Ако за 10 секунди нема одговор — прикажи логин екран
   const safetyTimeout=setTimeout(()=>{
-    console.warn('Auth timeout — showing login screen');
-    authInitialized=false;
-    showLoginScreen();
+    if(document.getElementById('loading-screen').style.display!=='none'){
+      console.warn('Auth timeout');
+      showLoginScreen();
+    }
   },10000);
   try{
-    const{data:{session},error}=await sb.auth.getSession();
+    const{data:{session}}=await sb.auth.getSession();
     clearTimeout(safetyTimeout);
-    if(error||!session||!session.user){
-      await sb.auth.signOut();
-      showLoginScreen();
-    } else {
+    if(session?.user){
       await onLogin(session.user);
+    } else {
+      showLoginScreen();
     }
   } catch(e){
     clearTimeout(safetyTimeout);
     console.error('initAuth error:',e);
     showLoginScreen();
   }
-  sb.auth.onAuthStateChange(async(event,session)=>{
-    if(event==='SIGNED_OUT'){onLogout();}
-  });
 }
 
 async function onLogin(user){
   if(authInitialized)return;
   authInitialized=true;
   currentUser=user;
-  // Секогаш прикажи ја апликацијата — дури и ако нешто не успее
   document.getElementById('loading-screen').style.display='none';
   document.getElementById('login-screen').style.display='none';
   document.getElementById('main-app').style.display='block';
@@ -531,13 +533,6 @@ async function onLogin(user){
   }
 }
 
-function onLogout(){
-  authInitialized=false;
-  currentUser=null;allData={};electiveNames={};
-  document.getElementById('main-app').style.display='none';
-  document.getElementById('hdr-right-content').innerHTML='';
-  showLoginScreen();
-}
 
 function showLoginScreen(){
   document.getElementById('loading-screen').style.display='none';
