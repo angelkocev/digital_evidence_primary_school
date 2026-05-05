@@ -620,7 +620,7 @@ async function persistElective(k,en){
 async function persistReal(k,subj,vals){
   if(!currentUser)return;
   const[uch,odd,par]=k.split('|');
-  await sb.from('realizacija').upsert({teacher_id:currentUser.id,uciliste:uch,oddelenie:parseInt(odd),paralelka:par,predmet:subj,real:vals.real||0,nereal:vals.nereal||0,dop:vals.dop||0,dod:vals.dod||0},{onConflict:'teacher_id,училиште,одделение,паралелка,предмет'});
+  await sb.from('realizacija').upsert({teacher_id:currentUser.id,uciliste:uch,oddelenie:parseInt(odd),paralelka:par,predmet:subj,real:vals.real||0,nereal:vals.nereal||0,dop:vals.dop||0,dod:vals.dod||0},{onConflict:'teacher_id,uciliste,oddelenie,paralelka,predmet'});
   showSaveInd();
 }
 const UCH_DATA={
@@ -978,7 +978,13 @@ async function saveSt(){
     op:parseInt(document.getElementById('fop').value)||0,
     nop:parseInt(document.getElementById('fnp').value)||0,
     gr:getGr(),merki:getMerki(),extra:getExtra()};
-  if(editIdx>=0)sts[editIdx]=s; else sts.push(s);
+  // Задржи го _dbid при уредување — критично за да не се создаде дупликат!
+  if(editIdx>=0){
+    s._dbid=sts[editIdx]._dbid;
+    sts[editIdx]=s;
+  } else {
+    sts.push(s);
+  }
   setSts(sts);persist();
   await persistStudent(s,stKey());
   upBadge();showMsg('fmsg','Зачувано!','ok');
