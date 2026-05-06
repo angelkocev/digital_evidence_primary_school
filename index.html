@@ -2024,8 +2024,8 @@ function renderAdmin(){
     byClass[k].sts.push(s);
     if(gradeStatus(s.gr||{})==='ok'){const a=computeAvg(s.gr);if(a!==null)byClass[k].okAvgs.push(a);}
   });
-  // Sort descending by avg
-  const classList=Object.values(byClass).filter(c=>c.par!=='IV одделение со ПОП').sort((a,b)=>{
+  // Sort descending by avg — вклучи ги сите паралелки
+  const classList=Object.values(byClass).sort((a,b)=>{
     const aA=a.okAvgs.length?a.okAvgs.reduce((x,y)=>x+y,0)/a.okAvgs.length:0;
     const bA=b.okAvgs.length?b.okAvgs.reduce((x,y)=>x+y,0)/b.okAvgs.length:0;
     return bA-aA;
@@ -2033,7 +2033,9 @@ function renderAdmin(){
   // Раздели на описно (I–III) и бројчано (IV–IX)
   const classListOpisno=classList.filter(c=>c.odd<=3);
   const classListNumeric=classList.filter(c=>c.odd>3);
-  const maxClassAvg=Math.max(...classListNumeric.map(c=>c.okAvgs.length?c.okAvgs.reduce((x,y)=>x+y,0)/c.okAvgs.length:0),0.01);
+  // Исклучи IV ПОП само од просечниот успех (само 1 ученик)
+  const classListNumericAvg=classListNumeric.filter(c=>c.par!=='IV одделение со ПОП');
+  const maxClassAvg=Math.max(...classListNumericAvg.map(c=>c.okAvgs.length?c.okAvgs.reduce((x,y)=>x+y,0)/c.okAvgs.length:0),0.01);
 
   // Описно статистики по паралелка (I–III)
   function opisnoStats(cls){
@@ -2177,7 +2179,7 @@ function renderAdmin(){
   ${classListNumeric.length?`<div class="rep-duo">
     <div class="rcard" style="margin-bottom:0;">
       <div class="rttl">Просечен успех по паралелка (IV–IX)</div>
-      ${classListNumeric.map(c=>{
+      ${classListNumericAvg.map(c=>{
         const a=c.okAvgs.length?c.okAvgs.reduce((x,y)=>x+y,0)/c.okAvgs.length:null;
         const pct=a?bw(Math.round((a/maxClassAvg)*100)):0;
         const gs2=gStyle(a);
