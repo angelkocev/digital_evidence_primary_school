@@ -351,6 +351,12 @@ input#fop::-webkit-outer-spin-button,input#fop::-webkit-inner-spin-button,input#
   </div>
 
   <div class="sl">Лични податоци</div>
+  <div id="odd-ucenik-wrap" style="display:none;background:var(--bg3);border:1px solid var(--amber);border-radius:9px;padding:10px 14px;margin-bottom:10px;">
+    <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--amber);margin-bottom:6px;">Комбинирана паралелка — одделение на ученикот</div>
+    <select id="fodd" style="font-family:var(--F);font-size:13px;border:1px solid var(--bdr);border-radius:7px;padding:6px 10px;color:var(--tx);background:var(--bg2);outline:none;cursor:pointer;width:100%;">
+      <option value="">— изберете одделение —</option>
+    </select>
+  </div>
   <div class="fg3">
     <div class="fld"><label>Реден број</label><input id="frn" type="number" min="1" placeholder="1"></div>
     <div class="fld"><label>Иmе</label><input id="fi" type="text" class="cyr" placeholder="Внеси го името"></div>
@@ -625,7 +631,8 @@ async function loadFromSupabase(){
         rn:s.rn,ime:s.ime,prz:s.prz,pol:s.pol,
         mol:s.mol,etnik:s.etnik,op:s.op,nop:s.nop,
         gr:s.gr||{},merki:s.merki||[],extra:s.extra||[],
-        _dbid:s.id  // секогаш го зачувај ID-от
+        odd_ucenik:s.odd_ucenik||0,
+        _dbid:s.id
       });
     });
     Object.keys(allData).forEach(k=>{
@@ -658,7 +665,7 @@ function setRealData(d){realData=d;}
 async function persistStudent(s,k){
   if(!currentUser)return;
   const[uch,odd,par]=k.split('|');
-  const row={teacher_id:currentUser.id,uciliste:uch,oddelenie:parseInt(odd),paralelka:par,rn:s.rn,ime:s.ime,prz:s.prz,pol:s.pol,mol:s.mol||'',etnik:s.etnik||'',op:s.op||0,nop:s.nop||0,gr:s.gr||{},merki:s.merki||[],extra:s.extra||[]};
+  const row={teacher_id:currentUser.id,uciliste:uch,oddelenie:parseInt(odd),paralelka:par,rn:s.rn,ime:s.ime,prz:s.prz,pol:s.pol,mol:s.mol||'',etnik:s.etnik||'',op:s.op||0,nop:s.nop||0,gr:s.gr||{},merki:s.merki||[],extra:s.extra||[],odd_ucenik:s.odd_ucenik||0};
   if(s._dbid){
     await sb.from('ucenici').update(row).eq('id',s._dbid);
   } else {
@@ -818,7 +825,20 @@ const GRADE_OPTS_OPISNO=['I ниво','II ниво','III ниво','/'];
 const MERKI_LIST=['Усна опомена','Писмена опомена','Укор','Преместување во друга паралелка','Добро поведение','Незадоволително поведение'];
 const ETN_ORDER=['Македонец','Албанец','Ром','Србин','Турчин','Влав','Евреин','Бошњак','Останато'];
 
-function allSubjs(o){return o&&PROG[o]?PROG[o].flatMap(g=>g.s):[];}
+// Комбинирани паралелки — клуч: паралелка, вредност: можни одделенија
+const COMBINED_CLASSES={
+  'I, V одделение ПУ с. Војшанци':[1,5],
+  'III, IV одделение ПУ с. Војшанци':[3,4],
+  'I, IV одделение ПУ с. Црвени Брегови':[1,4],
+  'II, III, V одделение ПУ с. Црвени Брегови':[2,3,5],
+};
+function isCombined(par){return par&&COMBINED_CLASSES[par];}
+function getStudentOdd(s){
+  // Ако ученикот има свое одделение (комбинирана), користи го него; инаку curOdd
+  return s?.odd_ucenik||curOdd;
+}
+
+
 
 let curUch='',curOdd=0,curPar='';
 let allData={};
@@ -937,9 +957,23 @@ function openModal(idx){
   document.getElementById('fop').value=s?(s.op||0):0;
   document.getElementById('fnp').value=s?(s.nop||0):0;
   document.getElementById('atot').textContent=s?((s.op||0)+(s.nop||0)):0;
+  // Комбинирана паралелка — прикажи избор на одделение
+  const oddWrap=document.getElementById('odd-ucenik-wrap');
+  const fodd=document.getElementById('fodd');
+  const combinedOdds=isCombined(curPar);
+  if(combinedOdds){
+    oddWrap.style.display='block';
+    fodd.innerHTML='<option value="">— изберете одделение —</option>'+
+      combinedOdds.map(o=>`<option value="${o}" ${s?.odd_ucenik===o?'selected':''}>${ODD_LBL[o]||o+' одделение'}</option>`).join('');
+    fodd.onchange=()=>buildSG(s?s.gr:{});
+  } else {
+    oddWrap.style.display='none';
+    fodd.value='';
+  }
   // Брзо внесување — опции според одделение
+  const effectiveOdd=s?.odd_ucenik||curOdd;
   const qfSel=document.getElementById('qfval');
-  const opisno=curOdd<=3;
+  const opisno=effectiveOdd<=3;
   const qfOpts=opisno?GRADE_OPTS_OPISNO:GRADE_OPTS;
   qfSel.innerHTML='<option value="">—</option>'+qfOpts.map(g=>`<option value="${g}">${g==='/'?'/ (Неоценет)':g}</option>`).join('');
   buildMerkiWrap(s?s.merki:[]);
@@ -992,9 +1026,14 @@ function getMerki(){
 
 function buildSG(gr={}){
   const wrap=document.getElementById('sgw');
-  if(!curOdd||!PROG[curOdd]){wrap.innerHTML='<div style="font-size:13px;color:var(--tx3);padding:8px 0 1rem;">Нема наставна програма.</div>';return;}
+  // За комбинирани паралелки — земи го избраното одделение на ученикот
+  const fodd=document.getElementById('fodd');
+  const effectiveOdd=isCombined(curPar)?(parseInt(fodd?.value)||0):curOdd;
+  if(!effectiveOdd||!PROG[effectiveOdd]){
+    wrap.innerHTML='<div style="font-size:13px;color:var(--tx3);padding:8px 0 1rem;">'+(isCombined(curPar)?'Прво изберете одделение на ученикот.':'Нема наставна програма.')+'</div>';return;
+  }
   const en=getEN();
-  wrap.innerHTML='<div class="subj-groups">'+PROG[curOdd].map(grp=>`
+  wrap.innerHTML='<div class="subj-groups">'+PROG[effectiveOdd].map(grp=>`
     <div>
       <div class="sg-title">${grp.g}</div>
       <div class="sgrid">
@@ -1008,7 +1047,7 @@ function buildSG(gr={}){
             ?`<input class="el-inp" value="${display}" placeholder="${subj}" onchange="saveEN('${isE1?'s1':(isE2?'s2':'i9')}',this.value)">`
             :`<span class="srow-name">${display}</span>`;
           const isEl=isE1||isE2; // i9 НЕ е ограничен — користи ги сите оценки
-          const opisno=curOdd<=3;
+          const opisno=effectiveOdd<=3;
           const opts=opisno?GRADE_OPTS_OPISNO:(isEl?[5,3,1,'/']:GRADE_OPTS);
           return`<div class="srow" title="${subj}">
             ${nameEl}
@@ -1060,10 +1099,13 @@ async function saveSt(){
       return;
     }
   }
+  const fodd=document.getElementById('fodd');
+  const odd_ucenik=isCombined(curPar)?(parseInt(fodd?.value)||0):0;
+  if(isCombined(curPar)&&!odd_ucenik){showMsg('fmsg','Изберете одделение на ученикот!','err');return;}
   const sts=getSts();
   const dup=sts.findIndex((s,i)=>s.rn===rn&&i!==editIdx);
   if(dup>=0){showMsg('fmsg',`Реден број ${rn} веќе го има ${sts[dup].ime} ${sts[dup].prz}!`,'err');return;}
-  const s={rn,ime,prz,pol,mol,etnik,
+  const s={rn,ime,prz,pol,mol,etnik,odd_ucenik,
     op:parseInt(document.getElementById('fop').value)||0,
     nop:parseInt(document.getElementById('fnp').value)||0,
     gr:getGr(),merki:getMerki(),extra:getExtra()};
@@ -1107,7 +1149,7 @@ function renderL(){
         <div class="sc-rn">${s.rn!=null?s.rn:'—'}</div>
         <div class="ava" style="background:${ac.bg};color:${ac.c};">${(s.ime[0]||'')+(s.prz[0]||'')}</div>
         <div class="sc-info">
-          <div class="sc-name">${s.ime} ${s.prz} <span class="tag ${s.pol==='М'?'mt':'ft'}" style="margin-left:5px;">${s.pol}</span></div>
+          <div class="sc-name">${s.ime} ${s.prz} <span class="tag ${s.pol==='М'?'mt':'ft'}" style="margin-left:5px;">${s.pol}</span>${s.odd_ucenik?`<span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:99px;background:rgba(251,191,36,.2);color:var(--amber);margin-left:4px;">${ODD_LBL[s.odd_ucenik]||s.odd_ucenik+' одд.'}</span>`:''}</div>
           <div class="sc-meta">${s.etnik||'—'}${s.mol?' · '+s.mol:''} · Изостаноци: ${(s.op||0)+(s.nop||0)}</div>
           ${allBadges?`<div class="sc-merki">${allBadges}</div>`:''}
         </div>
