@@ -622,7 +622,23 @@ async function loadFromSupabase(){
   let q=sb.from('ucenici').select('*');
   if(!isAdmin)q=q.eq('teacher_id',currentUser.id);
   const{data:sts,error:e1}=await q;
-  if(e1){console.error('Load ucenici error:',e1);return;}
+  if(e1){
+    console.error('Load ucenici error:',e1);
+    // Ако колоната odd_ucenik не постои, обиди се без неа
+    let q2=sb.from('ucenici').select('id,teacher_id,uciliste,oddelenie,paralelka,rn,ime,prz,pol,mol,etnik,op,nop,gr,merki,extra,created_at,updated_at');
+    if(!isAdmin)q2=q2.eq('teacher_id',currentUser.id);
+    const{data:sts2,error:e2}=await q2;
+    if(e2){console.error('Fallback load error:',e2);return;}
+    if(sts2){
+      sts2.forEach(s=>{
+        const k=`${s.uciliste}|${s.oddelenie}|${s.paralelka}`;
+        if(!allData[k])allData[k]=[];
+        allData[k].push({rn:s.rn,ime:s.ime,prz:s.prz,pol:s.pol,mol:s.mol,etnik:s.etnik,op:s.op,nop:s.nop,gr:s.gr||{},merki:s.merki||[],extra:s.extra||[],odd_ucenik:0,_dbid:s.id});
+      });
+      Object.keys(allData).forEach(k=>{allData[k].sort((a,b)=>(a.rn||999)-(b.rn||999));});
+    }
+    return;
+  }
   if(sts){
     sts.forEach(s=>{
       const k=`${s.uciliste}|${s.oddelenie}|${s.paralelka}`;
