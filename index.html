@@ -2037,7 +2037,13 @@ function renderAdmin(){
   const classListNumericAvg=classListNumeric.filter(c=>c.par!=='IV одделение со ПОП');
   const maxClassAvg=Math.max(...classListNumericAvg.map(c=>c.okAvgs.length?c.okAvgs.reduce((x,y)=>x+y,0)/c.okAvgs.length:0),0.01);
 
-  // Описно статистики по паралелка (I–III)
+  // Редослед на училишта за сортирање
+  const UCH_ORDER={C:0,K:1,P:2,V:3,CR:4};
+  function schoolSort(a,b){
+    const uDiff=(UCH_ORDER[a.uch]||0)-(UCH_ORDER[b.uch]||0);
+    if(uDiff!==0)return uDiff;
+    return a.odd-b.odd||a.par.localeCompare(b.par);
+  }
   function opisnoStats(cls){
     const total=cls.sts.length;
     const p1=cls.sts.filter(s=>{const v=Object.values(s.gr||{});return v.length>0&&v.every(x=>x==='I ниво');}).length;
@@ -2188,7 +2194,7 @@ function renderAdmin(){
     </div>
     <div class="rcard" style="margin-bottom:0;">
       <div class="rttl">Описно оценување по паралелка (I–III)</div>
-      ${classListOpisno.length?classListOpisno.sort((a,b)=>a.odd-b.odd||a.par.localeCompare(b.par)).map(c=>{
+      ${classListOpisno.length?[...classListOpisno].sort(schoolSort).map(c=>{
         const st=opisnoStats(c);
         return'<div style="margin-bottom:10px;border-bottom:1px solid var(--bdr);padding-bottom:8px;">'+
           '<div style="font-size:12px;font-weight:700;color:var(--tx);margin-bottom:6px;">'+c.par+' <span style="font-size:10px;font-weight:400;color:var(--tx3);">('+c.sts.length+' ученици)</span></div>'+
@@ -2214,7 +2220,7 @@ function renderAdmin(){
         <th style="width:70px;text-align:center;">Вкупно</th>
         <th style="width:90px;text-align:center;">Просек/ученик</th>
       </tr></thead>
-      <tbody>${[...classList].sort((a,b)=>a.odd-b.odd||a.par.localeCompare(b.par)).map(c=>{
+      <tbody>${[...classList].sort(schoolSort).map(c=>{
         const op=c.sts.reduce((a,s)=>a+(s.op||0),0),nop=c.sts.reduce((a,s)=>a+(s.nop||0),0),tot=op+nop;
         return'<tr><td style="font-family:var(--FC);font-weight:600;">'+c.par+'</td><td style="text-align:center;font-family:var(--FD);">'+c.sts.length+'</td><td style="text-align:center;font-weight:600;color:var(--teal);">'+op+'</td><td style="text-align:center;font-weight:600;color:'+(nop>0?'var(--rose)':'var(--tx3)')+';">'+nop+'</td><td style="text-align:center;font-weight:700;font-family:var(--FD);">'+tot+'</td><td style="text-align:center;color:var(--tx3);">'+(tot/c.sts.length).toFixed(1)+'</td></tr>';
       }).join('')}
@@ -2237,7 +2243,7 @@ function renderAdmin(){
         <th style="width:65px;text-align:center;">Делумно оценети</th>
         <th style="width:80px;text-align:center;">Целосно неоценети</th>
       </tr></thead>
-      <tbody>${classListNumeric.map(c=>{
+      <tbody>${[...classListNumeric].sort(schoolSort).map(c=>{
         const cnt=(fn)=>c.sts.filter(fn).length;
         return'<tr><td style="font-family:var(--FC);font-weight:600;">'+c.par+'</td>'+
           '<td style="text-align:center;font-family:var(--FD);">'+c.sts.length+'</td>'+
@@ -2264,7 +2270,7 @@ function renderAdmin(){
         <th style="width:65px;text-align:center;">Делумно оценети</th>
         <th style="width:80px;text-align:center;">Целосно неоценети</th>
       </tr></thead>
-      <tbody>${classListOpisno.sort((a,b)=>a.odd-b.odd||a.par.localeCompare(b.par)).map(c=>{
+      <tbody>${[...classListOpisno].sort(schoolSort).map(c=>{
         const st=opisnoStats(c);
         return'<tr><td style="font-family:var(--FC);font-weight:600;">'+c.par+'</td>'+
           '<td style="text-align:center;font-family:var(--FD);">'+c.sts.length+'</td>'+
