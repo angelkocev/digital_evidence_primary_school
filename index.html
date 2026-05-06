@@ -1229,51 +1229,68 @@ function delSt(i){
 function buildDemoCharts(sts){
   if(!sts||!sts.length)return'';
 
-  function vbarChart(cats,title){
+  function pieChart(cats,title){
     const visible=cats.filter(c=>c.cnt>0);
     if(!visible.length)return'';
-    const maxCnt=Math.max(...visible.map(c=>c.cnt),1);
-    const barH=110;
-    const bw2=Math.min(52,Math.floor(320/Math.max(visible.length,1))-8);
-    const svgW=Math.max(260,visible.length*(bw2+10)+20);
-    const bars=visible.map((c,i)=>{
-      const bH=Math.max(4,Math.round((c.cnt/maxCnt)*barH));
-      const x=14+i*(bw2+10);
-      const y=10+barH-bH;
-      const lines=c.lbl.split(' ');
-      const lblH=lines.length*13+6;
-      return'<rect x="'+x+'" y="'+y+'" width="'+bw2+'" height="'+bH+'" rx="4" fill="'+c.color+'" opacity=".8"/>'+
-        '<text x="'+(x+bw2/2)+'" y="'+(y-5)+'" text-anchor="middle" font-size="11" font-weight="600" fill="'+c.color+'" font-family="DM Sans,sans-serif">'+c.cnt+'</text>'+
-        lines.map((ln,li)=>'<text x="'+(x+bw2/2)+'" y="'+(10+barH+14+li*13)+'" text-anchor="middle" font-size="9" fill="#A0AAB8" font-family="DM Sans,sans-serif">'+ln+'</text>').join('');
+    const total=visible.reduce((a,c)=>a+c.cnt,0);
+    if(!total)return'';
+
+    // Build SVG pie
+    const cx=90,cy=90,r=80;
+    let startAngle=-Math.PI/2;
+    let slices='';
+    visible.forEach(c=>{
+      const angle=(c.cnt/total)*2*Math.PI;
+      const endAngle=startAngle+angle;
+      const x1=cx+r*Math.cos(startAngle);
+      const y1=cy+r*Math.sin(startAngle);
+      const x2=cx+r*Math.cos(endAngle);
+      const y2=cy+r*Math.sin(endAngle);
+      const lg=angle>Math.PI?1:0;
+      if(visible.length===1){
+        slices+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="'+c.color+'" opacity=".85"/>';
+      } else {
+        slices+='<path d="M'+cx+','+cy+' L'+x1+','+y1+' A'+r+','+r+' 0 '+lg+',1 '+x2+','+y2+' Z" fill="'+c.color+'" opacity=".85" stroke="var(--bg2)" stroke-width="1.5"/>';
+      }
+      startAngle=endAngle;
+    });
+
+    const legend=visible.map(c=>{
+      const pct=Math.round((c.cnt/total)*100);
+      return'<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">'+
+        '<span style="width:10px;height:10px;border-radius:2px;flex-shrink:0;background:'+c.color+';display:inline-block;"></span>'+
+        '<span style="font-size:11px;color:var(--tx2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+c.lbl+'</span>'+
+        '<span style="font-size:11px;font-weight:600;font-family:var(--FD);color:var(--tx);">'+c.cnt+'</span>'+
+        '<span style="font-size:10px;color:var(--tx3);min-width:32px;text-align:right;">'+pct+'%</span>'+
+      '</div>';
     }).join('');
-    const maxLabelH=visible.reduce((mx,c)=>Math.max(mx,c.lbl.split(' ').length),1)*13+8;
+
     return'<div class="rcard" style="margin-bottom:0;"><div class="rttl">'+title+'</div>'+
-      '<svg width="100%" viewBox="0 0 '+svgW+' '+(10+barH+maxLabelH+20)+'" style="overflow:visible;">'+bars+'</svg></div>';
+      '<div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;">'+
+        '<svg width="180" height="180" viewBox="0 0 180 180" style="flex-shrink:0;">'+slices+'</svg>'+
+        '<div style="flex:1;min-width:120px;padding-top:4px;">'+legend+'</div>'+
+      '</div></div>';
   }
 
-  // Палета на бои за етникум
   const etnColors={Македонец:'#60A5FA',Албанец:'#34D399',Ром:'#FBBF24',Србин:'#A78BFA',
     Турчин:'#F87171',Влав:'#2DD4BF',Евреин:'#FB923C',Бошњак:'#E879F9',Останато:'#94A3B8'};
 
-  // Етничка припадност
   const etnCats=ETN_ORDER.map(e=>({
-    lbl:e, color:etnColors[e]||'#4F8EF7',
+    lbl:e,color:etnColors[e]||'#4F8EF7',
     cnt:sts.filter(s=>(s.etnik||'Останато')===e).length
   })).filter(c=>c.cnt>0);
 
-  // Место на живеење
   const molMap={};
   sts.forEach(s=>{const m=s.mol||'Непознато';molMap[m]=(molMap[m]||0)+1;});
-  const molCats=Object.entries(molMap).sort((a,b)=>b[1]-a[1]).map(([lbl,cnt],i)=>{
-    const colors=['#60A5FA','#34D399','#FBBF24','#F87171','#A78BFA','#2DD4BF','#FB923C','#E879F9','#94A3B8','#4F8EF7'];
-    return{lbl,cnt,color:colors[i%colors.length]};
-  });
+  const molColors=['#60A5FA','#34D399','#FBBF24','#F87171','#A78BFA','#2DD4BF','#FB923C','#E879F9','#94A3B8','#4F8EF7'];
+  const molCats=Object.entries(molMap).sort((a,b)=>b[1]-a[1])
+    .map(([lbl,cnt],i)=>({lbl,cnt,color:molColors[i%molColors.length]}));
 
   if(!etnCats.length&&!molCats.length)return'';
 
   return'<div class="rep-duo">'+
-    vbarChart(etnCats,'Етничка припадност')+
-    vbarChart(molCats,'Место на живеење')+
+    pieChart(etnCats,'Етничка припадност')+
+    pieChart(molCats,'Место на живеење')+
   '</div>';
 }
 
