@@ -55,6 +55,8 @@ body.theme-purple{
 .theme-btn.active{box-shadow:0 0 0 2px var(--acc);}
 input#fop::-webkit-outer-spin-button,input#fop::-webkit-inner-spin-button,
 input#fnp::-webkit-outer-spin-button,input#fnp::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+input[data-f]::-webkit-outer-spin-button,input[data-f]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+input[data-f]{-moz-appearance:textfield;}
 body{font-family:var(--F);color:var(--tx);background:var(--bg);font-size:14px;padding:1rem 1.5rem 3rem;}
 .app{max-width:980px;margin:0 auto;}
 
@@ -325,7 +327,7 @@ input#fop::-webkit-outer-spin-button,input#fop::-webkit-inner-spin-button,input#
 <div class="nav">
   <button class="nb on" onclick="gT('lst',this)">Список на ученици <span class="nbdot" id="nbadge">0</span></button>
   <button class="nb" onclick="gT('real',this)">Реализација на настава</button>
-  <button class="nb" onclick="gT('rep',this)">Извештај</button>
+  <button class="nb" onclick="gT('rep',this)">Извештај за паралелка</button>
   <button class="nb" id="nb-admin" style="display:none;" onclick="gT('admin',this)">Преглед на ниво на училиште</button>
 </div>
 
@@ -702,7 +704,10 @@ async function deleteStudent(dbid){
 async function persistElective(k,en){
   if(!currentUser)return;
   const[uch,odd,par]=k.split('|');
-  await sb.from('elective_names').upsert({teacher_id:currentUser.id,uciliste:uch,oddelenie:parseInt(odd),paralelka:par,s1:en.s1,s2:en.s2,i9:en.i9},{onConflict:'teacher_id,училиште,одделение,паралелка'});
+  await sb.from('elective_names').upsert(
+    {teacher_id:currentUser.id,uciliste:uch,oddelenie:parseInt(odd),paralelka:par,s1:en.s1,s2:en.s2,i9:en.i9},
+    {onConflict:'teacher_id,uciliste,oddelenie,paralelka'}
+  );
 }
 
 async function persistReal(k,subj,vals){
