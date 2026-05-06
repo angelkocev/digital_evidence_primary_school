@@ -975,7 +975,7 @@ function openModal(idx){
   document.getElementById('fnp').value=s?(s.nop||0):0;
   document.getElementById('atot').textContent=s?((s.op||0)+(s.nop||0)):0;
   // Заклучи ги полињата само за администратор
-  const adminOnly=['fs','fl','fet'];
+  const adminOnly=['frn','fi','fp','fs','fl','fet'];
   adminOnly.forEach(id=>{
     const el=document.getElementById(id);
     if(!el)return;
@@ -1109,11 +1109,10 @@ function getGr(){
 function showMsg(id,t,type){const e=document.getElementById(id);e.textContent=t;e.className='fmsg '+type;setTimeout(()=>e.className='fmsg',3200);}
 
 async function saveSt(){
-  const rn=parseInt(document.getElementById('frn').value)||null;
-  if(!rn){showMsg('fmsg','Внесете го редниот број!','err');return;}
-  const ime=document.getElementById('fi').value.trim();
+  const rn=currentUser?.is_admin?(parseInt(document.getElementById('frn').value)||null):(existingSt?.rn||null);
+  const ime=currentUser?.is_admin?document.getElementById('fi').value.trim():(existingSt?.ime||'');
+  const prz=currentUser?.is_admin?document.getElementById('fp').value.trim():(existingSt?.prz||'');
   if(!ime){showMsg('fmsg','Внесете го името!','err');return;}
-  const prz=document.getElementById('fp').value.trim();
   if(!prz){showMsg('fmsg','Внесете го презимето!','err');return;}
   const pol=document.getElementById('fs').value;
   // За наставници — земи ги вредностите од постоечкиот ученик ако полињата се заклучени
