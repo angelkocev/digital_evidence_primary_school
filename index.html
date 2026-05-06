@@ -862,6 +862,7 @@ let electiveNames={};
 let editIdx=-1;
 
 function stKey(){return`${curUch}|${curOdd}|${curPar}`;}
+function allSubjs(o){return o&&PROG[o]?PROG[o].flatMap(g=>g.s):[];}
 function getSts(){return allData[stKey()]||[];}
 function setSts(a){allData[stKey()]=a;}
 function getEN(){return electiveNames[stKey()]||{s1:'Слободен изборен предмет 1',s2:'Слободен изборен предмет 2',i9:'Изборен предмет'};}
