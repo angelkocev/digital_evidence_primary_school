@@ -1109,38 +1109,54 @@ function getGr(){
 function showMsg(id,t,type){const e=document.getElementById(id);e.textContent=t;e.className='fmsg '+type;setTimeout(()=>e.className='fmsg',3200);}
 
 async function saveSt(){
-  const rn=currentUser?.is_admin?(parseInt(document.getElementById('frn').value)||null):(existingSt?.rn||null);
-  const ime=currentUser?.is_admin?document.getElementById('fi').value.trim():(existingSt?.ime||'');
-  const prz=currentUser?.is_admin?document.getElementById('fp').value.trim():(existingSt?.prz||'');
-  if(!ime){showMsg('fmsg','Внесете го името!','err');return;}
-  if(!prz){showMsg('fmsg','Внесете го презимето!','err');return;}
-  const pol=document.getElementById('fs').value;
-  // За наставници — земи ги вредностите од постоечкиот ученик ако полињата се заклучени
-  const existingSt=editIdx>=0?getSts()[editIdx]:null;
-  const mol=currentUser?.is_admin?document.getElementById('fl').value:(existingSt?.mol||'');
-  const etnik=currentUser?.is_admin?document.getElementById('fet').value:(existingSt?.etnik||'');
-  if(!pol){showMsg('fmsg','Изберете пол!','err');return;}
-  // Валидација: сите оценки мора да бидат внесени
+  const isAdmin=currentUser?.is_admin||false;
+  const sts=getSts();
+  const existingSt=editIdx>=0?sts[editIdx]:null;
+
+  // За наставници — земи ги заклучените вредности од постоечкиот ученик
+  const rn=isAdmin?(parseInt(document.getElementById('frn').value)||null):(existingSt?.rn||null);
+  const ime=isAdmin?document.getElementById('fi').value.trim():(existingSt?.ime||'');
+  const prz=isAdmin?document.getElementById('fp').value.trim():(existingSt?.prz||'');
+  const pol=isAdmin?document.getElementById('fs').value:(existingSt?.pol||'');
+  const mol=isAdmin?document.getElementById('fl').value:(existingSt?.mol||'');
+  const etnik=isAdmin?document.getElementById('fet').value:(existingSt?.etnik||'');
+
+  // Валидација само за администратор
+  if(isAdmin){
+    if(!rn){showMsg('fmsg','Внесете го редниот број!','err');return;}
+    if(!ime){showMsg('fmsg','Внесете го името!','err');return;}
+    if(!prz){showMsg('fmsg','Внесете го презимето!','err');return;}
+    if(!pol){showMsg('fmsg','Изберете пол!','err');return;}
+    if(!mol){showMsg('fmsg','Изберете место на живеење!','err');return;}
+    if(!etnik){showMsg('fmsg','Изберете етничка припадност!','err');return;}
+  }
+
+  // Валидација на оценки за сите
   const emptyGrades=document.querySelectorAll('#sgw .gr-sel');
   for(const sel of emptyGrades){
     if(sel.value===''){
-      const subjName=sel.closest('.srow')?.querySelector('.srow-name,.el-inp')?.textContent||sel.closest('.srow')?.querySelector('.el-inp')?.value||sel.dataset.s||'predmet';
+      const subjName=sel.closest('.srow')?.querySelector('.srow-name,.el-inp')?.textContent||sel.closest('.srow')?.querySelector('.el-inp')?.value||sel.dataset.s||'предмет';
       showMsg('fmsg','Внесете оценка за: '+subjName.trim(),'err');
       sel.closest('.srow')?.scrollIntoView({behavior:'smooth',block:'center'});
       return;
     }
   }
+
   const fodd=document.getElementById('fodd');
   const odd_ucenik=isCombined(curPar)?(parseInt(fodd?.value)||0):0;
   if(isCombined(curPar)&&!odd_ucenik){showMsg('fmsg','Изберете одделение на ученикот!','err');return;}
-  const sts=getSts();
-  const dup=sts.findIndex((s,i)=>s.rn===rn&&i!==editIdx);
-  if(dup>=0){showMsg('fmsg',`Реден број ${rn} веќе го има ${sts[dup].ime} ${sts[dup].prz}!`,'err');return;}
+
+  if(isAdmin){
+    const dup=sts.findIndex((s,i)=>s.rn===rn&&i!==editIdx);
+    if(dup>=0){showMsg('fmsg',`Реден број ${rn} веќе го има ${sts[dup].ime} ${sts[dup].prz}!`,'err');return;}
+  }
+
   const s={rn,ime,prz,pol,mol,etnik,odd_ucenik,
     op:parseInt(document.getElementById('fop').value)||0,
     nop:parseInt(document.getElementById('fnp').value)||0,
     gr:getGr(),merki:getMerki(),extra:getExtra()};
-  // Задржи го _dbid при уредување — критично за да не се создаде дупликат!
+
+  // Задржи го _dbid при уредување
   if(editIdx>=0){
     s._dbid=sts[editIdx]._dbid;
     sts[editIdx]=s;
