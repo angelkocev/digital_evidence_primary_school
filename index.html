@@ -1202,7 +1202,7 @@ function renderL(){
         <div class="ava" style="background:${ac.bg};color:${ac.c};">${(s.ime[0]||'')+(s.prz[0]||'')}</div>
         <div class="sc-info">
           <div class="sc-name">${s.ime} ${s.prz} <span class="tag ${s.pol==='М'?'mt':'ft'}" style="margin-left:5px;">${s.pol}</span>${s.odd_ucenik?'<span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:99px;background:rgba(251,191,36,.2);color:var(--amber);margin-left:4px;">'+(ODD_LBL[s.odd_ucenik]||s.odd_ucenik+' одд.')+'</span>':''}</div>
-          <div class="sc-meta">${s.etnik||'—'}${s.mol?' · '+s.mol:''} · Изостаноци: ${(s.op||0)+(s.nop||0)}</div>
+          <div class="sc-meta">${s.etnik||'—'}${s.mol?' · '+s.mol:''} </div>
           ${allBadges?`<div class="sc-merki">${allBadges}</div>`:''}
         </div>
         <div class="sc-right">
