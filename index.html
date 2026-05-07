@@ -556,7 +556,7 @@ async function onLogin(user){
 
     if(currentUser.is_admin){
       const badge=document.querySelector('.user-badge span');
-      if(badge)badge.textContent='👑 '+name+' (Администратор)';
+      if(badge)badge.textContent=''+name+' (Администратор)';
       const nb=document.getElementById('nb-admin');
       if(nb)nb.style.display='block';
       // Ако администраторот има назначена паралелка, постави ја по default (без заклучување)
