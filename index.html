@@ -1288,35 +1288,9 @@ function buildDemoCharts(sts){
 
   if(!etnCats.length&&!molCats.length)return'';
 
-  function adminHBarChart(cats,title){
-  if(!cats || !cats.length){
-    return '<div class="rcard" style="margin-bottom:0;"><div class="rttl">'+title+'</div><div style="font-size:13px;color:var(--tx3);">Нема податоци.</div></div>';
-  }
-
-  const total=cats.reduce((a,c)=>a+c.cnt,0);
-  const max=Math.max(...cats.map(c=>c.cnt),1);
-
-  return '<div class="rcard" style="margin-bottom:0;">'+
-    '<div class="rttl">'+title+'</div>'+
-    cats.sort((a,b)=>b.cnt-a.cnt).map(c=>{
-      const pct=total?((c.cnt/total)*100):0;
-      const w=Math.max(4,(c.cnt/max)*100);
-      return '<div class="crow">'+
-        '<span class="clbl">'+c.lbl+'</span>'+
-        '<div class="ctrk">'+
-          '<div class="cfil" style="width:'+w+'%;background:var(--acc);opacity:.85;">'+
-            (w>22?'<span class="cval-in">'+c.cnt+' · '+pct.toFixed(1)+'%</span>':'')+
-          '</div>'+
-          (w<=22?'<span class="cval-out" style="left:'+(w+2)+'%;">'+c.cnt+' · '+pct.toFixed(1)+'%</span>':'')+
-        '</div>'+
-      '</div>';
-    }).join('')+
-  '</div>';
-}
-
   return'<div class="rep-duo">'+
-    adminHBarChart(etnCats,'Етничка припадност')+
-    adminHBarChart(molCats,'Место на живеење')+
+    pieChart(etnCats,'Етничка припадност')+
+    pieChart(molCats,'Место на живеење')+
   '</div>';
 }
 
