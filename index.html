@@ -1289,8 +1289,8 @@ function buildDemoCharts(sts){
   if(!etnCats.length&&!molCats.length)return'';
 
   return'<div class="rep-duo">'+
-    pieChart(etnCats,'Етничка припадност')+
-    pieChart(molCats,'Место на живеење')+
+    adminHBarChart(etnCats,'Етничка припадност')+
+    adminHBarChart(molCats,'Место на живеење')+
   '</div>';
 }
 
