@@ -1205,8 +1205,6 @@ function renderL(){
           <div class="sc-meta">${s.etnik||'—'}${s.mol?' · '+s.mol:''} </div>
         </div>
         <div class="sc-right">
-          <span class="kat ${ki.cls}">${ki.lbl}</span>
-          <div class="pill" style="background:${gs.bg};color:${gs.c};">${a?a.toFixed(2):'—'}</div>
           <div class="sc-acts">
             <button class="ib edit" onclick="openModal(${s._i})" title="Уреди">✎</button>
             ${currentUser?.is_admin?`<button class="ib del" onclick="delSt(${s._i})" title="Избриши">✕</button>`:''}
