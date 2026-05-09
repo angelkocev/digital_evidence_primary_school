@@ -626,7 +626,6 @@ async function loadFromSupabase(){
       });
       Object.keys(allData).forEach(k=>{allData[k].sort((a,b)=>(a.rn||999)-(b.rn||999));});
     }
-    return;
   }
   if(sts){
     sts.forEach(s=>{
