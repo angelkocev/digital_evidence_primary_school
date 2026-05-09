@@ -17,20 +17,8 @@
   --teal:#2DD4BF;--rose:#F87171;--rose-d:rgba(248,113,113,0.15);
   --amber:#FBBF24;
 }
-/* Тема 2 — Полноќно сино */
-body.theme-navy{
-  --bg:#0A0F1E;--bg2:#111827;--bg3:#1A2540;--bg4:#1E3A5F;
-  --bdr:#1E3A5F;--bdr2:#2A4A7A;
-  --tx:#E0EAFF;--tx2:#8BA3D4;--tx3:#5570A0;
-  --acc:#60A5FA;--acc2:#3B82F6;
-}
-/* Тема 3 — Темно зелена */
-body.theme-forest{
-  --bg:#0A130E;--bg2:#0F1F15;--bg3:#162B1E;--bg4:#1A3524;
-  --bdr:#1A3524;--bdr2:#254A32;
-  --tx:#DDF2E6;--tx2:#7DB897;--tx3:#4A7A5F;
-  --acc:#34D399;--acc2:#10B981;
-}
+
+
 /* Тема 4 — Slate светла */
 body.theme-slate{
   --bg:#F1F5F9;--bg2:#FFFFFF;--bg3:#E2E8F0;--bg4:#CBD5E1;
@@ -40,13 +28,7 @@ body.theme-slate{
   --teal:#0D9488;--rose:#DC2626;--rose-d:rgba(220,38,38,0.1);
   --amber:#D97706;
 }
-/* Тема 5 — Виолетова */
-body.theme-purple{
-  --bg:#0E0A1E;--bg2:#16102B;--bg3:#1E1638;--bg4:#271D4A;
-  --bdr:#2D2060;--bdr2:#3D2E7A;
-  --tx:#EDE9FF;--tx2:#A89ED4;--tx3:#6B5FA0;
-  --acc:#A78BFA;--acc2:#7C3AED;
-}
+
 /* Theme switcher */
 .theme-switcher{display:flex;align-items:center;gap:6px;}
 .theme-switcher label{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--tx3);white-space:nowrap;}
@@ -297,10 +279,7 @@ input#fop::-webkit-outer-spin-button,input#fop::-webkit-inner-spin-button,input#
       <div class="theme-switcher">
         <label>Тема</label>
         <button class="theme-btn active" style="background:#4F8EF7;" onclick="setTheme('')" title="Стандардна темна" id="tbtn-0"></button>
-        <button class="theme-btn" style="background:#60A5FA;" onclick="setTheme('navy')" title="Полноќно сино" id="tbtn-navy"></button>
-        <button class="theme-btn" style="background:#34D399;" onclick="setTheme('forest')" title="Темно зелена" id="tbtn-forest"></button>
         <button class="theme-btn" style="background:#3B6EE8;" onclick="setTheme('slate')" title="Светла" id="tbtn-slate"></button>
-        <button class="theme-btn" style="background:#A78BFA;" onclick="setTheme('purple')" title="Виолетова" id="tbtn-purple"></button>
       </div>
     </div>
   </div>
@@ -485,7 +464,7 @@ async function doAuth(){
 }
 
 function setTheme(name){
-  const themes=['','navy','forest','slate','purple'];
+  const themes=['','slate'];
   themes.forEach(t=>{
     if(t)document.body.classList.remove('theme-'+t);
     const btn=document.getElementById('tbtn-'+(t||'0'));
@@ -1411,62 +1390,62 @@ function buildRealizacijaCharts(uciliste,oddelenie,paralelka){
   // Покажи ја картичката дури и ако нема внесено реализација (само планирани часови)
   if(!totPlan)return'';
 
-  // Helper: small donut for one subject
+  // Helper: small PIE for one subject
   function smallDonut(plan,real,nereal,label){
     const rest=Math.max(0,plan-real-nereal);
     const total=plan||1;
     const cats=[
       {v:real,col:'#34D399'},{v:nereal,col:'#F87171'},{v:rest,col:'#2D3748'},
     ].filter(c=>c.v>0);
-    const cx=50,cy=50,ro=42,ri=26;
+    const cx=50,cy=50,r=44;
     let sa=-Math.PI/2,paths='';
     cats.forEach(cat=>{
       const ang=(cat.v/total)*2*Math.PI,ea=sa+ang;
-      const x1o=cx+ro*Math.cos(sa),y1o=cy+ro*Math.sin(sa);
-      const x2o=cx+ro*Math.cos(ea),y2o=cy+ro*Math.sin(ea);
-      const x1i=cx+ri*Math.cos(ea),y1i=cy+ri*Math.sin(ea);
-      const x2i=cx+ri*Math.cos(sa),y2i=cy+ri*Math.sin(sa);
+      const x1=cx+r*Math.cos(sa),y1=cy+r*Math.sin(sa);
+      const x2=cx+r*Math.cos(ea),y2=cy+r*Math.sin(ea);
       const lg=ang>Math.PI?1:0;
       if(cats.length===1){
-        paths+='<circle cx="'+cx+'" cy="'+cy+'" r="'+ro+'" fill="'+cat.col+'" opacity=".85"/>'+
-               '<circle cx="'+cx+'" cy="'+cy+'" r="'+ri+'" fill="var(--bg2)"/>';
+        paths+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="'+cat.col+'" opacity=".85"/>';
       } else {
-        paths+='<path d="M'+x1o+','+y1o+' A'+ro+','+ro+' 0 '+lg+',1 '+x2o+','+y2o+' L'+x1i+','+y1i+' A'+ri+','+ri+' 0 '+lg+',0 '+x2i+','+y2i+' Z" fill="'+cat.col+'" opacity=".85" stroke="var(--bg2)" stroke-width="1.5"/>';
+        paths+='<path d="M'+cx+','+cy+' L'+x1+','+y1+' A'+r+','+r+' 0 '+lg+',1 '+x2+','+y2+' Z" fill="'+cat.col+'" opacity=".85" stroke="var(--bg2)" stroke-width="1.5"/>';
       }
       sa=ea;
     });
-    paths+='<text x="'+cx+'" y="'+(cy+4)+'" text-anchor="middle" font-size="14" font-weight="700" fill="#E8EBF0" font-family="Playfair Display,serif">'+plan+'</text>';
+    paths+='<text x="'+cx+'" y="'+(cy+r+12)+'" text-anchor="middle" font-size="10" font-weight="600" fill="#60A5FA" font-family="DM Sans,sans-serif">'+plan+'ч</text>';
     const lines=label.split(' ');
-    const lY=cy+ro+12;
+    const lY=cy+r+24;
     lines.forEach((ln,i)=>{paths+='<text x="'+cx+'" y="'+(lY+i*11)+'" text-anchor="middle" font-size="8" fill="#A0AAB8" font-family="DM Sans,sans-serif">'+ln+'</text>';});
     return'<div style="text-align:center;padding:4px;">'+
-      '<svg width="100" height="'+(100+lines.length*11)+'" viewBox="0 0 100 '+(100+lines.length*11)+'">'+paths+'</svg>'+
+      '<svg width="100" height="'+(100+lines.length*11+10)+'" viewBox="0 0 100 '+(100+lines.length*11+10)+'">'+paths+'</svg>'+
     '</div>';
   }
 
-  // Big summary donut
-  function bigDonut(plan,real,nereal){
+  // Big summary PIE chart
+  function bigPie(plan,real,nereal){
     const rest=Math.max(0,plan-real-nereal);
     const total=plan||1;
-    const cats=[{v:real,col:'#34D399'},{v:nereal,col:'#F87171'},{v:rest,col:'#2D3748'}].filter(c=>c.v>0);
-    const cx=80,cy=80,ro=70,ri=48;
+    const cats=[
+      {v:real,col:'#34D399',lbl:'Реализирани'},
+      {v:nereal,col:'#F87171',lbl:'Нереализирани'},
+      {v:rest,col:'#2D3748',lbl:'Остаток'},
+    ].filter(c=>c.v>0);
+    const cx=80,cy=80,r=75;
     let sa=-Math.PI/2,paths='';
     cats.forEach(cat=>{
       const ang=(cat.v/total)*2*Math.PI,ea=sa+ang;
-      const x1o=cx+ro*Math.cos(sa),y1o=cy+ro*Math.sin(sa);
-      const x2o=cx+ro*Math.cos(ea),y2o=cy+ro*Math.sin(ea);
-      const x1i=cx+ri*Math.cos(ea),y1i=cy+ri*Math.sin(ea);
-      const x2i=cx+ri*Math.cos(sa),y2i=cy+ri*Math.sin(sa);
+      const x1=cx+r*Math.cos(sa),y1=cy+r*Math.sin(sa);
+      const x2=cx+r*Math.cos(ea),y2=cy+r*Math.sin(ea);
       const lg=ang>Math.PI?1:0;
-      if(cats.length===1){paths+='<circle cx="'+cx+'" cy="'+cy+'" r="'+ro+'" fill="'+cats[0].col+'" opacity=".85"/><circle cx="'+cx+'" cy="'+cy+'" r="'+ri+'" fill="var(--bg2)"/>';}
-      else{paths+='<path d="M'+x1o+','+y1o+' A'+ro+','+ro+' 0 '+lg+',1 '+x2o+','+y2o+' L'+x1i+','+y1i+' A'+ri+','+ri+' 0 '+lg+',0 '+x2i+','+y2i+' Z" fill="'+cat.col+'" opacity=".85" stroke="var(--bg2)" stroke-width="2"/>';}
+      if(cats.length===1){
+        paths+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="'+cat.col+'" opacity=".85"/>';
+      } else {
+        paths+='<path d="M'+cx+','+cy+' L'+x1+','+y1+' A'+r+','+r+' 0 '+lg+',1 '+x2+','+y2+' Z" fill="'+cat.col+'" opacity=".85" stroke="var(--bg2)" stroke-width="2"/>';
+      }
       sa=ea;
     });
     const pct=plan?Math.round((real/plan)*100):0;
-    paths+='<text x="'+cx+'" y="'+(cy-8)+'" text-anchor="middle" font-size="11" fill="#A0AAB8" font-family="DM Sans,sans-serif">Фонд</text>'+
-           '<text x="'+cx+'" y="'+(cy+10)+'" text-anchor="middle" font-size="22" font-weight="700" fill="#E8EBF0" font-family="Playfair Display,serif">'+plan+'</text>'+
-           '<text x="'+cx+'" y="'+(cy+26)+'" text-anchor="middle" font-size="10" fill="#A0AAB8" font-family="DM Sans,sans-serif">'+pct+'% реал.</text>';
-    return'<svg width="160" height="160" viewBox="0 0 160 160">'+paths+'</svg>';
+    paths+='<text x="'+cx+'" y="'+(cy+r+16)+'" text-anchor="middle" font-size="12" font-weight="600" fill="#E8EBF0" font-family="DM Sans,sans-serif">Фонд: '+plan+' часа ('+pct+'% реал.)</text>';
+    return'<svg width="160" height="175" viewBox="0 0 160 175">'+paths+'</svg>';
   }
 
   const legend=[
@@ -1508,7 +1487,7 @@ function buildRealizacijaCharts(uciliste,oddelenie,paralelka){
     '<div class="rcard" style="margin-bottom:0;">'+
       '<div class="rttl">Реализација на настава — збирно</div>'+
       '<div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">'+
-        '<div style="flex-shrink:0;">'+bigDonut(totPlan,totReal,totNereal)+'</div>'+
+        '<div style="flex-shrink:0;">'+bigPie(totPlan,totReal,totNereal)+'</div>'+
         '<div style="flex:1;min-width:140px;">'+legend+'</div>'+
       '</div>'+
     '</div>'+
