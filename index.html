@@ -2139,7 +2139,9 @@ function renderRepBody(sts){
         <div class="rttl" style="color:${g.color};">${g.lbl} <span style="font-family:var(--FD);font-size:13px;margin-left:6px;">${sortedForBody.filter(s=>(s.extra||[]).includes(g.key)).length}</span></div>
         ${extraTable(g)}
       </div>`).join('');
-  })()}`;
+  })()}
+
+  ${buildRealizacijaCharts(curUch,curOdd,curPar)}`;
 }
 
 
