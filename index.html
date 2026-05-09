@@ -1229,16 +1229,18 @@ function renderL(){
           <div class="sc-meta">${s.etnik||'—'}${s.mol?' · '+s.mol:''} </div>
         </div>
         <div class="sc-right">
-          <span class="kat ${ki.cls}">${ki.lbl}</span>
-          <div class="pill" style="background:${gs.bg};color:${gs.c};font-size:10px;">${a?a.toFixed(2):'—'}</div>
           <div class="sc-acts">
             ${(()=>{
               const st=gradeStatus(s.gr||{});
-              const allDone=st==='ok';
-              const lbl=allDone?'Внесено':'Невнесено';
+              const allGraded=st==='ok'||st==='celoso'||st==='delumno'||st==='slab';
+              const hasExtra=(s.extra||[]).length>0;
+              // Сите оценки внесени = нема празни полиња (ok или slab = бројчано внесени, celoso = сите /)
+              const gradesOk=st==='ok'||st==='slab'||st==='celoso';
+              const allDone=gradesOk&&hasExtra;
               const icon=allDone?'✓':'✗';
               const col=allDone?'#34D399':'#F87171';
-              return'<span title="'+lbl+'" style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:'+col+'22;color:'+col+';border:1px solid '+col+'55;font-size:13px;font-weight:700;flex-shrink:0;" title="'+lbl+'">'+icon+'</span>';
+              const lbl=allDone?'Внесено':(!gradesOk?'Оценките не се внесени':'Белешката не е внесена');
+              return'<span title="'+lbl+'" style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:'+col+'22;color:'+col+';border:1px solid '+col+'55;font-size:13px;font-weight:700;flex-shrink:0;">'+icon+'</span>';
             })()}
             <button class="ib edit" onclick="openModal(${s._i})" title="Уреди">✎</button>
             ${currentUser?.is_admin?`<button class="ib del" onclick="delSt(${s._i})" title="Избриши">✕</button>`:''}
@@ -1285,7 +1287,7 @@ function buildDemoCharts(sts){
     const total=visible.reduce((a,c)=>a+c.cnt,0);
     const maxCnt=visible[0].cnt;
     const rows=visible.map(c=>{
-      const pct=(c.cnt/total*100).toFixed(1);
+      const pct=(c.cnt/total*100).toFixed(2);
       const w=Math.round((c.cnt/maxCnt)*100);
       return'<div style="margin-bottom:8px;">'+
         '<div style="display:flex;justify-content:space-between;margin-bottom:3px;">'+
@@ -1317,7 +1319,7 @@ function buildDemoChartsHbar(sts){
     const total=visible.reduce((a,c)=>a+c.cnt,0);
     const maxCnt=visible[0].cnt;
     const rows=visible.map(c=>{
-      const pct=(c.cnt/total*100).toFixed(1);
+      const pct=(c.cnt/total*100).toFixed(2);
       const w=Math.round((c.cnt/maxCnt)*100);
       return'<div style="margin-bottom:8px;">'+
         '<div style="display:flex;justify-content:space-between;margin-bottom:3px;">'+
