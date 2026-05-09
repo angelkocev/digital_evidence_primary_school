@@ -397,6 +397,22 @@ input#fop::-webkit-outer-spin-button,input#fop::-webkit-inner-spin-button,input#
   <div class="sl">Педагошки мерки</div>
   <div class="merki-grid" id="merki-wrap"></div>
 
+  <div id="pop-wrap" style="display:none;background:var(--bg3);border:1px solid var(--bdr);border-radius:9px;padding:10px 14px;margin-bottom:12px;">
+    <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--acc);margin-bottom:8px;">Посебни образовни потреби (ПОП)</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      <div class="fld"><label>Програма</label>
+        <select id="fpop" style="font-family:var(--F);font-size:13px;border:1px solid var(--bdr);border-radius:9px;padding:9px 14px;color:var(--tx);background:var(--bg2);outline:none;width:100%;">
+          <option value="">Нема ПОП</option>
+          <option value="ИОП">ИОП — Индивидуален образовен план</option>
+          <option value="МНП">МНП — Модифицирана наставна програма</option>
+        </select>
+      </div>
+      <div class="fld"><label>Напомена</label>
+        <input id="fpop-note" type="text" class="cyr" placeholder="Дополнителна напомена">
+      </div>
+    </div>
+  </div>
+
   <div class="sl">Оценки по предмети</div>
   <div class="qfill-bar">
     <label>Брзо внеси иста оценка за сите предмети:</label>
@@ -416,22 +432,6 @@ input#fop::-webkit-outer-spin-button,input#fop::-webkit-inner-spin-button,input#
       <option value="Повторување на одделение">Повторување на одделение</option>
       <option value="Успешна реализација">Успешна реализација</option>
     </select>
-  </div>
-
-  <div id="pop-wrap" style="display:none;background:var(--bg3);border:1px solid var(--bdr);border-radius:9px;padding:10px 14px;margin-bottom:12px;">
-    <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--acc);margin-bottom:8px;">Посебни образовни потреби (ПОП)</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-      <div class="fld"><label>Програма</label>
-        <select id="fpop" style="font-family:var(--F);font-size:13px;border:1px solid var(--bdr);border-radius:9px;padding:9px 14px;color:var(--tx);background:var(--bg2);outline:none;width:100%;">
-          <option value="">Нема ПОП</option>
-          <option value="ИОП">ИОП — Индивидуален образовен план</option>
-          <option value="МНП">МНП — Модифицирана наставна програма</option>
-        </select>
-      </div>
-      <div class="fld"><label>Напомена</label>
-        <input id="fpop-note" type="text" class="cyr" placeholder="Дополнителна напомена">
-      </div>
-    </div>
   </div>
 
 <div class="form-actions">
@@ -1223,7 +1223,17 @@ function renderL(){
           <div class="sc-meta">${s.etnik||'—'}${s.mol?' · '+s.mol:''} </div>
         </div>
         <div class="sc-right">
+          <span class="kat ${ki.cls}">${ki.lbl}</span>
+          <div class="pill" style="background:${gs.bg};color:${gs.c};font-size:10px;">${a?a.toFixed(2):'—'}</div>
           <div class="sc-acts">
+            ${(()=>{
+              const st=gradeStatus(s.gr||{});
+              const allDone=st==='ok';
+              const none=st==='no-data'||st==='celoso';
+              const col=allDone?'#34D399':(none?'#F87171':'#FBBF24');
+              const lbl=allDone?'Оценето':(none?'Неоценето':'Делумно');
+              return'<span title="'+lbl+'" style="display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;background:'+col+'22;color:'+col+';border:1px solid '+col+'44;white-space:nowrap;">'+lbl+'</span>';
+            })()}
             <button class="ib edit" onclick="openModal(${s._i})" title="Уреди">✎</button>
             ${currentUser?.is_admin?`<button class="ib del" onclick="delSt(${s._i})" title="Избриши">✕</button>`:''}
           </div>
@@ -1263,82 +1273,45 @@ function opisnoLevelStyle(lbl){
 
 function buildDemoCharts(sts){
   if(!sts||!sts.length)return'';
-
-  function pieChart(cats,title){
-    const visible=cats.filter(c=>c.cnt>0);
+  function hbarChartDesc(cats,title){
+    const visible=cats.filter(c=>c.cnt>0).sort((a,b)=>b.cnt-a.cnt);
     if(!visible.length)return'';
     const total=visible.reduce((a,c)=>a+c.cnt,0);
-    if(!total)return'';
-
-    // Build SVG pie
-    const cx=90,cy=90,r=80;
-    let startAngle=-Math.PI/2;
-    let slices='';
-    visible.forEach(c=>{
-      const angle=(c.cnt/total)*2*Math.PI;
-      const endAngle=startAngle+angle;
-      const x1=cx+r*Math.cos(startAngle);
-      const y1=cy+r*Math.sin(startAngle);
-      const x2=cx+r*Math.cos(endAngle);
-      const y2=cy+r*Math.sin(endAngle);
-      const lg=angle>Math.PI?1:0;
-      if(visible.length===1){
-        slices+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="'+c.color+'" opacity=".85"/>';
-      } else {
-        slices+='<path d="M'+cx+','+cy+' L'+x1+','+y1+' A'+r+','+r+' 0 '+lg+',1 '+x2+','+y2+' Z" fill="'+c.color+'" opacity=".85" stroke="var(--bg2)" stroke-width="1.5"/>';
-      }
-      startAngle=endAngle;
-    });
-
-    const legend=visible.map(c=>{
+    const maxCnt=visible[0].cnt;
+    const rows=visible.map(c=>{
       const pct=Math.round((c.cnt/total)*100);
-      return'<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">'+
-        '<span style="width:10px;height:10px;border-radius:2px;flex-shrink:0;background:'+c.color+';display:inline-block;"></span>'+
-        '<span style="font-size:11px;color:var(--tx2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+c.lbl+'</span>'+
-        '<span style="font-size:11px;font-weight:600;font-family:var(--FD);color:var(--tx);">'+c.cnt+'</span>'+
-        '<span style="font-size:10px;color:var(--tx3);min-width:32px;text-align:right;">'+pct+'%</span>'+
-      '</div>';
+      const w=Math.round((c.cnt/maxCnt)*100);
+      return'<div style="margin-bottom:8px;">'+
+        '<div style="display:flex;justify-content:space-between;margin-bottom:3px;">'+
+          '<span style="font-size:11px;color:var(--tx2);">'+c.lbl+'</span>'+
+          '<span style="font-size:11px;font-weight:600;color:'+c.color+';">'+c.cnt+' <span style="font-size:10px;color:var(--tx3);">'+pct+'%</span></span>'+
+        '</div>'+
+        '<div style="height:10px;background:var(--bg3);border-radius:4px;position:relative;">'+
+          '<div style="position:absolute;left:0;top:0;height:100%;width:'+w+'%;background:'+c.color+';border-radius:4px;opacity:.85;"></div>'+
+        '</div></div>';
     }).join('');
-
-    return'<div class="rcard" style="margin-bottom:0;"><div class="rttl">'+title+'</div>'+
-      '<div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;">'+
-        '<svg width="180" height="180" viewBox="0 0 180 180" style="flex-shrink:0;">'+slices+'</svg>'+
-        '<div style="flex:1;min-width:120px;padding-top:4px;">'+legend+'</div>'+
-      '</div></div>';
+    return'<div class="rcard" style="margin-bottom:0;"><div class="rttl">'+title+'</div>'+rows+'</div>';
   }
-
   const etnColors={Македонец:'#60A5FA',Албанец:'#34D399',Ром:'#FBBF24',Србин:'#A78BFA',
     Турчин:'#F87171',Влав:'#2DD4BF',Евреин:'#FB923C',Бошњак:'#E879F9',Останато:'#94A3B8'};
-
-  const etnCats=ETN_ORDER.map(e=>({
-    lbl:e,color:etnColors[e]||'#4F8EF7',
-    cnt:sts.filter(s=>(s.etnik||'Останато')===e).length
-  })).filter(c=>c.cnt>0);
-
-  const molMap={};
-  sts.forEach(s=>{const m=s.mol||'Непознато';molMap[m]=(molMap[m]||0)+1;});
+  const etnCats=ETN_ORDER.map(e=>({lbl:e,color:etnColors[e]||'#4F8EF7',cnt:sts.filter(s=>(s.etnik||'Останато')===e).length})).filter(c=>c.cnt>0);
+  const molMap={};sts.forEach(s=>{const m=s.mol||'Непознато';molMap[m]=(molMap[m]||0)+1;});
   const molColors=['#60A5FA','#34D399','#FBBF24','#F87171','#A78BFA','#2DD4BF','#FB923C','#E879F9','#94A3B8','#4F8EF7'];
-  const molCats=Object.entries(molMap).sort((a,b)=>b[1]-a[1])
-    .map(([lbl,cnt],i)=>({lbl,cnt,color:molColors[i%molColors.length]}));
-
+  const molCats=Object.entries(molMap).sort((a,b)=>b[1]-a[1]).map(([lbl,cnt],i)=>({lbl,cnt,color:molColors[i%molColors.length]}));
   if(!etnCats.length&&!molCats.length)return'';
-
-  return'<div class="rep-duo">'+
-    pieChart(etnCats,'Етничка припадност')+
-    pieChart(molCats,'Место на живеење')+
-  '</div>';
+  return'<div class="rep-duo">'+hbarChartDesc(etnCats,'Етничка припадност')+hbarChartDesc(molCats,'Место на живеење')+'</div>';
 }
 
 
 function buildDemoChartsHbar(sts){
   if(!sts||!sts.length)return'';
   function hbarChart(cats,title){
-    const visible=cats.filter(c=>c.cnt>0);
+    const visible=cats.filter(c=>c.cnt>0).sort((a,b)=>b.cnt-a.cnt);
     if(!visible.length)return'';
     const total=visible.reduce((a,c)=>a+c.cnt,0);
-    const maxCnt=Math.max(...visible.map(c=>c.cnt),1);
+    const maxCnt=visible[0].cnt;
     const rows=visible.map(c=>{
-      const pct=Math.round((c.cnt/total)*100);
+      const pct=(c.cnt/total*100).toFixed(1);
       const w=Math.round((c.cnt/maxCnt)*100);
       return'<div style="margin-bottom:8px;">'+
         '<div style="display:flex;justify-content:space-between;margin-bottom:3px;">'+
@@ -1978,8 +1951,6 @@ function renderRepBody(sts){
        '<div class="rcard" style="margin-bottom:0;"><div class="rttl">Неоценети ученици по наставни предмети</div><div style="font-size:13px;color:var(--tx3);padding:4px 0;">Нема неоценети.</div></div>')+
     '</div>';
   })()}
-
-  ${buildRealizacijaCharts(curUch,curOdd,curPar)}
 
   ${(()=>{
     const extraGroups=[
@@ -2817,7 +2788,9 @@ function renderAdmin(){
       '<div class="rcard" style="margin-bottom:0;"><div class="rttl">Реализирани / Нереализирани часови</div>'+rows1+'<div style="display:flex;justify-content:space-between;padding-top:7px;border-top:1px solid var(--bdr);font-size:11px;"><span style="color:#34D399;font-weight:600;">✓ '+totR+'</span><span style="color:#F87171;font-weight:600;">✗ '+totN+'</span></div></div>'+
       '<div class="rcard" style="margin-bottom:0;"><div class="rttl">Дополнителна и додатна настава</div>'+(hasDopDod?rows2+'<div style="display:flex;justify-content:space-between;padding-top:7px;border-top:1px solid var(--bdr);font-size:11px;"><span style="color:#60A5FA;font-weight:600;">Дополнителна: '+totDop+'</span><span style="color:#A78BFA;font-weight:600;">Додатна: '+totDod+'</span></div>':'<div style="font-size:13px;color:var(--tx3);">Нема внесено часови.</div>')+
     '</div></div>';
-  })()}`;
+  })()}
+
+  ${buildRealizacijaCharts(curUch,curOdd,curPar)}`;
 }
 
 function buildAdminFilters(uchs,odds,pars,mols,fUch,fOdd,fPar,fPol,fEtn,fMol,fNastava,UCH_NAMES){
