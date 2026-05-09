@@ -1394,16 +1394,21 @@ function buildOpisnoDonut(cls){
 
 function buildRealizacijaCharts(uciliste,oddelenie,paralelka){
   if(!uciliste||!oddelenie||!paralelka)return'';
-  const k=uciliste+'|'+oddelenie+'|'+paralelka;
-  const rd=getRealData()[k]||{};
-  const fond=FOND[oddelenie]||{};
-  const subjs=allSubjs(oddelenie);
+  const odd=parseInt(oddelenie)||0;
+  if(!odd)return'';
+  // Пробај и со int и со string во клучот
+  const k1=uciliste+'|'+odd+'|'+paralelka;
+  const k2=uciliste+'|'+String(odd)+'|'+paralelka;
+  const rd=getRealData()[k1]||getRealData()[k2]||{};
+  const fond=FOND[odd]||{};
+  const subjs=allSubjs(odd);
   const en=getEN();
   function dN(s){if(s==='Слободен изборен предмет 1')return en.s1;if(s==='Слободен изборен предмет 2')return en.s2;if(s==='Изборен предмет')return en.i9||'Изборен предмет';return s.includes(' - ')?s.split(' - ')[1]:s;}
   if(!subjs.length)return'';
   let totPlan=0,totReal=0,totNereal=0,totDop=0,totDod=0;
   subjs.forEach(s=>{totPlan+=(fond[s]||0);totReal+=(rd[s]?.real||0);totNereal+=(rd[s]?.nereal||0);totDop+=(rd[s]?.dop||0);totDod+=(rd[s]?.dod||0);});
-  if(!totPlan&&!totReal&&!totDop&&!totDod)return'';
+  // Покажи ја картичката дури и ако нема внесено реализација (само планирани часови)
+  if(!totPlan)return'';
 
   // Helper: small donut for one subject
   function smallDonut(plan,real,nereal,label){
