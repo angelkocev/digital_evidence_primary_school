@@ -1058,12 +1058,18 @@ function getPOP(){
 }
 function loadPOP(s){
   const popWrap=document.getElementById('pop-wrap');
-  if(popWrap)popWrap.style.display=currentUser?.is_admin?'block':'none';
+  if(popWrap)popWrap.style.display='block'; // Секогаш прикажи
   const fpop=document.getElementById('fpop');
   const fnote=document.getElementById('fpop-note');
   if(fpop)fpop.value=s?.pop||'';
   if(fnote)fnote.value=s?.popNote||'';
-  if(fpop&&!currentUser?.is_admin){fpop.disabled=true;if(fnote)fnote.disabled=true;}
+  // Само администраторот може да уредува
+  const isAdmin=currentUser?.is_admin||false;
+  if(fpop){fpop.disabled=!isAdmin;fpop.style.opacity=isAdmin?'1':'0.6';fpop.style.cursor=isAdmin?'pointer':'not-allowed';}
+  if(fnote){fnote.disabled=!isAdmin;fnote.style.opacity=isAdmin?'1':'0.6';fnote.style.cursor=isAdmin?'text':'not-allowed';}
+  // Промени насловот ако не е администратор
+  const popTitle=document.querySelector('#pop-wrap div');
+  if(popTitle)popTitle.textContent=isAdmin?'Посебни образовни потреби (ПОП)':'Посебни образовни потреби (ПОП) — само за преглед';
 }
 
 function toggleMerka(i,ev){
@@ -1229,10 +1235,10 @@ function renderL(){
             ${(()=>{
               const st=gradeStatus(s.gr||{});
               const allDone=st==='ok';
-              const none=st==='no-data'||st==='celoso';
-              const col=allDone?'#34D399':(none?'#F87171':'#FBBF24');
-              const lbl=allDone?'Оценето':(none?'Неоценето':'Делумно');
-              return'<span title="'+lbl+'" style="display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;background:'+col+'22;color:'+col+';border:1px solid '+col+'44;white-space:nowrap;">'+lbl+'</span>';
+              const lbl=allDone?'Внесено':'Невнесено';
+              const icon=allDone?'✓':'✗';
+              const col=allDone?'#34D399':'#F87171';
+              return'<span title="'+lbl+'" style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:'+col+'22;color:'+col+';border:1px solid '+col+'55;font-size:13px;font-weight:700;flex-shrink:0;" title="'+lbl+'">'+icon+'</span>';
             })()}
             <button class="ib edit" onclick="openModal(${s._i})" title="Уреди">✎</button>
             ${currentUser?.is_admin?`<button class="ib del" onclick="delSt(${s._i})" title="Избриши">✕</button>`:''}
@@ -1279,7 +1285,7 @@ function buildDemoCharts(sts){
     const total=visible.reduce((a,c)=>a+c.cnt,0);
     const maxCnt=visible[0].cnt;
     const rows=visible.map(c=>{
-      const pct=Math.round((c.cnt/total)*100);
+      const pct=(c.cnt/total*100).toFixed(1);
       const w=Math.round((c.cnt/maxCnt)*100);
       return'<div style="margin-bottom:8px;">'+
         '<div style="display:flex;justify-content:space-between;margin-bottom:3px;">'+
@@ -1382,37 +1388,108 @@ function buildOpisnoDonut(cls){
 }
 
 function buildRealizacijaCharts(uciliste,oddelenie,paralelka){
+  if(!uciliste||!oddelenie||!paralelka)return'';
   const k=uciliste+'|'+oddelenie+'|'+paralelka;
   const rd=getRealData()[k]||{};
   const fond=FOND[oddelenie]||{};
   const subjs=allSubjs(oddelenie);
+  const en=getEN();
+  function dN(s){if(s==='Слободен изборен предмет 1')return en.s1;if(s==='Слободен изборен предмет 2')return en.s2;if(s==='Изборен предмет')return en.i9||'Изборен предмет';return s.includes(' - ')?s.split(' - ')[1]:s;}
   if(!subjs.length)return'';
-  let totReal=0,totNereal=0,totDop=0,totDod=0,totPlan=0;
+  let totPlan=0,totReal=0,totNereal=0,totDop=0,totDod=0;
   subjs.forEach(s=>{totPlan+=(fond[s]||0);totReal+=(rd[s]?.real||0);totNereal+=(rd[s]?.nereal||0);totDop+=(rd[s]?.dop||0);totDod+=(rd[s]?.dod||0);});
   if(!totPlan&&!totReal&&!totDop&&!totDod)return'';
-  function miniBar(lbl,val,max,col){
-    const pct=max?Math.round((val/max)*100):0;
-    return'<div style="margin-bottom:7px;">'+
-      '<div style="display:flex;justify-content:space-between;margin-bottom:2px;">'+
-        '<span style="font-size:11px;color:var(--tx3);">'+lbl+'</span>'+
-        '<span style="font-size:11px;font-weight:600;color:'+col+';">'+val+'</span>'+
-      '</div>'+
-      '<div style="height:8px;background:var(--bg3);border-radius:4px;position:relative;">'+
-        '<div style="position:absolute;left:0;top:0;height:100%;width:'+pct+'%;background:'+col+';border-radius:4px;opacity:.8;"></div>'+
-      '</div></div>';
+
+  // Donut chart за збирна реализација
+  function donutRealizacija(plan,real,nereal){
+    const rest=Math.max(0,plan-real-nereal);
+    const total=plan||1;
+    const cats=[
+      {v:real,col:'#34D399',lbl:'Реализирани'},
+      {v:nereal,col:'#F87171',lbl:'Нереализирани'},
+      {v:rest,col:'#374151',lbl:'Остаток'},
+    ].filter(c=>c.v>0);
+    const cx=80,cy=80,ro=70,ri=48;
+    let sa=-Math.PI/2,paths='';
+    cats.forEach(cat=>{
+      const ang=(cat.v/total)*2*Math.PI,ea=sa+ang;
+      const x1o=cx+ro*Math.cos(sa),y1o=cy+ro*Math.sin(sa);
+      const x2o=cx+ro*Math.cos(ea),y2o=cy+ro*Math.sin(ea);
+      const x1i=cx+ri*Math.cos(ea),y1i=cy+ri*Math.sin(ea);
+      const x2i=cx+ri*Math.cos(sa),y2i=cy+ri*Math.sin(sa);
+      const lg=ang>Math.PI?1:0;
+      if(cats.length===1){
+        paths+='<circle cx="'+cx+'" cy="'+cy+'" r="'+ro+'" fill="'+cat.col+'" opacity=".85"/>'+
+               '<circle cx="'+cx+'" cy="'+cy+'" r="'+ri+'" fill="var(--bg2)"/>';
+      } else {
+        paths+='<path d="M'+x1o+','+y1o+' A'+ro+','+ro+' 0 '+lg+',1 '+x2o+','+y2o+' L'+x1i+','+y1i+' A'+ri+','+ri+' 0 '+lg+',0 '+x2i+','+y2i+' Z" fill="'+cat.col+'" opacity=".85" stroke="var(--bg2)" stroke-width="2"/>';
+      }
+      sa=ea;
+    });
+    const pct=plan?Math.round((real/plan)*100):0;
+    paths+='<text x="'+cx+'" y="'+(cy-10)+'" text-anchor="middle" font-size="11" fill="#A0AAB8" font-family="DM Sans,sans-serif">Фонд</text>'+
+           '<text x="'+cx+'" y="'+(cy+8)+'" text-anchor="middle" font-size="20" font-weight="700" fill="#E8EBF0" font-family="Playfair Display,serif">'+plan+'</text>'+
+           '<text x="'+cx+'" y="'+(cy+24)+'" text-anchor="middle" font-size="10" fill="#A0AAB8" font-family="DM Sans,sans-serif">'+pct+'% реал.</text>';
+    return'<svg width="160" height="160" viewBox="0 0 160 160">'+paths+'</svg>';
   }
-  const maxH=Math.max(totPlan,totReal+totNereal,1);
-  const maxExtra=Math.max(totDop,totDod,1);
-  return'<div class="rep-duo">'+
-    '<div class="rcard" style="margin-bottom:0;"><div class="rttl">Реализација на настава</div>'+
-      miniBar('Планирани часови',totPlan,totPlan,'var(--acc)')+
-      miniBar('Реализирани часови',totReal,totPlan,'var(--teal)')+
-      miniBar('Нереализирани часови',totNereal,totPlan,'var(--rose)')+
+
+  const donutHtml=donutRealizacija(totPlan,totReal,totNereal);
+  const legend=[
+    {col:'#34D399',lbl:'Реализирани',v:totReal},
+    {col:'#F87171',lbl:'Нереализирани',v:totNereal},
+    {col:'#60A5FA',lbl:'Дополнителна настава',v:totDop},
+    {col:'#A78BFA',lbl:'Додатна настава',v:totDod},
+  ].map(x=>'<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">'+
+    '<span style="width:10px;height:10px;border-radius:2px;background:'+x.col+';flex-shrink:0;display:inline-block;"></span>'+
+    '<span style="font-size:11px;color:var(--tx2);flex:1;">'+x.lbl+'</span>'+
+    '<span style="font-size:13px;font-weight:600;font-family:var(--FD);color:'+x.col+';">'+x.v+'</span>'+
+  '</div>').join('');
+
+  // Per-subject table
+  const activeSubjs=subjs.filter(s=>(fond[s]||0)+(rd[s]?.real||0)+(rd[s]?.dop||0)+(rd[s]?.dod||0)>0);
+  const subjRows=activeSubjs.map(s=>{
+    const plan=fond[s]||0;
+    const real=rd[s]?.real||0;
+    const nereal=rd[s]?.nereal||0;
+    const dop=rd[s]?.dop||0;
+    const dod=rd[s]?.dod||0;
+    const pct=plan?Math.round((real/plan)*100):0;
+    const barW=Math.min(100,pct);
+    return'<tr>'+
+      '<td style="font-family:var(--FC);font-weight:600;font-size:12px;">'+dN(s)+'</td>'+
+      '<td style="text-align:center;font-family:var(--FD);color:var(--acc);">'+plan+'</td>'+
+      '<td style="text-align:center;font-weight:600;color:#34D399;">'+real+'</td>'+
+      '<td style="text-align:center;font-weight:600;color:'+(nereal>0?'#F87171':'var(--tx3)')+';">'+nereal+'</td>'+
+      '<td style="text-align:center;font-weight:600;color:#60A5FA;">'+dop+'</td>'+
+      '<td style="text-align:center;font-weight:600;color:#A78BFA;">'+dod+'</td>'+
+      '<td style="min-width:80px;padding:0 8px;"><div style="height:8px;background:var(--bg3);border-radius:4px;position:relative;"><div style="position:absolute;left:0;top:0;height:100%;width:'+barW+'%;background:#34D399;border-radius:4px;opacity:.85;"></div></div><div style="font-size:9px;color:var(--tx3);text-align:right;margin-top:1px;">'+pct+'%</div></td>'+
+    '</tr>';
+  }).join('');
+
+  if(!donutHtml&&!subjRows)return'';
+
+  return'<div class="rcard">'+
+    '<div class="rttl">Реализација на настава — збирно</div>'+
+    '<div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap;">'+
+      '<div style="flex-shrink:0;">'+donutHtml+'</div>'+
+      '<div style="flex:1;min-width:150px;">'+legend+'</div>'+
     '</div>'+
-    '<div class="rcard" style="margin-bottom:0;"><div class="rttl">Дополнителна и додатна настава</div>'+
-      miniBar('Дополнителна настава',totDop,maxExtra,'#A78BFA')+
-      miniBar('Додатна настава',totDod,maxExtra,'#FB923C')+
-    '</div></div>';
+  '</div>'+
+  (activeSubjs.length?'<div class="rcard">'+
+    '<div class="rttl">Реализација на настава — по предмет</div>'+
+    '<div style="overflow-x:auto;"><table class="rtbl" style="table-layout:fixed;">'+
+      '<thead><tr>'+
+        '<th>Предмет</th>'+
+        '<th style="width:55px;text-align:center;">Фонд</th>'+
+        '<th style="width:65px;text-align:center;color:#34D399;">Реализирани</th>'+
+        '<th style="width:72px;text-align:center;color:#F87171;">Нереализирани</th>'+
+        '<th style="width:70px;text-align:center;color:#60A5FA;">Дополн.</th>'+
+        '<th style="width:60px;text-align:center;color:#A78BFA;">Додатна</th>'+
+        '<th style="width:90px;text-align:center;">% Реализација</th>'+
+      '</tr></thead>'+
+      '<tbody>'+subjRows+'</tbody>'+
+    '</table></div>'+
+  '</div>':'');
 }
 
 function renderR(){
