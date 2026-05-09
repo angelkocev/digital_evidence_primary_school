@@ -479,7 +479,6 @@ function setTheme(name){
 try{const t=localStorage.getItem('ev_theme');if(t!==null)setTheme(t);}catch(e){}
 
 function showAuthErr(msg,type='err'){
-  const el=document.getElementById('auth-err');
   el.textContent=msg;
   el.style.display='block';
   el.style.background=type==='info'?'rgba(79,142,247,.15)':'var(--rose-d)';
@@ -626,6 +625,7 @@ async function loadFromSupabase(){
       });
       Object.keys(allData).forEach(k=>{allData[k].sort((a,b)=>(a.rn||999)-(b.rn||999));});
     }
+    return;
   }
   if(sts){
     sts.forEach(s=>{
@@ -1145,6 +1145,7 @@ async function saveSt(){
       const subjName=sel.closest('.srow')?.querySelector('.srow-name,.el-inp')?.textContent||sel.closest('.srow')?.querySelector('.el-inp')?.value||sel.dataset.s||'предмет';
       showMsg('fmsg','Внесете оценка за: '+subjName.trim(),'err');
       sel.closest('.srow')?.scrollIntoView({behavior:'smooth',block:'center'});
+      return;
     }
   }
 
