@@ -1145,7 +1145,6 @@ async function saveSt(){
       const subjName=sel.closest('.srow')?.querySelector('.srow-name,.el-inp')?.textContent||sel.closest('.srow')?.querySelector('.el-inp')?.value||sel.dataset.s||'предмет';
       showMsg('fmsg','Внесете оценка за: '+subjName.trim(),'err');
       sel.closest('.srow')?.scrollIntoView({behavior:'smooth',block:'center'});
-      return;
     }
   }
 
@@ -1387,6 +1386,104 @@ function buildRealizacijaCharts(uciliste,oddelenie,paralelka){
   if(!subjs.length)return'';
   let totPlan=0,totReal=0,totNereal=0,totDop=0,totDod=0;
   subjs.forEach(s=>{totPlan+=(fond[s]||0);totReal+=(rd[s]?.real||0);totNereal+=(rd[s]?.nereal||0);totDop+=(rd[s]?.dop||0);totDod+=(rd[s]?.dod||0);});
+  if(!totPlan)return'';
+
+  const pctReal=totPlan?Math.round((totReal/totPlan)*100):0;
+  const pctNereal=totPlan?Math.round((totNereal/totPlan)*100):0;
+  const pctRest=Math.max(0,100-pctReal-pctNereal);
+
+  // ═══ ЗБИРЕН ПРИКАЗ — Progress Bars ═══
+  const summaryHtml=
+    // Голем progress bar
+    '<div style="margin-bottom:20px;">'+
+      '<div style="display:flex;justify-content:space-between;margin-bottom:6px;">'+
+        '<span style="font-size:12px;font-weight:600;color:var(--tx);">Вкупна реализација</span>'+
+        '<span style="font-size:13px;font-weight:700;font-family:var(--FD);color:#34D399;">'+pctReal+'%</span>'+
+      '</div>'+
+      '<div style="height:16px;background:var(--bg3);border-radius:8px;overflow:hidden;display:flex;">'+
+        (totReal?'<div style="width:'+pctReal+'%;background:#34D399;opacity:.9;transition:width .4s;"></div>':'')+
+        (totNereal?'<div style="width:'+pctNereal+'%;background:#F87171;opacity:.9;"></div>':'')+
+        (pctRest?'<div style="flex:1;background:transparent;"></div>':'')+
+      '</div>'+
+      '<div style="display:flex;gap:16px;margin-top:8px;flex-wrap:wrap;">'+
+        '<div style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:2px;background:#34D399;"></span><span style="font-size:11px;color:var(--tx2);">Реализирани: <strong style="color:#34D399;">'+totReal+'</strong></span></div>'+
+        '<div style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:2px;background:#F87171;"></span><span style="font-size:11px;color:var(--tx2);">Нереализирани: <strong style="color:#F87171;">'+totNereal+'</strong></span></div>'+
+        '<div style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--bg3);border:1px solid var(--bdr);"></span><span style="font-size:11px;color:var(--tx3);">Остаток: '+(totPlan-totReal-totNereal)+'</span></div>'+
+        '<div style="margin-left:auto;font-size:11px;color:var(--tx3);">Фонд: <strong style="color:var(--acc);">'+totPlan+'</strong> часа</div>'+
+      '</div>'+
+    '</div>'+
+    // Дополнителна и додатна
+    (totDop+totDod>0?
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'+
+        '<div style="background:var(--bg3);border-radius:8px;padding:10px 14px;text-align:center;">'+
+          '<div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#60A5FA;margin-bottom:4px;">Дополнителна настава</div>'+
+          '<div style="font-family:var(--FD);font-size:26px;font-weight:500;color:#60A5FA;">'+totDop+'</div>'+
+          '<div style="font-size:10px;color:var(--tx3);">часа</div>'+
+        '</div>'+
+        '<div style="background:var(--bg3);border-radius:8px;padding:10px 14px;text-align:center;">'+
+          '<div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#A78BFA;margin-bottom:4px;">Додатна настава</div>'+
+          '<div style="font-family:var(--FD);font-size:26px;font-weight:500;color:#A78BFA;">'+totDod+'</div>'+
+          '<div style="font-size:10px;color:var(--tx3);">часа</div>'+
+        '</div>'+
+      '</div>'
+    :'');
+
+  // ═══ ПО ПРЕДМЕТ — Scorecard ═══
+  const activeSubjs=subjs.filter(s=>(fond[s]||0)>0);
+  const scorecardRows=activeSubjs.map(s=>{
+    const plan=fond[s]||0;
+    const real=rd[s]?.real||0;
+    const nereal=rd[s]?.nereal||0;
+    const dop=rd[s]?.dop||0;
+    const dod=rd[s]?.dod||0;
+    const pct=plan?Math.round((real/plan)*100):0;
+    const w=Math.min(100,pct);
+    const icon=pct>=100?'✓':(pct>0?'◑':'○');
+    const iconCol=pct>=100?'#34D399':(pct>0?'#FBBF24':'#94A3B8');
+    return'<tr>'+
+      '<td style="font-family:var(--FC);font-size:12px;font-weight:600;">'+dN(s)+'</td>'+
+      '<td style="text-align:center;font-family:var(--FD);color:var(--acc);">'+plan+'</td>'+
+      '<td style="text-align:center;font-weight:600;color:#34D399;">'+real+'</td>'+
+      '<td style="text-align:center;font-weight:600;color:'+(nereal>0?'#F87171':'var(--tx3)')+';">'+nereal+'</td>'+
+      (totDop+totDod>0?'<td style="text-align:center;color:#60A5FA;">'+dop+'</td><td style="text-align:center;color:#A78BFA;">'+dod+'</td>':'')+
+      '<td style="padding:4px 8px;min-width:120px;">'+
+        '<div style="display:flex;align-items:center;gap:6px;">'+
+          '<div style="flex:1;height:8px;background:var(--bg3);border-radius:4px;position:relative;">'+
+            '<div style="position:absolute;left:0;top:0;height:100%;width:'+w+'%;background:'+(pct>=100?'#34D399':'#60A5FA')+';border-radius:4px;opacity:.85;"></div>'+
+          '</div>'+
+          '<span style="font-size:10px;font-weight:700;color:'+iconCol+';min-width:32px;text-align:right;">'+icon+' '+pct+'%</span>'+
+        '</div>'+
+      '</td>'+
+    '</tr>';
+  }).join('');
+
+  return'<div class="rcard">'+
+    '<div class="rttl">Реализација на настава</div>'+
+    summaryHtml+
+  '</div>'+
+  (activeSubjs.length?'<div class="rcard">'+
+    '<div class="rttl">Реализација по предмет</div>'+
+    '<div style="overflow-x:auto;"><table class="rtbl" style="table-layout:auto;">'+
+      '<thead><tr>'+
+        '<th>Предмет</th>'+
+        '<th style="width:50px;text-align:center;">Фонд</th>'+
+        '<th style="width:65px;text-align:center;color:#34D399;">Реал.</th>'+
+        '<th style="width:65px;text-align:center;color:#F87171;">Нереал.</th>'+
+        (totDop+totDod>0?'<th style="width:55px;text-align:center;color:#60A5FA;">Доп.</th><th style="width:55px;text-align:center;color:#A78BFA;">Дод.</th>':'')+
+        '<th style="min-width:130px;text-align:center;">% Реализација</th>'+
+      '</tr></thead>'+
+      '<tbody>'+scorecardRows+'</tbody>'+
+    '</table></div>'+
+  '</div>':'');
+}
+  const rd=getRealData()[k1]||getRealData()[k2]||{};
+  const fond=FOND[odd]||{};
+  const subjs=allSubjs(odd);
+  const en=getEN();
+  function dN(s){if(s==='Слободен изборен предмет 1')return en.s1;if(s==='Слободен изборен предмет 2')return en.s2;if(s==='Изборен предмет')return en.i9||'Изборен предмет';return s.includes(' - ')?s.split(' - ')[1]:s;}
+  if(!subjs.length)return'';
+  let totPlan=0,totReal=0,totNereal=0,totDop=0,totDod=0;
+  subjs.forEach(s=>{totPlan+=(fond[s]||0);totReal+=(rd[s]?.real||0);totNereal+=(rd[s]?.nereal||0);totDop+=(rd[s]?.dop||0);totDod+=(rd[s]?.dod||0);});
   // Покажи ја картичката дури и ако нема внесено реализација (само планирани часови)
   if(!totPlan)return'';
 
@@ -1496,18 +1593,7 @@ function buildRealizacijaCharts(uciliste,oddelenie,paralelka){
       (totDop+totDod>0?dopDodHtml:'<div style="font-size:13px;color:var(--tx3);">Нема внесено часови.</div>')+
     '</div>'+
   '</div>'+
-  (activeSubjs.length?'<div class="rcard">'+
-    '<div class="rttl">Реализација по предмет</div>'+
-    '<div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-start;">'+subjDonuts+'</div>'+
-    '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;">'+
-      '<div style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:2px;background:#34D399;"></span><span style="font-size:10px;color:var(--tx2);">Реализирани</span></div>'+
-      '<div style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:2px;background:#F87171;"></span><span style="font-size:10px;color:var(--tx2);">Нереализирани</span></div>'+
-      '<div style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:2px;background:#2D3748;"></span><span style="font-size:10px;color:var(--tx2);">Остаток</span></div>'+
-      '<div style="font-size:10px;color:var(--tx3);">Бројот во средината = планиран фонд</div>'+
-    '</div>'+
-  '</div>':'');
-}
-
+  
 function renderR(){
   const el=document.getElementById('rwrap');
   const sts=getSts();
