@@ -2871,30 +2871,45 @@ function renderAdmin(){
   })()}
 
   ${(()=>{
+    // Ако е избрана конкретна паралелка — користи buildRealizacijaCharts директно
+    if(fPar!=='__svi__'&&fOdd!=='__svi__'&&fUch!=='__svi__'){
+      return buildRealizacijaCharts(fUch,parseInt(fOdd),fPar);
+    }
+    // Иначе — агрегирај по сите филтрирани паралелки
     const adminRealData=realData||{};
-    const allKeys=Object.keys(adminRealData);
-    let filtKeys=allKeys;
+    let filtKeys=Object.keys(adminRealData);
     if(fUch!=='__svi__')filtKeys=filtKeys.filter(k=>k.startsWith(fUch+'|'));
-    if(fOdd!=='__svi__')filtKeys=filtKeys.filter(k=>k.split('|')[1]===fOdd);
-    if(fPar!=='__svi__')filtKeys=filtKeys.filter(k=>k.split('|')[2]===fPar);
+    if(fOdd!=='__svi__')filtKeys=filtKeys.filter(k=>k.split('|')[1]===String(fOdd));
     if(!filtKeys.length)return'';
+    // Одреди одделение за FOND — ако е избрано конкретно одделение
+    const effOdd=fOdd!=='__svi__'?parseInt(fOdd):0;
+    const effUch=fUch!=='__svi__'?fUch:'C';
+    // Земи прва паралелка ако има само една
+    if(filtKeys.length===1){
+      const[uch,odd,par]=filtKeys[0].split('|');
+      return buildRealizacijaCharts(uch,parseInt(odd),par);
+    }
+    // Агрегирај
+    const fond=effOdd?FOND[effOdd]||{}:{};
     const combined={};
     filtKeys.forEach(k=>{Object.entries(adminRealData[k]||{}).forEach(([s,v])=>{if(!combined[s])combined[s]={real:0,nereal:0,dop:0,dod:0};combined[s].real+=(v.real||0);combined[s].nereal+=(v.nereal||0);combined[s].dop+=(v.dop||0);combined[s].dod+=(v.dod||0);});});
     const en=getEN();
-    function dN(s){if(s==='Слободен изборен предмет 1')return en.s1;if(s==='Слободен изборен предмет 2')return en.s2;if(s==='Изборен предмет')return en.i9||'Изборен предмет';return s.includes(' - ')?s.split(' - ')[1]:s;}
-    const active=Object.entries(combined).filter(([,v])=>(v.real||0)+(v.nereal||0)>0);
+    function dN2(s){if(s==='Слободен изборен предмет 1')return en.s1;if(s==='Слободен изборен предмет 2')return en.s2;if(s==='Изборен предмет')return en.i9||'Изборен предмет';return s.includes(' - ')?s.split(' - ')[1]:s;}
+    const active=Object.entries(combined).filter(([,v])=>(v.real||0)+(v.nereal||0)+(v.dop||0)+(v.dod||0)>0);
     if(!active.length)return'';
-    const totR=active.reduce((a,[,v])=>a+(v.real||0),0),totN=active.reduce((a,[,v])=>a+(v.nereal||0),0);
-    const totDop=active.reduce((a,[,v])=>a+(v.dop||0),0),totDod=active.reduce((a,[,v])=>a+(v.dod||0),0);
-    const mxR=Math.max(...active.map(([,v])=>v.real||0),1),mxN=Math.max(...active.map(([,v])=>v.nereal||0),1);
-    const mxDop=Math.max(...active.map(([,v])=>v.dop||0),1),mxDod=Math.max(...active.map(([,v])=>v.dod||0),1);
-    function mbar(val,mx,col){return'<div style="flex:1;height:10px;background:var(--bg3);border-radius:3px;position:relative;"><div style="position:absolute;left:0;top:0;height:100%;width:'+Math.round((val/mx)*100)+'%;background:'+col+';opacity:.85;border-radius:3px;"></div></div><span style="font-size:10px;font-weight:600;color:'+col+';min-width:22px;text-align:right;">'+val+'</span>';}
-    const rows1=active.map(([s,v])=>'<div style="margin-bottom:7px;padding-bottom:7px;border-bottom:1px solid var(--bdr2);"><div style="font-size:11px;font-weight:600;color:var(--tx2);margin-bottom:3px;">'+dN(s)+'</div><div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;"><span style="font-size:9px;color:var(--tx3);width:78px;flex-shrink:0;">Реализирани</span>'+mbar(v.real||0,mxR,'#34D399')+'</div><div style="display:flex;align-items:center;gap:6px;"><span style="font-size:9px;color:var(--tx3);width:78px;flex-shrink:0;">Нереализирани</span>'+mbar(v.nereal||0,mxN,'#F87171')+'</div></div>').join('');
+    // Use buildRealizacijaCharts style but aggregated
+    let totPlan=0,totReal=0,totNereal=0,totDop=0,totDod=0;
+    active.forEach(([s,v])=>{totPlan+=(fond[s]||0);totReal+=v.real||0;totNereal+=v.nereal||0;totDop+=v.dop||0;totDod+=v.dod||0;});
+    const maxDD=Math.max(totDop,totDod,1);
+    function mbar2(val,mx,col){const w=Math.round((val/mx)*100);return'<div style="flex:1;height:10px;background:var(--bg3);border-radius:3px;position:relative;"><div style="position:absolute;left:0;top:0;height:100%;width:'+w+'%;background:'+col+';opacity:.85;border-radius:3px;"></div></div><span style="font-size:10px;font-weight:600;color:'+col+';min-width:26px;text-align:right;">'+val+'</span>';}
+    const mxR=Math.max(...active.map(([,v])=>v.real||0),1);
+    const mxN=Math.max(...active.map(([,v])=>v.nereal||0),1);
+    const rows1=active.map(([s,v])=>'<div style="margin-bottom:7px;padding-bottom:7px;border-bottom:1px solid var(--bdr2);"><div style="font-size:11px;font-weight:600;color:var(--tx2);margin-bottom:3px;">'+dN2(s)+'</div><div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;"><span style="font-size:9px;color:var(--tx3);width:78px;flex-shrink:0;">Реализирани</span>'+mbar2(v.real||0,mxR,'#34D399')+'</div><div style="display:flex;align-items:center;gap:6px;"><span style="font-size:9px;color:var(--tx3);width:78px;flex-shrink:0;">Нереализирани</span>'+mbar2(v.nereal||0,mxN,'#F87171')+'</div></div>').join('');
     const hasDopDod=active.some(([,v])=>(v.dop||0)+(v.dod||0)>0);
-    const rows2=hasDopDod?active.filter(([,v])=>(v.dop||0)+(v.dod||0)>0).map(([s,v])=>'<div style="margin-bottom:7px;padding-bottom:7px;border-bottom:1px solid var(--bdr2);"><div style="font-size:11px;font-weight:600;color:var(--tx2);margin-bottom:3px;">'+dN(s)+'</div>'+(v.dop?'<div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;"><span style="font-size:9px;color:var(--tx3);width:78px;flex-shrink:0;">Дополнителна</span>'+mbar(v.dop,mxDop,'#60A5FA')+'</div>':'')+(v.dod?'<div style="display:flex;align-items:center;gap:6px;"><span style="font-size:9px;color:var(--tx3);width:78px;flex-shrink:0;">Додатна</span>'+mbar(v.dod,mxDod,'#A78BFA')+'</div>':'')+'</div>').join(''):'';
+    const dopRows=hasDopDod?active.filter(([,v])=>(v.dop||0)+(v.dod||0)>0).map(([s,v])=>'<div style="margin-bottom:7px;"><div style="font-size:11px;font-weight:600;color:var(--tx2);margin-bottom:3px;">'+dN2(s)+'</div>'+(v.dop?'<div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;"><span style="font-size:9px;color:var(--tx3);width:78px;flex-shrink:0;">Дополнителна</span>'+mbar2(v.dop,maxDD,'#60A5FA')+'</div>':'')+(v.dod?'<div style="display:flex;align-items:center;gap:6px;"><span style="font-size:9px;color:var(--tx3);width:78px;flex-shrink:0;">Додатна</span>'+mbar2(v.dod,maxDD,'#A78BFA')+'</div>':'')+'</div>').join(''):'';
     return'<div class="rep-duo">'+
-      '<div class="rcard" style="margin-bottom:0;"><div class="rttl">Реализирани / Нереализирани часови</div>'+rows1+'<div style="display:flex;justify-content:space-between;padding-top:7px;border-top:1px solid var(--bdr);font-size:11px;"><span style="color:#34D399;font-weight:600;">✓ '+totR+'</span><span style="color:#F87171;font-weight:600;">✗ '+totN+'</span></div></div>'+
-      '<div class="rcard" style="margin-bottom:0;"><div class="rttl">Дополнителна и додатна настава</div>'+(hasDopDod?rows2+'<div style="display:flex;justify-content:space-between;padding-top:7px;border-top:1px solid var(--bdr);font-size:11px;"><span style="color:#60A5FA;font-weight:600;">Дополнителна: '+totDop+'</span><span style="color:#A78BFA;font-weight:600;">Додатна: '+totDod+'</span></div>':'<div style="font-size:13px;color:var(--tx3);">Нема внесено часови.</div>')+
+      '<div class="rcard" style="margin-bottom:0;"><div class="rttl">Реализирани / Нереализирани часови</div>'+rows1+'<div style="display:flex;justify-content:space-between;padding-top:7px;border-top:1px solid var(--bdr);font-size:11px;"><span style="color:#34D399;font-weight:600;">✓ Реализирани: '+totReal+'</span><span style="color:#F87171;font-weight:600;">✗ Нереализирани: '+totNereal+'</span></div></div>'+
+      '<div class="rcard" style="margin-bottom:0;"><div class="rttl">Дополнителна и додатна настава</div>'+(hasDopDod?dopRows+'<div style="display:flex;gap:16px;padding-top:7px;border-top:1px solid var(--bdr);font-size:11px;"><span style="color:#60A5FA;font-weight:600;">Дополнителна: '+totDop+'</span><span style="color:#A78BFA;font-weight:600;">Додатна: '+totDod+'</span></div>':'<div style="font-size:13px;color:var(--tx3);">Нема внесено часови.</div>')+
     '</div></div>';
   })()}
 
