@@ -1396,9 +1396,10 @@ function buildRealizacijaCharts(uciliste,oddelenie,paralelka){
   if(!uciliste||!oddelenie||!paralelka)return'';
   const odd=parseInt(oddelenie)||0;
   if(!odd)return'';
-  // Пробај и со int и со string во клучот
   const k1=uciliste+'|'+odd+'|'+paralelka;
   const k2=uciliste+'|'+String(odd)+'|'+paralelka;
+  const allKeys=Object.keys(getRealData());
+  console.log('buildRealizacijaCharts called:',{uciliste,odd,paralelka,k1,allKeys});
   const rd=getRealData()[k1]||getRealData()[k2]||{};
   const fond=FOND[odd]||{};
   const subjs=allSubjs(odd);
