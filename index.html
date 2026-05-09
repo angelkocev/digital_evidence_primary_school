@@ -1362,6 +1362,16 @@ function buildDemoChartsHbar(sts){
 }
 
 
+function opisnoStats(cls){
+  const total=cls.sts.length;
+  const p1=cls.sts.filter(s=>{const v=Object.values(s.gr||{});return v.length>0&&v.every(x=>x==='I ниво');}).length;
+  const p2=cls.sts.filter(s=>{const v=Object.values(s.gr||{}).filter(x=>OPISNO_VALS.includes(String(x)));return v.length>0&&v.some(x=>x==='II ниво')&&!v.some(x=>x==='III ниво');}).length;
+  const p3=cls.sts.filter(s=>{const v=Object.values(s.gr||{}).filter(x=>OPISNO_VALS.includes(String(x)));return v.length>0&&v.some(x=>x==='III ниво');}).length;
+  const neoc=cls.sts.filter(s=>gradeStatus(s.gr||{})==='celoso'||gradeStatus(s.gr||{})==='no-data').length;
+  const delumno=cls.sts.filter(s=>gradeStatus(s.gr||{})==='delumno').length;
+  return{total,p1,p2,p3,neoc,delumno};
+}
+
 function buildOpisnoDonut(cls){
   const st=opisnoStats(cls);
   const total=st.p1+st.p2+st.p3+st.delumno+st.neoc;
@@ -2351,15 +2361,7 @@ function renderAdmin(){
     if(uDiff!==0)return uDiff;
     return a.odd-b.odd||a.par.localeCompare(b.par);
   }
-  function opisnoStats(cls){
-    const total=cls.sts.length;
-    const p1=cls.sts.filter(s=>{const v=Object.values(s.gr||{});return v.length>0&&v.every(x=>x==='I ниво');}).length;
-    const p2=cls.sts.filter(s=>{const v=Object.values(s.gr||{}).filter(x=>OPISNO_VALS.includes(String(x)));return v.length>0&&v.some(x=>x==='II ниво')&&!v.some(x=>x==='III ниво');}).length;
-    const p3=cls.sts.filter(s=>{const v=Object.values(s.gr||{}).filter(x=>OPISNO_VALS.includes(String(x)));return v.length>0&&v.some(x=>x==='III ниво');}).length;
-    const neoc=cls.sts.filter(s=>gradeStatus(s.gr||{})==='celoso'||gradeStatus(s.gr||{})==='no-data').length;
-    const delumno=cls.sts.filter(s=>gradeStatus(s.gr||{})==='delumno').length;
-    return{total,p1,p2,p3,neoc,delumno};
-  }
+  // opisnoStats е дефинирана глобално (пред renderAdmin)
 
   if(!n){
     el.innerHTML=buildAdminFilters(uchs,odds,pars,mols,fUch,fOdd,fPar,fPol,fEtn,fMol,fNastava,UCH_NAMES)+
