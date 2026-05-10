@@ -1581,20 +1581,7 @@ function buildRealizacijaCharts(uciliste,oddelenie,paralelka){
     return smallDonut(plan,real,nereal,dN(s));
   }).join('');
 
-  return'<div class="rep-duo">'+
-    '<div class="rcard" style="margin-bottom:0;">'+
-      '<div class="rttl">Реализација на настава — збирно</div>'+
-      '<div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">'+
-        '<div style="flex-shrink:0;">'+bigPie(totPlan,totReal,totNereal)+'</div>'+
-        '<div style="flex:1;min-width:140px;">'+legend+'</div>'+
-      '</div>'+
-    '</div>'+
-    '<div class="rcard" style="margin-bottom:0;">'+
-      '<div class="rttl">Дополнителна и додатна настава</div>'+
-      (totDop+totDod>0?dopDodHtml:'<div style="font-size:13px;color:var(--tx3);">Нема внесено часови.</div>')+
-    '</div>'+
-  '</div>'+
-  
+
 function renderR(){
   const el=document.getElementById('rwrap');
   const sts=getSts();
