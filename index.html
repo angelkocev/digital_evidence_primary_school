@@ -6,6 +6,9 @@
 <title>Евиденција на паралелка 2025/2026</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=Playfair+Display:wght@500;600&family=Noto+Serif:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- ===================================================== -->
+<!-- ======================= CSS ========================= -->
+<!-- ===================================================== -->
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -255,9 +258,14 @@ input#fop::-webkit-outer-spin-button,input#fop::-webkit-inner-spin-button,input#
 }
 
 </style>
+<!-- ===================== END CSS ======================= -->
 
 </head>
 <body>
+
+<!-- ===================================================== -->
+<!-- ===================== HTML BODY ===================== -->
+<!-- ===================================================== -->
 
 <!-- LOGIN SCREEN -->
 <div id="login-screen" class="login-wrap" style="display:none;">
@@ -438,7 +446,13 @@ input#fop::-webkit-outer-spin-button,input#fop::-webkit-inner-spin-button,input#
 </div>
 </div>
 
+<!-- =================== END HTML BODY =================== -->
+
+<!-- ===================================================== -->
+<!-- ===================== JAVASCRIPT ==================== -->
+<!-- ===================================================== -->
 <script>
+//#region SUPABASE CONFIGURATION
 /* ══ SUPABASE ══ */
 const SUPA_URL='https://misgjrmpotlzjtgrujkp.supabase.co';
 const SUPA_KEY='sb_publishable_s4v_-I0V4341WYPyD01Sfg_OpJiSp5R';
@@ -498,6 +512,9 @@ async function doLogout(){
   showLoginScreen();
 }
 
+//endregion
+
+//#region AUTH SESSION
 /* ── SESSION ── */
 let authInitialized=false;
 async function initAuth(){
@@ -605,6 +622,9 @@ function showSaveInd(){
   setTimeout(()=>el.classList.remove('show'),2000);
 }
 
+//endregion
+
+//#region SUPABASE DATA SYNC
 /* ── SUPABASE DATA SYNC ── */
 async function loadFromSupabase(){
   if(!currentUser)return;
@@ -705,6 +725,9 @@ async function persistReal(k,subj,vals){
   await sb.from('realizacija').upsert({teacher_id:currentUser.id,uciliste:uch,oddelenie:parseInt(odd),paralelka:par,predmet:subj,real:vals.real||0,nereal:vals.nereal||0,dop:vals.dop||0,dod:vals.dod||0},{onConflict:'teacher_id,uciliste,oddelenie,paralelka,predmet'});
   showSaveInd();
 }
+//endregion
+
+//#region SCHOOL STRUCTURE DATA
 const UCH_DATA={
   C:{name:'Централно училиште',odds:{
     1:['I-а','I-б','I-в'],2:['II-а','II-б','II-в'],3:['III-а','III-б','III-в'],
@@ -830,6 +853,9 @@ const PROG={
   ],
 };
 
+//endregion
+
+//#region GLOBAL OPTIONS AND CONSTANTS
 const GRADE_OPTS=[5,4,3,2,1,'/'];
 const GRADE_OPTS_OPISNO=['I ниво','II ниво','III ниво','/'];
 const MERKI_LIST=['Усна опомена','Писмена опомена','Укор','Преместување во друга паралелка','Добро поведение','Незадоволително поведение'];
@@ -860,6 +886,9 @@ function getStudentOdd(s){
 
 
 
+//endregion
+
+//#region GLOBAL STATE AND BASIC HELPERS
 let curUch='',curOdd=0,curPar='';
 let allData={};
 let electiveNames={};
@@ -893,6 +922,9 @@ function buildParMenu(){
 }
 function onParChange(){curPar=document.getElementById('sel-par').value;renderL();upBadge();}
 
+//endregion
+
+//#region GRADES ANALYSIS HELPERS
 /* ══ ОЦЕНКИ АНАЛИЗА ══ */
 const OPISNO_VALS=['I ниво','II ниво','III ниво'];
 function isOpisnoGr(gr){
@@ -2829,6 +2861,10 @@ function gT(id,btn){
   if(id==='rep')renderR();
   if(id==='admin')renderAdmin();
 }
+//endregion
+
+//#region APP INITIALIZATION
 initAuth();
+//endregion
 </script>
 </html>
