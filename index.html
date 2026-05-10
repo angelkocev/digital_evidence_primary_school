@@ -2638,7 +2638,7 @@ function renderAdmin(){
     </div>
   </div>
 
-  ${(()=>{if(!(povtoruvanje.length))return'';return `<div class="rcard" style="border-color:rgba(248,113,113,.25);background:rgba(248,113,113,.05);">
+  ${(()=>{if(!povtoruvanje.length)return'';return `<div class="rcard" style="border-color:rgba(248,113,113,.25);background:rgba(248,113,113,.05);">
     <div class="rttl" style="color:#F87171;">Ученици кои повторуваат одделение <span style="font-family:var(--FD);font-size:13px;margin-left:6px;">${povtoruvanje.length}</span></div>
     <table class="rtbl" style="table-layout:auto;">
       <thead><tr>
@@ -2653,14 +2653,14 @@ function renderAdmin(){
         <th style="width:108px;text-align:center;">Категорија</th>
         <th>Предмети со слаба оценка</th>
       </tr></thead>
-      <tbody>${povtoruvanje.map(s=>{
+      <tbody>${povtoruvanje.map((s,i)=>{
         const ki=katInfo(s.gr||{});
         const slabi=allSubjs(s._odd||curOdd).filter(subj=>Number((s.gr||{})[subj])===1);
-        return`;
-})()}</td>
-          <td style="font-family:var(--FC);font-weight:600;">${s.ime} ${s.prz}</td>
-          <td style="color:var(--tx2);">${ODD_LBL[s._odd]||s._odd} · ${s._par}</td>
-          <td><span class="tag ${s.pol==='М'?'mt':'ft'}">${s.pol}</span></td>
+        return `<tr>
+          <td style="text-align:center;color:var(--tx3);">${i+1}</td>
+          <td style="font-family:var(--FC);font-weight:600;">${s.ime||''} ${s.prz||''}</td>
+          <td style="color:var(--tx2);">${ODD_LBL[s._odd]||s._odd||''} · ${s._par||''}</td>
+          <td><span class="tag ${s.pol==='М'?'mt':'ft'}">${s.pol||'—'}</span></td>
           <td style="color:var(--tx3);">${s.etnik||'—'}</td>
           <td style="text-align:center;font-weight:600;color:var(--teal);">${s.op||0}</td>
           <td style="text-align:center;font-weight:600;color:${(s.nop||0)>0?'var(--rose)':'var(--tx3)'};">${s.nop||0}</td>
