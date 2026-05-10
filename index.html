@@ -1535,8 +1535,12 @@ function renderR(){
   }
 
   const subjHTML=filtSubjs.map(s=>{
-    const a=sd[s].sum/sd[s].cnt,gs2=gStyle(a),p=bw(Math.round((a/maxSA)*100));
-    return`<div class="brow"><span class="blbl" title="${s}">${dName(s)}</span><div class="btrk"><div class="bfil" style="width:${p}%;background:${gs2.bar};opacity:.85;"></div></div><span class="bval" style="color:${gs2.c};">${a.toFixed(2)}</span></div>`;
+    const a=sd[s].sum/sd[s].cnt,gs2=gStyle(a),p=bw(Math.round((a/5)*100));
+    return`<div class="brow" style="align-items:flex-start;margin-bottom:10px;">
+      <span class="blbl" title="${s}" style="width:360px;white-space:normal;overflow:visible;text-overflow:unset;line-height:1.35;padding-top:1px;">${dName(s)}</span>
+      <div class="btrk" style="margin-top:5px;"><div class="bfil" style="width:${p}%;background:${gs2.bar};opacity:.85;"></div></div>
+      <span class="bval" style="color:${gs2.c};margin-top:-1px;">${a.toFixed(2)}</span>
+    </div>`;
   }).join('');
 
   const comboAvgHTML=comboList.map(([key,val])=>{
