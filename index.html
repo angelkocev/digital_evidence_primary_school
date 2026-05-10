@@ -2623,7 +2623,7 @@ function renderAdmin(){
   <!-- Педагошки мерки + Дополнителни белешки -->
   <div class="rep-duo">
     <div class="rcard" style="margin-bottom:0;">
-      <div class="rttl">Педагошки мерки — преглед</div>
+      <div class="rttl">Преглед на педагошки мерки</div>
       ${totMerki>0?MERKI_LIST.filter(m=>mc[m]).map(m=>{
         const pct=bw(Math.round((mc[m]/maxMerki)*100));const col=merkiColors[m]||'#4F8EF7';
         return'<div class="brow"><span class="blbl">'+m+'</span><div class="btrk"><div class="bfil" style="width:'+pct+'%;background:'+col+';opacity:.8;"></div></div><span class="bval" style="color:'+col+';">'+mc[m]+'</span></div>';
