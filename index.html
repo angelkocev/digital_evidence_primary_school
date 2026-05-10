@@ -381,6 +381,14 @@ input#fop::-webkit-outer-spin-button,input#fop::-webkit-inner-spin-button,input#
     </div>
   </div>
 
+  ${(polData.length||etnData.length)?'<div class="rep-duo">'+
+    '<div class="rcard" style="margin-bottom:0;"><div class="rttl">Просечен успех по пол</div>'+(polData.length?polData.map(p=>hbar(p.lbl,p.a,maxPol,p.f,p.cnt)).join(''):'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>')+'</div>'+
+    '<div class="rcard" style="margin-bottom:0;"><div class="rttl">Просечен успех по етничка припадност</div>'+(etnData.length?etnData.map(e=>hbar(e.lbl,e.a,maxEtn,e.f,e.cnt)).join(''):'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>')+'</div></div>':''}
+
+  <div class="rcard">
+    <div class="rttl">Просечен успех по пол и етничка припадност</div>
+    ${comboAvgHTML||'<div style="font-size:13px;color:var(--tx3);">Нема доволно податоци.</div>
+
   <div class="sl">Изостаноци</div>
   <div class="abs-trio">
     <div class="atile op"><div class="al">Оправдани</div><input id="fop" type="number" min="0" value="0" oninput="updTot()" style="-moz-appearance:textfield;" onwheel="this.blur()"></div>
@@ -2003,13 +2011,7 @@ function renderRepBody(sts){
 
   ${filtSubjs.length?`<div class="rcard"><div class="rttl">Просечен успех по наставни предмети</div>${subjHTML}</div>`:''}
 
-  ${(polData.length||etnData.length)?'<div class="rep-duo">'+
-    '<div class="rcard" style="margin-bottom:0;"><div class="rttl">Просечен успех по пол</div>'+(polData.length?polData.map(p=>hbar(p.lbl,p.a,maxPol,p.f,p.cnt)).join(''):'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>')+'</div>'+
-    '<div class="rcard" style="margin-bottom:0;"><div class="rttl">Просечен успех по етничка припадност</div>'+(etnData.length?etnData.map(e=>hbar(e.lbl,e.a,maxEtn,e.f,e.cnt)).join(''):'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>')+'</div></div>':''}
-
-  <div class="rcard">
-    <div class="rttl">Просечен успех по пол и етничка припадност</div>
-    ${comboAvgHTML||'<div style="font-size:13px;color:var(--tx3);">Нема доволно податоци.</div>'}
+  '}
   </div>
 
   ${(polAbs.length||etnAbs.length)?'<div class="rep-duo">'+
