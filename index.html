@@ -1815,7 +1815,7 @@ function renderRepBody(sts){
   const maxPol=Math.max(...polData.map(p=>p.a||0),0.01);
   const maxEtn=Math.max(...etnData.map(e=>e.a||0),0.01);
   function hbar(lbl,a,maxV,fill,cnt){
-    const pct=a?bw(Math.round((a/maxV)*100)):0;const gs2=gStyle(a);
+    const pct=a?bw(Math.round((a/5)*100)):0;const gs2=gStyle(a);
     return'<div class="brow"><span class="blbl">'+lbl+' <span style="font-size:10px;color:var(--tx3);">('+cnt+')</span></span><div class="btrk"><div class="bfil" style="width:'+pct+'%;background:'+fill+';opacity:.8;"></div></div><span class="bval" style="color:'+gs2.c+';">'+(a?a.toFixed(2):'—')+'</span></div>';
   }
 
