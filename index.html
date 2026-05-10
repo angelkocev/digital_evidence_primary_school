@@ -1267,10 +1267,9 @@ function buildDemoCharts(sts){
     const visible=cats.filter(c=>c.cnt>0).sort((a,b)=>b.cnt-a.cnt);
     if(!visible.length)return'';
     const total=visible.reduce((a,c)=>a+c.cnt,0);
-    const maxCnt=visible[0].cnt;
     const rows=visible.map(c=>{
       const pct=(c.cnt/total*100).toFixed(2);
-      const w=Math.round((c.cnt/maxCnt)*100);
+      const w=Math.round((c.cnt/total)*100);
       return'<div style="margin-bottom:8px;">'+
         '<div style="display:flex;justify-content:space-between;margin-bottom:3px;">'+
           '<span style="font-size:11px;color:var(--tx2);">'+c.lbl+'</span>'+
@@ -1299,10 +1298,9 @@ function buildDemoChartsHbar(sts){
     const visible=cats.filter(c=>c.cnt>0).sort((a,b)=>b.cnt-a.cnt);
     if(!visible.length)return'';
     const total=visible.reduce((a,c)=>a+c.cnt,0);
-    const maxCnt=visible[0].cnt;
     const rows=visible.map(c=>{
       const pct=(c.cnt/total*100).toFixed(2);
-      const w=Math.round((c.cnt/maxCnt)*100);
+      const w=Math.round((c.cnt/total)*100);
       return'<div style="margin-bottom:8px;">'+
         '<div style="display:flex;justify-content:space-between;margin-bottom:3px;">'+
           '<span style="font-size:11px;color:var(--tx2);">'+c.lbl+'</span>'+
