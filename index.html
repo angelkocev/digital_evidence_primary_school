@@ -2481,21 +2481,20 @@ function renderAdmin(){
 
   ${buildDemoChartsHbar(sts)}
 
-  <div class="rep-duo">
-    <div class="rcard" style="margin-bottom:0;">
-      <div class="rttl">Успех — IV–IX одделение (бројчано)</div>
-      ${buildUspehChart(sts.filter(s=>s._odd>3))}
-    </div>
-    ${(()=>{if(!(classListNumeric.length))return'<div class="rcard" style="margin-bottom:0;"></div>';return `<div class="rcard" style="margin-bottom:0;">
-      <div class="rttl">Просечен успех по паралелка (IV–IX)</div>
-      ${classListNumericAvg.map(c=>{
-        const a=c.okAvgs.length?c.okAvgs.reduce((x,y)=>x+y,0)/c.okAvgs.length:null;
-        const pct=a?bw(Math.round((a/maxClassAvg)*100)):0;
-        const gs2=gStyle(a);
-        return'<div class="brow"><span class="blbl" style="width:80px;">'+c.par+' <span style="font-size:10px;color:var(--tx3);">('+c.sts.length+')</span></span><div class="btrk"><div class="bfil" style="width:'+pct+'%;background:'+gs2.bar+';opacity:.85;"></div></div><span class="bval" style="color:'+gs2.c+';">'+(a?a.toFixed(2):'—')+'</span></div>';
-      }).join('')||'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>'}
-    </div>`;})()}
+  <div class="rcard">
+    <div class="rttl">Успех — IV–IX одделение (бројчано)</div>
+    ${buildUspehChart(sts.filter(s=>s._odd>3))}
   </div>
+
+  ${(()=>{if(!(classListNumeric.length))return'';return `<div class="rcard">
+    <div class="rttl">Просечен успех по паралелка (IV–IX)</div>
+    ${classListNumericAvg.map(c=>{
+      const a=c.okAvgs.length?c.okAvgs.reduce((x,y)=>x+y,0)/c.okAvgs.length:null;
+      const pct=a?bw(Math.round((a/maxClassAvg)*100)):0;
+      const gs2=gStyle(a);
+      return'<div class="brow"><span class="blbl" style="width:80px;">'+c.par+' <span style="font-size:10px;color:var(--tx3);">('+c.sts.length+')</span></span><div class="btrk"><div class="bfil" style="width:'+pct+'%;background:'+gs2.bar+';opacity:.85;"></div></div><span class="bval" style="color:'+gs2.c+';">'+(a?a.toFixed(2):'—')+'</span></div>';
+    }).join('')||'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>'}
+  </div>`;})()}
 
   <div class="rcard">
     <div class="rttl">Изостаноци по паралелка</div>
