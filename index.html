@@ -823,6 +823,16 @@ const GRADE_OPTS_OPISNO=['I ниво','II ниво','III ниво','/'];
 const MERKI_LIST=['Усна опомена','Писмена опомена','Укор','Преместување во друга паралелка','Добро поведение','Незадоволително поведение'];
 const ETN_ORDER=['Македонец','Албанец','Ром','Србин','Турчин','Влав','Евреин','Бошњак','Останато'];
 
+const POL_ORDER=['М','Ж'];
+function avgPolEtnSort(a,b){
+  const [pa,ea]=a.split(' - ');
+  const [pb,eb]=b.split(' - ');
+  const polCmp=POL_ORDER.indexOf(pa)-POL_ORDER.indexOf(pb);
+  if(polCmp!==0)return polCmp;
+  return ETN_ORDER.indexOf(ea)-ETN_ORDER.indexOf(eb);
+}
+
+
 // Комбинирани паралелки — клуч: паралелка, вредност: можни одделенија
 const COMBINED_CLASSES={
   'I, V одделение ПУ с. Војшанци':[1,5],
