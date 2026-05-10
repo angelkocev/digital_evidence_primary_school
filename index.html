@@ -184,7 +184,7 @@ body{font-family:var(--F);color:var(--tx);background:var(--bg);font-size:14px;pa
 .dfil{height:100%;border-radius:5px;position:absolute;left:0;top:0;}
 .dcnt{font-size:11px;color:var(--tx3);min-width:64px;text-align:right;}
 .crow{display:flex;align-items:center;gap:8px;margin-bottom:7px;}
-.clbl{font-size:11px;width:260px;flex-shrink:0;color:var(--tx2);white-space:normal;overflow:visible;text-overflow:unset;line-height:1.35;}
+.clbl{font-size:12px;width:360px;flex-shrink:0;color:var(--tx2);white-space:normal;overflow:visible;text-overflow:unset;line-height:1.35;}
 .ctrk{flex:1;height:22px;background:var(--bg3);border-radius:5px;position:relative;overflow:hidden;}
 .cfil{height:100%;border-radius:5px;position:absolute;left:0;top:0;display:flex;align-items:center;padding-left:8px;}
 .cval-in{font-size:10px;font-weight:700;color:rgba(255,255,255,.9);white-space:nowrap;}
@@ -2465,7 +2465,7 @@ function renderAdmin(){
   const maxEtnAbs=Math.max(...etnAbsData.map(e=>e.op+e.nop),1);
 
   function hbar(lbl,a,maxV,fill,cnt){
-    const pct=a?bw(Math.round((a/maxV)*100)):0;const gs2=gStyle(a);
+    const pct=a?bw(Math.round((a/5)*100)):0;const gs2=gStyle(a);
     return'<div class="brow"><span class="blbl">'+lbl+(cnt!==undefined?' <span style="font-size:10px;color:var(--tx3);">('+cnt+')</span>':'')+'</span><div class="btrk"><div class="bfil" style="width:'+pct+'%;background:'+fill+';opacity:.8;"></div></div><span class="bval" style="color:'+gs2.c+';">'+(a?a.toFixed(2):'—')+'</span></div>';
   }
   function absHbar(lbl,op,nop,maxV){
