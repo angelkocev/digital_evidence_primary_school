@@ -2888,7 +2888,7 @@ function buildAdminFilters(uchs,odds,pars,mols,fUch,fOdd,fPar,fPol,fEtn,fMol,fNa
   </div>
   <div style="background:var(--bg2);border:1px solid var(--bdr);border-top:none;border-radius:0 0 10px 10px;padding:8px 14px 10px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:1.5rem;">
     <div><div style="${labelStyle}">Пол</div><select id="af-pol" onchange="renderAdmin()" style="${selStyle}"><option value="__svi__">Сите</option><option value="М" ${fPol==='М'?'selected':''}>Машки</option><option value="Ж" ${fPol==='Ж'?'selected':''}>Женски</option></select></div>
-    <div><div style="${labelStyle}">Етничка припадност</div><select id="af-etn" onchange="renderAdmin()" style="${selStyle}"><option value="__svi__">Сите</option>${ETN_ORDER.map(e=>`<option value="${e}" ${fEtn===e?'selected':''}>${e}</option>`).join('')}</select></div>
+    <div><div style="${labelStyle}">Етничка припадност</div><select id="af-etn" onchange="renderAdmin()" style="${selStyle}"><option value="__svi__">Сите</option>${ETN_ORDER.map(e=>'<option value="'+e+'" '+(fEtn===e?'selected':'')+'>'+e+'</option>').join('')}</select></div>
     <div><div style="${labelStyle}">Место на живеење</div><select id="af-mol" onchange="renderAdmin()" style="${selStyle}"><option value="__svi__">Сите</option>${mols.map(m=>`<option value="${m}" ${fMol===m?'selected':''}>${m}</option>`).join('')}</select></div>
   </div>
   <div style="background:var(--bg2);border:1px solid var(--bdr);border-top:none;border-radius:0 0 10px 10px;padding:8px 14px 10px;margin-bottom:1.5rem;">
@@ -2910,10 +2910,7 @@ function gT(id,btn){
   if(id==='rep')renderR();
   if(id==='admin')renderAdmin();
 }
-initAuth();
-</script>
-</html>
-function renderR(){
+initAuth();function renderR(){
   const el=document.getElementById('rwrap');
   const sts=getSts();
   if(!curUch||!curOdd||!curPar||!sts.length){el.innerHTML='<div class="empty-s">Нема ученици за извештај.</div>';return;}
@@ -4323,7 +4320,7 @@ function buildAdminFilters(uchs,odds,pars,mols,fUch,fOdd,fPar,fPol,fEtn,fMol,fNa
   </div>
   <div style="background:var(--bg2);border:1px solid var(--bdr);border-top:none;border-radius:0 0 10px 10px;padding:8px 14px 10px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:1.5rem;">
     <div><div style="${labelStyle}">Пол</div><select id="af-pol" onchange="renderAdmin()" style="${selStyle}"><option value="__svi__">Сите</option><option value="М" ${fPol==='М'?'selected':''}>Машки</option><option value="Ж" ${fPol==='Ж'?'selected':''}>Женски</option></select></div>
-    <div><div style="${labelStyle}">Етничка припадност</div><select id="af-etn" onchange="renderAdmin()" style="${selStyle}"><option value="__svi__">Сите</option>${ETN_ORDER.map(e=>`<option value="${e}" ${fEtn===e?'selected':''}>${e}</option>`).join('')}</select></div>
+    <div><div style="${labelStyle}">Етничка припадност</div><select id="af-etn" onchange="renderAdmin()" style="${selStyle}"><option value="__svi__">Сите</option>${ETN_ORDER.map(e=>'<option value="'+e+'" '+(fEtn===e?'selected':'')+'>'+e+'</option>').join('')}</select></div>
     <div><div style="${labelStyle}">Место на живеење</div><select id="af-mol" onchange="renderAdmin()" style="${selStyle}"><option value="__svi__">Сите</option>${mols.map(m=>`<option value="${m}" ${fMol===m?'selected':''}>${m}</option>`).join('')}</select></div>
   </div>
   <div style="background:var(--bg2);border:1px solid var(--bdr);border-top:none;border-radius:0 0 10px 10px;padding:8px 14px 10px;margin-bottom:1.5rem;">
