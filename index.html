@@ -1909,6 +1909,7 @@ function renderRepBody(sts){
     <div style="overflow-x:auto;">
     <table class="rtbl" style="table-layout:auto;">
       <thead><tr>
+        <th style="width:30px;">Бр.</th>
         <th style="width:165px;">Ученик</th>
         <th style="width:80px;text-align:center;">Оправдани изостаноци</th>
         <th style="width:88px;text-align:center;">Неоправдани изостаноци</th>
@@ -2025,6 +2026,7 @@ function renderRepBody(sts){
         ((isPopraven||isPovtoruvanje)?'<th>Предмети со слаба оценка</th>':'');
 
       return'<table class="rtbl" style="table-layout:auto;"><thead><tr>'+
+        '<th style="width:30px;">Бр.</th>'+
         '<th style="width:155px;">Ученик</th>'+
         '<th style="width:34px;">Пол</th>'+
         '<th style="width:78px;">Етникум</th>'+
@@ -2056,6 +2058,7 @@ function renderRepBody(sts){
         }
 
         return'<tr>'+
+          '<td style="font-family:var(--FD);font-weight:500;color:var(--tx3);text-align:center;">'+(s.rn!=null?s.rn:'—')+'</td>'+
           '<td style="font-family:var(--FC);font-weight:600;">'+s.ime+' '+s.prz+'</td>'+
           '<td><span class="tag '+(s.pol==='М'?'mt':'ft')+'">'+s.pol+'</span></td>'+
           '<td style="color:var(--tx3);">'+(s.etnik||'—')+'</td>'+
@@ -2639,6 +2642,7 @@ function renderAdmin(){
     <div class="rttl" style="color:#F87171;">Ученици кои повторуваат одделение <span style="font-family:var(--FD);font-size:13px;margin-left:6px;">${povtoruvanje.length}</span></div>
     <table class="rtbl" style="table-layout:auto;">
       <thead><tr>
+        <th style="width:30px;">Бр.</th>
         <th style="width:155px;">Ученик</th>
         <th style="width:100px;">Паралелка</th>
         <th style="width:34px;">Пол</th>
@@ -2653,6 +2657,7 @@ function renderAdmin(){
         const ki=katInfo(s.gr||{});
         const slabi=allSubjs(s._odd||curOdd).filter(subj=>Number((s.gr||{})[subj])===1);
         return `<tr>
+          <td style="text-align:center;color:var(--tx3);">${i+1}</td>
           <td style="font-family:var(--FC);font-weight:600;">${s.ime||''} ${s.prz||''}</td>
           <td style="color:var(--tx2);">${ODD_LBL[s._odd]||s._odd||''} · ${s._par||''}</td>
           <td><span class="tag ${s.pol==='М'?'mt':'ft'}">${s.pol||'—'}</span></td>
@@ -2684,7 +2689,8 @@ function renderAdmin(){
         <div class="rttl" style="color:${cfg.col};">${cfg.lbl} <span style="font-family:var(--FD);font-size:13px;margin-left:6px;">${list.length}</span></div>
         <table class="rtbl" style="table-layout:auto;">
           <thead><tr>
-                <th style="width:155px;">Ученик</th>
+            <th style="width:30px;">Бр.</th>
+            <th style="width:155px;">Ученик</th>
             <th style="width:100px;">Паралелка</th>
             <th style="width:34px;">Пол</th>
             <th style="width:78px;">Етникум</th>
@@ -2708,6 +2714,7 @@ function renderAdmin(){
               extraCols='<td><div style="display:flex;gap:4px;flex-wrap:wrap;">'+(slabi.length?slabi.map(subj=>'<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;background:rgba(248,113,113,.15);color:#F87171;">'+subj+'</span>').join(''):'<span style="font-size:11px;color:var(--tx3);">—</span>')+'</div></td>';
             }
             return`<tr>
+              <td style="font-family:var(--FD);font-weight:500;color:var(--tx3);text-align:center;">${s.rn!=null?s.rn:'—'}</td>
               <td style="font-family:var(--FC);font-weight:600;">${s.ime} ${s.prz}</td>
               <td style="color:var(--tx2);">${ODD_LBL[s._odd]||s._odd} · ${s._par}</td>
               <td><span class="tag ${s.pol==='М'?'mt':'ft'}">${s.pol}</span></td>
