@@ -381,14 +381,6 @@ input#fop::-webkit-outer-spin-button,input#fop::-webkit-inner-spin-button,input#
     </div>
   </div>
 
-  ${(polData.length||etnData.length)?'<div class="rep-duo">'+
-    '<div class="rcard" style="margin-bottom:0;"><div class="rttl">Просечен успех по пол</div>'+(polData.length?polData.map(p=>hbar(p.lbl,p.a,maxPol,p.f,p.cnt)).join(''):'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>')+'</div>'+
-    '<div class="rcard" style="margin-bottom:0;"><div class="rttl">Просечен успех по етничка припадност</div>'+(etnData.length?etnData.map(e=>hbar(e.lbl,e.a,maxEtn,e.f,e.cnt)).join(''):'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>')+'</div></div>':''}
-
-  <div class="rcard">
-    <div class="rttl">Просечен успех по пол и етничка припадност</div>
-    ${comboAvgHTML||'<div style="font-size:13px;color:var(--tx3);">Нема доволно податоци.</div>
-
   <div class="sl">Изостаноци</div>
   <div class="abs-trio">
     <div class="atile op"><div class="al">Оправдани</div><input id="fop" type="number" min="0" value="0" oninput="updTot()" style="-moz-appearance:textfield;" onwheel="this.blur()"></div>
@@ -2011,7 +2003,13 @@ function renderRepBody(sts){
 
   ${filtSubjs.length?`<div class="rcard"><div class="rttl">Просечен успех по наставни предмети</div>${subjHTML}</div>`:''}
 
-  '}
+  ${(polData.length||etnData.length)?'<div class="rep-duo">'+
+    '<div class="rcard" style="margin-bottom:0;"><div class="rttl">Просечен успех по пол</div>'+(polData.length?polData.map(p=>hbar(p.lbl,p.a,maxPol,p.f,p.cnt)).join(''):'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>')+'</div>'+
+    '<div class="rcard" style="margin-bottom:0;"><div class="rttl">Просечен успех по етничка припадност</div>'+(etnData.length?etnData.map(e=>hbar(e.lbl,e.a,maxEtn,e.f,e.cnt)).join(''):'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>')+'</div></div>':''}
+
+  <div class="rcard">
+    <div class="rttl">Просечен успех по пол и етничка припадност</div>
+    ${comboAvgHTML||'<div style="font-size:13px;color:var(--tx3);">Нема доволно податоци.</div>'}
   </div>
 
   ${(polAbs.length||etnAbs.length)?'<div class="rep-duo">'+
@@ -2591,6 +2589,30 @@ function renderAdmin(){
 
   ${buildDemoChartsHbar(sts)}
 
+  <!-- Просечен успех: по пол | по етникум -->
+  <div class="rep-duo">
+    <div class="rcard" style="margin-bottom:0;">
+      <div class="rttl">Просечен успех по пол</div>
+      ${polAvgData.length?polAvgData.map(p=>hbar(p.lbl,p.a,maxPolAvg,p.f,p.cnt)).join(''):'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>'}
+    </div>
+    <div class="rcard" style="margin-bottom:0;">
+      <div class="rttl">Просечен успех по етничка припадност</div>
+      ${etnAvgData.length?etnAvgData.map(e=>hbar(e.lbl,e.a,maxEtnAvg,e.f,e.cnt)).join(''):'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>'}
+    </div>
+  </div>
+
+  <div class="rcard">
+    <div class="rttl">Просечен успех по пол и етничка припадност</div>
+    ${comboList.map(([key,val])=>{
+      const a=comboAvgVal(val)||null;
+      const pct=a?bw(Math.round((a/maxComboAvg)*100)):0;
+      const fill=key.startsWith('Машко')?'#60A5FA':'#F9A8D4';
+      const aStr=a?a.toFixed(2):'—';
+      return'<div class="crow"><span class="clbl">'+key+' <span style="font-size:10px;color:var(--tx3);">('+val.cnt+')</span></span><div class="ctrk"><div class="cfil" style="width:'+pct+'%;background:'+fill+';opacity:.8;">'+(pct>20?'<span class="cval-in">'+aStr+'</span>':'')+'</div>'+(pct<=20?'<span class="cval-out" style="left:'+(pct+2)+'%;">'+aStr+'</span>':'')+'</div></div>';
+    }).join('')||'<div style="font-size:13px;color:var(--tx3);">Нема доволно податоци.</div>'}
+  </div>
+
+
   <div class="rep-duo">
     <div class="rcard" style="margin-bottom:0;">
       <div class="rttl">Успех — IV–IX одделение (бројчано)</div>
@@ -2686,29 +2708,6 @@ function renderAdmin(){
     </table>
   </div>`;
 })()}
-
-  <!-- Просечен успех: по пол | по етникум -->
-  <div class="rep-duo">
-    <div class="rcard" style="margin-bottom:0;">
-      <div class="rttl">Просечен успех по пол</div>
-      ${polAvgData.length?polAvgData.map(p=>hbar(p.lbl,p.a,maxPolAvg,p.f,p.cnt)).join(''):'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>'}
-    </div>
-    <div class="rcard" style="margin-bottom:0;">
-      <div class="rttl">Просечен успех по етничка припадност</div>
-      ${etnAvgData.length?etnAvgData.map(e=>hbar(e.lbl,e.a,maxEtnAvg,e.f,e.cnt)).join(''):'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>'}
-    </div>
-  </div>
-
-  <div class="rcard">
-    <div class="rttl">Просечен успех по пол и етничка припадност</div>
-    ${comboList.map(([key,val])=>{
-      const a=comboAvgVal(val)||null;
-      const pct=a?bw(Math.round((a/maxComboAvg)*100)):0;
-      const fill=key.startsWith('Машко')?'#60A5FA':'#F9A8D4';
-      const aStr=a?a.toFixed(2):'—';
-      return'<div class="crow"><span class="clbl">'+key+' <span style="font-size:10px;color:var(--tx3);">('+val.cnt+')</span></span><div class="ctrk"><div class="cfil" style="width:'+pct+'%;background:'+fill+';opacity:.8;">'+(pct>20?'<span class="cval-in">'+aStr+'</span>':'')+'</div>'+(pct<=20?'<span class="cval-out" style="left:'+(pct+2)+'%;">'+aStr+'</span>':'')+'</div></div>';
-    }).join('')||'<div style="font-size:13px;color:var(--tx3);">Нема доволно податоци.</div>'}
-  </div>
 
   <!-- Изостаноци: по пол | по етникум -->
   <div class="rep-duo">
