@@ -2634,6 +2634,34 @@ function renderAdmin(){
     }).join('')||'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>'}
   </div>`;})()}
 
+
+
+  <!-- Изостаноци: по пол | по етникум -->
+  <div class="rep-duo">
+    <div class="rcard" style="margin-bottom:0;">
+      <div class="rttl">Изостаноци по пол</div>
+      ${polAbsData.length?polAbsData.map(p=>absHbar(p.lbl,p.op,p.nop,maxPolAbs)).join(''):'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>'}
+    </div>
+    <div class="rcard" style="margin-bottom:0;">
+      <div class="rttl">Изостаноци по етничка припадност</div>
+      ${etnAbsData.length?etnAbsData.map(e=>absHbar(e.lbl,e.op,e.nop,maxEtnAbs)).join(''):'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>'}
+    </div>
+  </div>
+
+  <div class="rcard">
+    <div class="rttl">Изостаноци по пол и етничка припадност</div>
+    <div style="display:flex;gap:16px;margin-bottom:1rem;">
+      <div style="display:flex;align-items:center;gap:5px;font-size:10px;font-weight:700;text-transform:uppercase;color:var(--teal);"><span style="width:10px;height:10px;border-radius:2px;background:var(--teal);display:inline-block;"></span>Оправдани</div>
+      <div style="display:flex;align-items:center;gap:5px;font-size:10px;font-weight:700;text-transform:uppercase;color:var(--rose);"><span style="width:10px;height:10px;border-radius:2px;background:var(--rose);display:inline-block;"></span>Неоправдани</div>
+    </div>
+    ${(()=>{
+      function absSortKeyA(key){const polPart=key.startsWith('Машко')?0:1;const etnik=key.split(' · ')[1]||'';const ei=ETN_ORDER.indexOf(etnik);return(ei>=0?ei:99)*2+polPart;}
+      const sorted=[...comboList].sort((a,b)=>absSortKeyA(a[0])-absSortKeyA(b[0])).filter(([,v])=>v.ops+v.nops>0);
+      const mxA=Math.max(...sorted.map(([,v])=>v.ops+v.nops),1);
+      return sorted.map(([key,val])=>absHbar(key,val.ops,val.nops,mxA)).join('')||'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>';
+    })()}
+  </div>
+
   <div class="rcard">
     <div class="rttl">Изостаноци по паралелка</div>
     <table class="rtbl" style="table-layout:fixed;">
@@ -2708,32 +2736,6 @@ function renderAdmin(){
     </table>
   </div>`;
 })()}
-
-  <!-- Изостаноци: по пол | по етникум -->
-  <div class="rep-duo">
-    <div class="rcard" style="margin-bottom:0;">
-      <div class="rttl">Изостаноци по пол</div>
-      ${polAbsData.length?polAbsData.map(p=>absHbar(p.lbl,p.op,p.nop,maxPolAbs)).join(''):'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>'}
-    </div>
-    <div class="rcard" style="margin-bottom:0;">
-      <div class="rttl">Изостаноци по етничка припадност</div>
-      ${etnAbsData.length?etnAbsData.map(e=>absHbar(e.lbl,e.op,e.nop,maxEtnAbs)).join(''):'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>'}
-    </div>
-  </div>
-
-  <div class="rcard">
-    <div class="rttl">Изостаноци по пол и етничка припадност</div>
-    <div style="display:flex;gap:16px;margin-bottom:1rem;">
-      <div style="display:flex;align-items:center;gap:5px;font-size:10px;font-weight:700;text-transform:uppercase;color:var(--teal);"><span style="width:10px;height:10px;border-radius:2px;background:var(--teal);display:inline-block;"></span>Оправдани</div>
-      <div style="display:flex;align-items:center;gap:5px;font-size:10px;font-weight:700;text-transform:uppercase;color:var(--rose);"><span style="width:10px;height:10px;border-radius:2px;background:var(--rose);display:inline-block;"></span>Неоправдани</div>
-    </div>
-    ${(()=>{
-      function absSortKeyA(key){const polPart=key.startsWith('Машко')?0:1;const etnik=key.split(' · ')[1]||'';const ei=ETN_ORDER.indexOf(etnik);return(ei>=0?ei:99)*2+polPart;}
-      const sorted=[...comboList].sort((a,b)=>absSortKeyA(a[0])-absSortKeyA(b[0])).filter(([,v])=>v.ops+v.nops>0);
-      const mxA=Math.max(...sorted.map(([,v])=>v.ops+v.nops),1);
-      return sorted.map(([key,val])=>absHbar(key,val.ops,val.nops,mxA)).join('')||'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>';
-    })()}
-  </div>
 
   <!-- Педагошки мерки + Дополнителни белешки -->
   <div class="rep-duo">
