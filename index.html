@@ -242,6 +242,18 @@ body{font-family:var(--F);color:var(--tx);background:var(--bg);font-size:14px;pa
 .save-indicator{font-size:11px;color:var(--teal);display:none;}
 .save-indicator.show{display:inline;}
 input#fop::-webkit-outer-spin-button,input#fop::-webkit-inner-spin-button,input#fnp::-webkit-outer-spin-button,input#fnp::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+
+.combo-grid-4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;}
+@media (max-width:1200px){
+  .combo-grid-4{grid-template-columns:repeat(3,minmax(0,1fr));}
+}
+@media (max-width:900px){
+  .combo-grid-4{grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+@media (max-width:640px){
+  .combo-grid-4{grid-template-columns:1fr;}
+}
+
 </style>
 
 </head>
