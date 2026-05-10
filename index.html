@@ -40,7 +40,7 @@ input#fnp::-webkit-outer-spin-button,input#fnp::-webkit-inner-spin-button{-webki
 input[data-f]::-webkit-outer-spin-button,input[data-f]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
 input[data-f]{-moz-appearance:textfield;}
 body{font-family:var(--F);color:var(--tx);background:var(--bg);font-size:14px;padding:1rem 1.5rem 3rem;}
-.app{max-width:1120px;margin:0 auto;}
+.app{max-width:1180px;margin:0 auto;}
 
 .hdr{display:flex;align-items:flex-start;justify-content:space-between;padding:1.2rem 0 1rem;border-bottom:1px solid var(--bdr);margin-bottom:1.75rem;gap:12px;flex-wrap:wrap;}
 .eyebrow{font-size:10px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:var(--acc);margin-bottom:4px;}
@@ -132,7 +132,7 @@ body{font-family:var(--F);color:var(--tx);background:var(--bg);font-size:14px;pa
 .sc-info{flex:1;min-width:200px;}
 .sc-name{font-family:var(--FC);font-size:14px;font-weight:600;color:var(--tx);}
 .sc-meta{font-size:11px;color:var(--tx3);margin-top:2px;}
-.sc-merki{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px;}
+.sc-merki{display:flex;gap:4px;flex-wrap:wrap;}
 .sc-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
 .pill{font-size:11px;font-weight:700;padding:3px 10px;border-radius:99px;}
 .sc-acts{display:flex;gap:5px;}
@@ -1542,16 +1542,16 @@ function renderR(){
     const p=bw(Math.round((a/5)*100));
 
     return `
-      <div style="display:grid;grid-template-columns:minmax(320px,420px) 1fr 48px;gap:12px;align-items:start;margin-bottom:12px;">
+      <div style="display:grid;grid-template-columns:300px 1fr 48px;gap:14px;align-items:center;margin-bottom:12px;">
         <div title="${s}" style="font-size:12px;color:var(--tx2);line-height:1.35;white-space:normal;overflow:visible;text-overflow:unset;word-break:normal;">
           ${dName(s)}
         </div>
 
-        <div style="height:10px;background:var(--bg3);border-radius:6px;position:relative;margin-top:5px;overflow:hidden;">
+        <div style="height:10px;background:var(--bg3);border-radius:6px;position:relative;overflow:hidden;">
           <div style="width:${p}%;height:100%;background:${gs2.bar};opacity:.85;border-radius:6px;"></div>
         </div>
 
-        <div style="font-family:var(--FD);font-size:12px;font-weight:700;color:${gs2.c};text-align:right;margin-top:-1px;">
+        <div style="font-family:var(--FD);font-size:12px;font-weight:700;color:${gs2.c};text-align:right;">
           ${a.toFixed(2)}
         </div>
       </div>
@@ -1764,12 +1764,12 @@ function renderRepBody(sts){
     // Барот секогаш се скалира според максимум 5.00
     const p=bw(Math.round((a/5)*100));
 
-    return '<div style="display:grid;grid-template-columns:minmax(340px,440px) 1fr 48px;gap:12px;align-items:start;margin-bottom:12px;">'+
+    return '<div style="display:grid;grid-template-columns:300px 1fr 48px;gap:14px;align-items:center;margin-bottom:12px;">'+
       '<div title="'+s+'" style="font-size:12px;color:var(--tx2);line-height:1.35;white-space:normal;overflow:visible;text-overflow:unset;word-break:normal;">'+dName(s)+'</div>'+
-      '<div style="height:10px;background:var(--bg3);border-radius:6px;position:relative;margin-top:5px;overflow:hidden;">'+
+      '<div style="height:10px;background:var(--bg3);border-radius:6px;position:relative;overflow:hidden;">'+
         '<div style="width:'+p+'%;height:100%;background:'+gs2.bar+';opacity:.85;border-radius:6px;"></div>'+
       '</div>'+
-      '<div style="font-family:var(--FD);font-size:12px;font-weight:700;color:'+gs2.c+';text-align:right;margin-top:-1px;">'+a.toFixed(2)+'</div>'+
+      '<div style="font-family:var(--FD);font-size:12px;font-weight:700;color:'+gs2.c+';text-align:right;">'+a.toFixed(2)+'</div>'+
     '</div>';
   }).join('');
 
