@@ -1758,8 +1758,19 @@ function renderRepBody(sts){
   }
 
   const subjHTML=filtSubjs.map(s=>{
-    const a=sd[s].sum/sd[s].cnt,gs2=gStyle(a),p=bw(Math.round((a/maxSA)*100));
-    return'<div class="brow"><span class="blbl" title="'+s+'">'+dName(s)+'</span><div class="btrk"><div class="bfil" style="width:'+p+'%;background:'+gs2.bar+';opacity:.85;"></div></div><span class="bval" style="color:'+gs2.c+';">'+a.toFixed(2)+'</span></div>';
+    const a=sd[s].sum/sd[s].cnt;
+    const gs2=gStyle(a);
+
+    // Барот секогаш се скалира според максимум 5.00
+    const p=bw(Math.round((a/5)*100));
+
+    return '<div style="display:grid;grid-template-columns:minmax(340px,440px) 1fr 48px;gap:12px;align-items:start;margin-bottom:12px;">'+
+      '<div title="'+s+'" style="font-size:12px;color:var(--tx2);line-height:1.35;white-space:normal;overflow:visible;text-overflow:unset;word-break:normal;">'+dName(s)+'</div>'+
+      '<div style="height:10px;background:var(--bg3);border-radius:6px;position:relative;margin-top:5px;overflow:hidden;">'+
+        '<div style="width:'+p+'%;height:100%;background:'+gs2.bar+';opacity:.85;border-radius:6px;"></div>'+
+      '</div>'+
+      '<div style="font-family:var(--FD);font-size:12px;font-weight:700;color:'+gs2.c+';text-align:right;margin-top:-1px;">'+a.toFixed(2)+'</div>'+
+    '</div>';
   }).join('');
 
   const comboAvgHTML=comboList.map(([key,val])=>{
