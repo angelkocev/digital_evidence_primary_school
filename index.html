@@ -1445,12 +1445,12 @@ function buildRealizacijaCharts(uciliste,oddelenie,paralelka){
       '<td style="text-align:center;font-weight:600;color:#34D399;">'+real+'</td>'+
       '<td style="text-align:center;font-weight:600;color:'+(nereal>0?'#F87171':'var(--tx3)')+';">'+nereal+'</td>'+
       (totDop+totDod>0?'<td style="text-align:center;color:#60A5FA;">'+dop+'</td><td style="text-align:center;color:#A78BFA;">'+dod+'</td>':'')+
-      '<td style="padding:4px 8px;min-width:120px;">'+
+      '<td style="padding:4px 8px;min-width:160px;">'+
         '<div style="display:flex;align-items:center;gap:6px;">'+
           '<div style="flex:1;height:8px;background:var(--bg3);border-radius:4px;position:relative;">'+
             '<div style="position:absolute;left:0;top:0;height:100%;width:'+w+'%;background:'+(pct>=100?'#34D399':'#60A5FA')+';border-radius:4px;opacity:.85;"></div>'+
           '</div>'+
-          '<span style="font-size:10px;font-weight:700;color:'+iconCol+';min-width:32px;text-align:right;">'+icon+' '+pct+'%</span>'+
+          '<span style="font-size:10px;font-weight:700;color:'+iconCol+';min-width:40px;text-align:right;">'+icon+' '+pct+'%</span>'+
         '</div>'+
       '</td>'+
     '</tr>';
@@ -1465,11 +1465,11 @@ function buildRealizacijaCharts(uciliste,oddelenie,paralelka){
     '<div style="overflow-x:auto;"><table class="rtbl" style="table-layout:auto;">'+
       '<thead><tr>'+
         '<th>Предмет</th>'+
-        '<th style="width:50px;text-align:center;">Фонд</th>'+
-        '<th style="width:65px;text-align:center;color:#34D399;">Реал.</th>'+
-        '<th style="width:65px;text-align:center;color:#F87171;">Нереал.</th>'+
-        (totDop+totDod>0?'<th style="width:55px;text-align:center;color:#60A5FA;">Доп.</th><th style="width:55px;text-align:center;color:#A78BFA;">Дод.</th>':'')+
-        '<th style="min-width:130px;text-align:center;">% Реализација</th>'+
+        '<th style="width:60px;text-align:center;">Фонд</th>'+
+        '<th style="width:100px;text-align:center;color:#34D399;">Реализирани часови</th>'+
+        '<th style="width:110px;text-align:center;color:#F87171;">Нереализирани часови</th>'+
+        (totDop+totDod>0?'<th style="width:100px;text-align:center;color:#60A5FA;">Дополнителна настава</th><th style="width:85px;text-align:center;color:#A78BFA;">Додатна настава</th>':'')+
+        '<th style="min-width:160px;text-align:center;">% Реализација</th>'+
       '</tr></thead>'+
       '<tbody>'+scorecardRows+'</tbody>'+
     '</table></div>'+
