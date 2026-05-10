@@ -6,9 +6,6 @@
 <title>Евиденција на паралелка 2025/2026</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=Playfair+Display:wght@500;600&family=Noto+Serif:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<!-- ===================================================== -->
-<!-- ======================= CSS ========================= -->
-<!-- ===================================================== -->
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -258,14 +255,9 @@ input#fop::-webkit-outer-spin-button,input#fop::-webkit-inner-spin-button,input#
 }
 
 </style>
-<!-- ===================== END CSS ======================= -->
 
 </head>
 <body>
-
-<!-- ===================================================== -->
-<!-- ===================== HTML BODY ===================== -->
-<!-- ===================================================== -->
 
 <!-- LOGIN SCREEN -->
 <div id="login-screen" class="login-wrap" style="display:none;">
@@ -446,13 +438,7 @@ input#fop::-webkit-outer-spin-button,input#fop::-webkit-inner-spin-button,input#
 </div>
 </div>
 
-<!-- =================== END HTML BODY =================== -->
-
-<!-- ===================================================== -->
-<!-- ===================== JAVASCRIPT ==================== -->
-<!-- ===================================================== -->
 <script>
-//#region SUPABASE CONFIGURATION
 /* ══ SUPABASE ══ */
 const SUPA_URL='https://misgjrmpotlzjtgrujkp.supabase.co';
 const SUPA_KEY='sb_publishable_s4v_-I0V4341WYPyD01Sfg_OpJiSp5R';
@@ -512,9 +498,6 @@ async function doLogout(){
   showLoginScreen();
 }
 
-//endregion
-
-//#region AUTH SESSION
 /* ── SESSION ── */
 let authInitialized=false;
 async function initAuth(){
@@ -622,9 +605,6 @@ function showSaveInd(){
   setTimeout(()=>el.classList.remove('show'),2000);
 }
 
-//endregion
-
-//#region SUPABASE DATA SYNC
 /* ── SUPABASE DATA SYNC ── */
 async function loadFromSupabase(){
   if(!currentUser)return;
@@ -725,9 +705,6 @@ async function persistReal(k,subj,vals){
   await sb.from('realizacija').upsert({teacher_id:currentUser.id,uciliste:uch,oddelenie:parseInt(odd),paralelka:par,predmet:subj,real:vals.real||0,nereal:vals.nereal||0,dop:vals.dop||0,dod:vals.dod||0},{onConflict:'teacher_id,uciliste,oddelenie,paralelka,predmet'});
   showSaveInd();
 }
-//endregion
-
-//#region SCHOOL STRUCTURE DATA
 const UCH_DATA={
   C:{name:'Централно училиште',odds:{
     1:['I-а','I-б','I-в'],2:['II-а','II-б','II-в'],3:['III-а','III-б','III-в'],
@@ -853,9 +830,6 @@ const PROG={
   ],
 };
 
-//endregion
-
-//#region GLOBAL OPTIONS AND CONSTANTS
 const GRADE_OPTS=[5,4,3,2,1,'/'];
 const GRADE_OPTS_OPISNO=['I ниво','II ниво','III ниво','/'];
 const MERKI_LIST=['Усна опомена','Писмена опомена','Укор','Преместување во друга паралелка','Добро поведение','Незадоволително поведение'];
@@ -886,9 +860,6 @@ function getStudentOdd(s){
 
 
 
-//endregion
-
-//#region GLOBAL STATE AND BASIC HELPERS
 let curUch='',curOdd=0,curPar='';
 let allData={};
 let electiveNames={};
@@ -922,9 +893,6 @@ function buildParMenu(){
 }
 function onParChange(){curPar=document.getElementById('sel-par').value;renderL();upBadge();}
 
-//endregion
-
-//#region GRADES ANALYSIS HELPERS
 /* ══ ОЦЕНКИ АНАЛИЗА ══ */
 const OPISNO_VALS=['I ниво','II ниво','III ниво'];
 function isOpisnoGr(gr){
@@ -2226,6 +2194,58 @@ function buildUspehChart(stsList){
   return'<svg width="100%" viewBox="0 0 '+svgW+' '+(10+barH+totalLabelH+20)+'" style="overflow:visible;">'+bars+'</svg>';
 }
 
+
+function buildOpisnoUspehChart(stsList){
+  const cats=[
+    {lbl:'I ниво',c:'#34D399',f:'rgba(52,211,153,.15)',fn:s=>{
+      const gr=s.gr||{};
+      if(gradeStatus(gr)!=='ok'||!isOpisnoGr(gr))return false;
+      const vals=Object.values(gr).filter(v=>OPISNO_VALS.includes(String(v)));
+      return vals.length&&vals.every(v=>v==='I ниво');
+    }},
+    {lbl:'II ниво',c:'#60A5FA',f:'rgba(96,165,250,.15)',fn:s=>{
+      const gr=s.gr||{};
+      if(gradeStatus(gr)!=='ok'||!isOpisnoGr(gr))return false;
+      const vals=Object.values(gr).filter(v=>OPISNO_VALS.includes(String(v)));
+      return vals.length&&vals.every(v=>v==='II ниво');
+    }},
+    {lbl:'III ниво',c:'#FBBF24',f:'rgba(251,191,36,.15)',fn:s=>{
+      const gr=s.gr||{};
+      if(gradeStatus(gr)!=='ok'||!isOpisnoGr(gr))return false;
+      const vals=Object.values(gr).filter(v=>OPISNO_VALS.includes(String(v)));
+      return vals.length&&vals.every(v=>v==='III ниво');
+    }},
+    {lbl:'Мешано ниво',c:'#A78BFA',f:'rgba(167,139,250,.15)',fn:s=>{
+      const gr=s.gr||{};
+      if(gradeStatus(gr)!=='ok'||!isOpisnoGr(gr))return false;
+      const vals=Object.values(gr).filter(v=>OPISNO_VALS.includes(String(v)));
+      return vals.length&&!vals.every(v=>v==='I ниво')&&!vals.every(v=>v==='II ниво')&&!vals.every(v=>v==='III ниво');
+    }},
+    {lbl:'Делумно оценети',c:'#F59E0B',f:'rgba(245,158,11,.15)',fn:s=>gradeStatus(s.gr||{})==='delumno'},
+    {lbl:'Целосно неоценети',c:'#94A3B8',f:'rgba(148,163,184,.15)',fn:s=>{const st=gradeStatus(s.gr||{});return st==='celoso'||st==='no-data';}},
+  ].map(c=>({...c,cnt:stsList.filter(c.fn).length})).filter(c=>c.cnt>0);
+  if(!cats.length)return'<div style="font-size:13px;color:var(--tx3);padding:8px 0;">Нема ученици за прикажување.</div>';
+  const maxCnt=Math.max(...cats.map(c=>c.cnt),1);
+  const barH=140;
+  const bw2=Math.floor(Math.min(54,(320/Math.max(cats.length,1))-10));
+  const svgW=Math.max(280,cats.length*(bw2+12)+20);
+  const bars=cats.map((c,i)=>{
+    const bHeight=Math.max(c.cnt>0?4:0,Math.round((c.cnt/maxCnt)*barH));
+    const x=14+i*(bw2+12);
+    const y=10+barH-bHeight;
+    const lines=c.lbl.split(' ');
+    const textY=10+barH+14;
+    return'<rect x="'+x+'" y="'+y+'" width="'+bw2+'" height="'+bHeight+'" rx="4" fill="'+c.c+'" opacity=".8"/>'+
+      '<rect x="'+x+'" y="'+y+'" width="'+bw2+'" height="'+bHeight+'" rx="4" fill="'+c.f+'"/>'+
+      '<rect x="'+x+'" y="'+y+'" width="'+bw2+'" height="'+bHeight+'" rx="4" fill="'+c.c+'" opacity=".55"/>'+
+      '<text x="'+(x+bw2/2)+'" y="'+(y-5)+'" text-anchor="middle" font-size="11" font-weight="600" fill="'+c.c+'" font-family="DM Sans,sans-serif">'+c.cnt+'</text>'+
+      lines.map((ln,li)=>'<text x="'+(x+bw2/2)+'" y="'+(textY+li*13)+'" text-anchor="middle" font-size="9" fill="#A0AAB8" font-family="DM Sans,sans-serif">'+ln+'</text>').join('');
+  }).join('');
+  const totalLabelH=cats.reduce((max,c)=>Math.max(max,c.lbl.split(' ').length),1)*13+8;
+  return'<svg width="100%" viewBox="0 0 '+svgW+' '+(10+barH+totalLabelH+20)+'" style="overflow:visible;">'+bars+'</svg>';
+}
+
+
 function updateUspeh(){
   const polF=document.getElementById('uf-pol');
   const etnF=document.getElementById('uf-etn');
@@ -2569,9 +2589,15 @@ function renderAdmin(){
 
   ${buildDemoChartsHbar(sts)}
 
-  <div class="rcard">
-    <div class="rttl">Успех — IV–IX одделение (бројчано)</div>
-    ${buildUspehChart(sts.filter(s=>s._odd>3))}
+  <div class="rep-duo">
+    <div class="rcard" style="margin-bottom:0;">
+      <div class="rttl">Успех — IV–IX одделение (бројчано)</div>
+      ${buildUspehChart(sts.filter(s=>s._odd>3))}
+    </div>
+    <div class="rcard" style="margin-bottom:0;">
+      <div class="rttl">Успех I–III одделение (описно)</div>
+      ${buildOpisnoUspehChart(sts.filter(s=>s._odd>=1&&s._odd<=3))}
+    </div>
   </div>
 
   ${(()=>{if(!(classListNumeric.length))return'';return `<div class="rcard">
@@ -2861,10 +2887,6 @@ function gT(id,btn){
   if(id==='rep')renderR();
   if(id==='admin')renderAdmin();
 }
-//endregion
-
-//#region APP INITIALIZATION
 initAuth();
-//endregion
 </script>
 </html>
