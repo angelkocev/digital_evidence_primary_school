@@ -1165,14 +1165,17 @@ async function saveSt(){
     if(!etnik){showMsg('fmsg','Изберете етничка припадност!','err');return;}
   }
 
-  // Валидација на оценки за сите
-  const emptyGrades=document.querySelectorAll('#sgw .gr-sel');
-  for(const sel of emptyGrades){
-    if(sel.value===''){
-      const subjName=sel.closest('.srow')?.querySelector('.srow-name,.el-inp')?.textContent||sel.closest('.srow')?.querySelector('.el-inp')?.value||sel.dataset.s||'предмет';
-      showMsg('fmsg','Внесете оценка за: '+subjName.trim(),'err');
-      sel.closest('.srow')?.scrollIntoView({behavior:'smooth',block:'center'});
-      return;
+  // Наставниците мора да внесат оценки.
+  // Администраторот може да уредува само ПОП без внесување оценки.
+  if(!isAdmin){
+    const emptyGrades=document.querySelectorAll('#sgw .gr-sel');
+    for(const sel of emptyGrades){
+      if(sel.value===''){
+        const subjName=sel.closest('.srow')?.querySelector('.srow-name,.el-inp')?.textContent||sel.closest('.srow')?.querySelector('.el-inp')?.value||sel.dataset.s||'предмет';
+        showMsg('fmsg','Внесете оценка за: '+subjName.trim(),'err');
+        sel.closest('.srow')?.scrollIntoView({behavior:'smooth',block:'center'});
+        return;
+      }
     }
   }
 
@@ -1188,7 +1191,9 @@ async function saveSt(){
   const s={rn,ime,prz,pol,mol,etnik,odd_ucenik,
     op:parseInt(document.getElementById('fop').value)||0,
     nop:parseInt(document.getElementById('fnp').value)||0,
-    gr:getGr(),merki:getMerki(),extra:getExtra(),
+    gr:isAdmin&&existingSt?(Object.values(getGr()).every(v=>v==='')?existingSt.gr:getGr()):getGr(),
+    merki:getMerki(),
+    extra:isAdmin&&existingSt?(getExtra().length?getExtra():existingSt.extra||[]):getExtra(),
     ...(currentUser?.is_admin?getPOP():{pop:existingSt?.pop||'',popNote:''})};
 
   // Задржи го _dbid при уредување
