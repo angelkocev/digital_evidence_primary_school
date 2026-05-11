@@ -632,7 +632,7 @@ async function loadFromSupabase(){
       sts2.forEach(s=>{
         const k=`${s.uciliste}|${s.oddelenie}|${s.paralelka}`;
         if(!allData[k])allData[k]=[];
-        allData[k].push({rn:s.rn,ime:s.ime,prz:s.prz,pol:s.pol,mol:s.mol,etnik:s.etnik,op:s.op,nop:s.nop,gr:s.gr||{},merki:s.merki||[],extra:s.extra||[],odd_ucenik:0,pop:s.pop||'',popNote:s.pop_note||'',_dbid:s.id});
+        allData[k].push({rn:s.rn,ime:s.ime,prz:s.prz,pol:s.pol,mol:s.mol,etnik:s.etnik,op:s.op,nop:s.nop,gr:s.gr||{},merki:s.merki||[],extra:s.extra||[],odd_ucenik:0,pop:s.pop||'',popNote:s.pop_note||'',_teacher_id:s.teacher_id,_dbid:s.id});
       });
       Object.keys(allData).forEach(k=>{allData[k].sort((a,b)=>(a.rn||999)-(b.rn||999));});
     }
@@ -648,7 +648,7 @@ async function loadFromSupabase(){
         gr:s.gr||{},merki:s.merki||[],extra:s.extra||[],
         odd_ucenik:s.odd_ucenik||0,
         pop:s.pop||'',popNote:s.pop_note||'',
-        _dbid:s.id
+        _teacher_id:s.teacher_id,_dbid:s.id
       });
     });
     Object.keys(allData).forEach(k=>{
@@ -681,7 +681,28 @@ function setRealData(d){realData=d;}
 async function persistStudent(s,k){
   if(!currentUser)return;
   const[uch,odd,par]=k.split('|');
-  const row={teacher_id:currentUser.id,uciliste:uch,oddelenie:parseInt(odd),paralelka:par,rn:s.rn,ime:s.ime,prz:s.prz,pol:s.pol,mol:s.mol||'',etnik:s.etnik||'',op:s.op||0,nop:s.nop||0,gr:s.gr||{},merki:s.merki||[],extra:s.extra||[],odd_ucenik:s.odd_ucenik||0,pop:s.pop||'',pop_note:s.popNote||''};
+  const row={
+    // Ако администратор уредува постоечки ученик,
+    // задржи го оригиналниот teacher_id за ученикот да остане кај истиот раководител.
+    teacher_id:(currentUser?.is_admin&&s._teacher_id)?s._teacher_id:currentUser.id,
+    uciliste:uch,
+    oddelenie:parseInt(odd),
+    paralelka:par,
+    rn:s.rn,
+    ime:s.ime,
+    prz:s.prz,
+    pol:s.pol,
+    mol:s.mol||'',
+    etnik:s.etnik||'',
+    op:s.op||0,
+    nop:s.nop||0,
+    gr:s.gr||{},
+    merki:s.merki||[],
+    extra:s.extra||[],
+    odd_ucenik:s.odd_ucenik||0,
+    pop:s.pop||'',
+    pop_note:s.popNote||''
+  };
   if(s._dbid){
     await sb.from('ucenici').update(row).eq('id',s._dbid);
   } else {
