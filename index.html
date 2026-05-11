@@ -3026,7 +3026,31 @@ async function renderSupervision(){
     }
 
     const profiles=res.data||[];
-    const teachers=profiles.filter(p=>p.uciliste&&p.oddelenie&&p.paralelka);
+
+    const fNastava=document.getElementById('sup-nastava')?.value||'__svi__';
+    const fPeriod=document.getElementById('sup-period')?.value||'__svi__';
+
+    function supervisionOddAllowed(odd){
+      const o=parseInt(odd)||0;
+      if(!o)return false;
+
+      const nastavaOk=
+        fNastava==='__svi__' ||
+        (fNastava==='oddelenska'&&o>=1&&o<=5) ||
+        (fNastava==='predmetna'&&o>=6&&o<=9);
+
+      const periodOk=
+        fPeriod==='__svi__' ||
+        (fPeriod==='p1'&&o>=1&&o<=3) ||
+        (fPeriod==='p2'&&o>=4&&o<=6) ||
+        (fPeriod==='p3'&&o>=7&&o<=9);
+
+      return nastavaOk&&periodOk;
+    }
+
+    const teachers=profiles
+      .filter(p=>p.uciliste&&p.oddelenie&&p.paralelka)
+      .filter(p=>supervisionOddAllowed(p.oddelenie));
 
     const rows=teachers.map(p=>{
       const key=p.uciliste&&p.oddelenie&&p.paralelka ? `${p.uciliste}|${p.oddelenie}|${p.paralelka}` : '';
@@ -3040,9 +3064,11 @@ async function renderSupervision(){
       const oddLbl=ODD_LBL[p.oddelenie]||p.oddelenie||'—';
       return {p,key,sts,total,completed,pct,status,statusColor,schoolName,oddLbl};
     }).sort((a,b)=>{
-      const ak=(a.schoolName||'')+' '+(a.p.oddelenie||'')+' '+(a.p.paralelka||'');
-      const bk=(b.schoolName||'')+' '+(b.p.oddelenie||'')+' '+(b.p.paralelka||'');
-      return ak.localeCompare(bk,'mk');
+      const schoolCmp=(a.schoolName||'').localeCompare((b.schoolName||''),'mk');
+      if(schoolCmp!==0)return schoolCmp;
+      const oddCmp=(parseInt(a.p.oddelenie)||0)-(parseInt(b.p.oddelenie)||0);
+      if(oddCmp!==0)return oddCmp;
+      return String(a.p.paralelka||'').localeCompare(String(b.p.paralelka||''),'mk');
     });
 
     const totalTeachers=rows.length;
@@ -3052,41 +3078,50 @@ async function renderSupervision(){
 
     const oddMap={};
     rows.forEach(r=>{
-      const key=r.p.oddelenie||'—';
-      if(!oddMap[key])oddMap[key]={completed:0,total:0};
+      const key=parseInt(r.p.oddelenie)||0;
+      if(!oddMap[key])oddMap[key]={completed:0,total:0,odd:key};
       oddMap[key].completed+=r.completed||0;
       oddMap[key].total+=r.total||0;
     });
 
-    const oddRows=Object.entries(oddMap).map(([odd,v])=>{
+    const oddRows=Object.values(oddMap).map(v=>{
       const pct=v.total?Math.round((v.completed/v.total)*100):0;
       const color=pct===100?'var(--teal)':(pct>=70?'var(--amber)':'var(--rose)');
       return{
-        odd:ODD_LBL[odd]||odd,
+        odd:ODD_LBL[v.odd]||v.odd,
+        oddNum:v.odd,
         completed:`${v.completed}/${v.total}`,
         pct,
         color
       };
-    }).sort((a,b)=>a.odd.localeCompare(b.odd,'mk'));
+    }).sort((a,b)=>a.oddNum-b.oddNum);
 
     const schoolMap={};
     rows.forEach(r=>{
-      const key=r.schoolName||'—';
-      if(!schoolMap[key])schoolMap[key]={completed:0,total:0};
+      const school=r.schoolName||'—';
+      const odd=parseInt(r.p.oddelenie)||0;
+      const key=school+'|'+odd;
+      if(!schoolMap[key])schoolMap[key]={school,odd,completed:0,total:0};
       schoolMap[key].completed+=r.completed||0;
       schoolMap[key].total+=r.total||0;
     });
 
-    const schoolRows=Object.entries(schoolMap).map(([school,v])=>{
+    const schoolRows=Object.values(schoolMap).map(v=>{
       const pct=v.total?Math.round((v.completed/v.total)*100):0;
       const color=pct===100?'var(--teal)':(pct>=70?'var(--amber)':'var(--rose)');
       return{
-        school,
+        school:v.school,
+        odd:ODD_LBL[v.odd]||v.odd,
+        oddNum:v.odd,
         completed:`${v.completed}/${v.total}`,
         pct,
         color
       };
-    }).sort((a,b)=>a.school.localeCompare(b.school,'mk'));
+    }).sort((a,b)=>{
+      const schoolCmp=a.school.localeCompare(b.school,'mk');
+      if(schoolCmp!==0)return schoolCmp;
+      return a.oddNum-b.oddNum;
+    });
 
     function statusCell(r){
       return `
@@ -3099,6 +3134,26 @@ async function renderSupervision(){
     }
 
     el.innerHTML=`
+      <div style="background:var(--bg2);border:1px solid var(--bdr);border-radius:10px;padding:10px 14px;margin-bottom:1.5rem;display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div>
+          <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--tx3);margin-bottom:4px;">Вид на настава</div>
+          <select id="sup-nastava" onchange="renderSupervision()" style="font-family:var(--F);font-size:12px;border:1px solid var(--bdr);border-radius:7px;padding:7px 10px;color:var(--tx);background:var(--bg3);outline:none;cursor:pointer;width:100%;">
+            <option value="__svi__" ${fNastava==='__svi__'?'selected':''}>Сите</option>
+            <option value="oddelenska" ${fNastava==='oddelenska'?'selected':''}>Одделенска настава (I до V одделение)</option>
+            <option value="predmetna" ${fNastava==='predmetna'?'selected':''}>Предметна настава (VI - IX одделение)</option>
+          </select>
+        </div>
+        <div>
+          <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--tx3);margin-bottom:4px;">Учебен период</div>
+          <select id="sup-period" onchange="renderSupervision()" style="font-family:var(--F);font-size:12px;border:1px solid var(--bdr);border-radius:7px;padding:7px 10px;color:var(--tx);background:var(--bg3);outline:none;cursor:pointer;width:100%;">
+            <option value="__svi__" ${fPeriod==='__svi__'?'selected':''}>Сите периоди</option>
+            <option value="p1" ${fPeriod==='p1'?'selected':''}>Прв период (I - III одделение)</option>
+            <option value="p2" ${fPeriod==='p2'?'selected':''}>Втор период (IV - VI одделение)</option>
+            <option value="p3" ${fPeriod==='p3'?'selected':''}>Трет период (VII - IX одделение)</option>
+          </select>
+        </div>
+      </div>
+
       <div class="kpis" style="grid-template-columns:repeat(4,1fr);">
         <div class="kpi"><div class="kpi-l">Раководители</div><div class="kpi-v">${totalTeachers}</div><div class="kpi-bot" style="background:var(--acc);width:100%;"></div></div>
         <div class="kpi"><div class="kpi-l">Комплетни</div><div class="kpi-v" style="color:var(--teal);">${completeTeachers}</div><div class="kpi-bot" style="background:var(--teal);width:${totalTeachers?Math.round(completeTeachers/totalTeachers*100):0}%;"></div></div>
@@ -3162,11 +3217,12 @@ async function renderSupervision(){
       <div class="rcard">
         <div class="rttl">Надзор на ниво на училиште</div>
         <table class="rtbl">
-          <thead><tr><th>Училиште</th><th style="width:140px;text-align:center;">Пополнети</th><th style="width:220px;">Статус</th></tr></thead>
+          <thead><tr><th>Училиште</th><th style="width:130px;">Одделение</th><th style="width:140px;text-align:center;">Пополнети</th><th style="width:220px;">Статус</th></tr></thead>
           <tbody>
             ${schoolRows.map(r=>`
               <tr>
                 <td style="font-weight:600;">${r.school}</td>
+                <td style="color:var(--tx2);">${r.odd}</td>
                 <td style="text-align:center;font-weight:700;">${r.completed}</td>
                 <td>${statusCell(r)}</td>
               </tr>`).join('')}
