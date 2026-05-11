@@ -1536,6 +1536,59 @@ function buildRealizacijaCharts(uciliste,oddelenie,paralelka){
   '</div>':'');
 }
 
+
+function buildPOPStudentsTable(stsList,scope='class'){
+  const list=(stsList||[]).filter(s=>s.pop==='ИОП'||s.pop==='МНП');
+  if(!list.length)return'';
+
+  const sorted=[...list].sort((a,b)=>{
+    const ao=a._odd||curOdd||0,bo=b._odd||curOdd||0;
+    if(ao!==bo)return ao-bo;
+    const ap=a._par||curPar||'',bp=b._par||curPar||'';
+    const pc=String(ap).localeCompare(String(bp),'mk');
+    if(pc!==0)return pc;
+    return (a.rn||999)-(b.rn||999);
+  });
+
+  const rows=sorted.map(s=>{
+    const a=computeAvg(s.gr||{});
+    const ki=katInfo(s.gr||{});
+    const totAbs=(s.op||0)+(s.nop||0);
+    const odd=s._odd||curOdd;
+    const par=s._par||curPar||'—';
+    const classLbl=(ODD_LBL[odd]||odd||'—')+' · '+par;
+
+    return'<tr>'+
+      '<td style="font-family:var(--FC);font-weight:600;">'+(s.ime||'')+' '+(s.prz||'')+'</td>'+
+      '<td style="color:var(--tx2);">'+classLbl+'</td>'+
+      '<td style="text-align:center;"><span class="tag" style="background:rgba(79,142,247,.15);color:var(--acc);">'+(s.pop||'—')+'</span></td>'+
+      '<td style="text-align:center;font-weight:600;color:var(--teal);">'+(s.op||0)+'</td>'+
+      '<td style="text-align:center;font-weight:600;color:'+((s.nop||0)>0?'var(--rose)':'var(--tx3)')+';">'+(s.nop||0)+'</td>'+
+      '<td style="text-align:center;font-weight:700;font-family:var(--FD);">'+totAbs+'</td>'+
+      '<td style="text-align:center;font-family:var(--FD);font-weight:700;color:'+(a?gStyle(a).c:'var(--tx3)')+';">'+(a?a.toFixed(2):'—')+'</td>'+
+      '<td style="text-align:center;"><span class="kat '+ki.cls+'">'+ki.lbl+'</span></td>'+
+    '</tr>';
+  }).join('');
+
+  return'<div class="rcard" style="border-color:rgba(79,142,247,.25);background:rgba(79,142,247,.04);">'+
+    '<div class="rttl" style="color:var(--acc);">Ученици со ПОП <span style="font-family:var(--FD);font-size:13px;margin-left:6px;">'+sorted.length+'</span></div>'+
+    '<table class="rtbl" style="table-layout:auto;">'+
+      '<thead><tr>'+
+        '<th>Име и презиме</th>'+
+        '<th style="width:170px;">Паралелка</th>'+
+        '<th style="width:95px;text-align:center;">ПОП програма</th>'+
+        '<th style="width:85px;text-align:center;">Оправдани изостаноци</th>'+
+        '<th style="width:92px;text-align:center;">Неоправдани изостаноци</th>'+
+        '<th style="width:70px;text-align:center;">Вкупно изостаноци</th>'+
+        '<th style="width:70px;text-align:center;">Просек</th>'+
+        '<th style="width:130px;text-align:center;">Успех</th>'+
+      '</tr></thead>'+
+      '<tbody>'+rows+'</tbody>'+
+    '</table>'+
+  '</div>';
+}
+
+
 function renderR(){
   const el=document.getElementById('rwrap');
   const sts=getSts();
@@ -2181,6 +2234,8 @@ function renderRepBody(sts){
         ${extraTable(g)}
       </div>`).join('');
   })()}
+
+  ${buildPOPStudentsTable(sortedForBody,'class')}
 
   ${buildRealizacijaCharts(curUch,curOdd,curPar)}`;
 }
@@ -2894,6 +2949,8 @@ function renderAdmin(){
       </div>`;
     }).join('');
   })()}
+
+  ${buildPOPStudentsTable(sts,'admin')}
 
   `;
 }
