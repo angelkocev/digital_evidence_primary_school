@@ -3051,7 +3051,7 @@ async function renderSupervision(){
     const totalTeachers=rows.length;
     const completeTeachers=rows.filter(r=>r.total>0&&r.pct===100).length;
     const incompleteTeachers=rows.filter(r=>r.total>0&&r.pct<100).length;
-    const noStudents=rows.filter(r=>r.total===0).length;
+    const avgCompletion=rows.length?Math.round(rows.reduce((a,r)=>a+r.pct,0)/rows.length):0;
 
     const oddMap={};
     rows.forEach(r=>{
@@ -3092,6 +3092,30 @@ async function renderSupervision(){
       };
     }).sort((a,b)=>a.school.localeCompare(b.school,'mk'));
 
+    const nastavaMap={
+      oddelenska:{label:'Одделенска настава (I - V одделение)',completed:0,total:0},
+      predmetna:{label:'Предметна настава (VI - IX одделение)',completed:0,total:0}
+    };
+
+    rows.forEach(r=>{
+      const o=parseInt(r.p.oddelenie)||0;
+      const key=(o>=1&&o<=5)?'oddelenska':((o>=6&&o<=9)?'predmetna':null);
+      if(!key)return;
+      nastavaMap[key].completed+=r.completed||0;
+      nastavaMap[key].total+=r.total||0;
+    });
+
+    const nastavaRows=Object.values(nastavaMap).map(v=>{
+      const pct=v.total?Math.round((v.completed/v.total)*100):0;
+      const color=pct===100?'var(--teal)':(pct>=70?'var(--amber)':'var(--rose)');
+      return{
+        label:v.label,
+        completed:`${v.completed}/${v.total}`,
+        pct,
+        color
+      };
+    });
+
     function statusCell(r){
       return `
         <div style="display:flex;align-items:center;gap:8px;">
@@ -3107,7 +3131,7 @@ async function renderSupervision(){
         <div class="kpi"><div class="kpi-l">Раководители</div><div class="kpi-v">${totalTeachers}</div><div class="kpi-bot" style="background:var(--acc);width:100%;"></div></div>
         <div class="kpi"><div class="kpi-l">Комплетни</div><div class="kpi-v" style="color:var(--teal);">${completeTeachers}</div><div class="kpi-bot" style="background:var(--teal);width:${totalTeachers?Math.round(completeTeachers/totalTeachers*100):0}%;"></div></div>
         <div class="kpi"><div class="kpi-l">Некомплетни</div><div class="kpi-v" style="color:var(--amber);">${incompleteTeachers}</div><div class="kpi-bot" style="background:var(--amber);width:${totalTeachers?Math.round(incompleteTeachers/totalTeachers*100):0}%;"></div></div>
-        <div class="kpi"><div class="kpi-l">Без ученици</div><div class="kpi-v" style="color:var(--tx3);">${noStudents}</div><div class="kpi-bot" style="background:var(--tx3);width:${totalTeachers?Math.round(noStudents/totalTeachers*100):0}%;"></div></div>
+        <div class="kpi"><div class="kpi-l">Просечна пополнетост</div><div class="kpi-v" style="color:var(--acc);">${avgCompletion}%</div><div class="kpi-bot" style="background:var(--acc);width:${avgCompletion}%;"></div></div>
       </div>
 
       <div class="rcard">
@@ -3171,6 +3195,21 @@ async function renderSupervision(){
             ${schoolRows.map(r=>`
               <tr>
                 <td style="font-weight:600;">${r.school}</td>
+                <td style="text-align:center;font-weight:700;">${r.completed}</td>
+                <td>${statusCell(r)}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="rcard">
+        <div class="rttl">Надзор на ниво на вид на настава</div>
+        <table class="rtbl">
+          <thead><tr><th>Вид на настава</th><th style="width:140px;text-align:center;">Пополнети</th><th style="width:220px;">Статус</th></tr></thead>
+          <tbody>
+            ${nastavaRows.map(r=>`
+              <tr>
+                <td style="font-weight:600;">${r.label}</td>
                 <td style="text-align:center;font-weight:700;">${r.completed}</td>
                 <td>${statusCell(r)}</td>
               </tr>`).join('')}
