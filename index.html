@@ -3155,9 +3155,9 @@ async function renderSupervision(){
       </div>
 
       <div class="kpis" style="grid-template-columns:repeat(4,1fr);">
-        <div class="kpi"><div class="kpi-l">Раководители</div><div class="kpi-v">${totalTeachers}</div><div class="kpi-bot" style="background:var(--acc);width:100%;"></div></div>
-        <div class="kpi"><div class="kpi-l">Комплетни</div><div class="kpi-v" style="color:var(--teal);">${completeTeachers}</div><div class="kpi-bot" style="background:var(--teal);width:${totalTeachers?Math.round(completeTeachers/totalTeachers*100):0}%;"></div></div>
-        <div class="kpi"><div class="kpi-l">Некомплетни</div><div class="kpi-v" style="color:var(--amber);">${incompleteTeachers}</div><div class="kpi-bot" style="background:var(--amber);width:${totalTeachers?Math.round(incompleteTeachers/totalTeachers*100):0}%;"></div></div>
+        <div class="kpi"><div class="kpi-l">Одделенески раководители</div><div class="kpi-v">${totalTeachers}</div><div class="kpi-bot" style="background:var(--acc);width:100%;"></div></div>
+        <div class="kpi"><div class="kpi-l">Комплетни податоци</div><div class="kpi-v" style="color:var(--teal);">${completeTeachers}</div><div class="kpi-bot" style="background:var(--teal);width:${totalTeachers?Math.round(completeTeachers/totalTeachers*100):0}%;"></div></div>
+        <div class="kpi"><div class="kpi-l">Некомплетни податоци</div><div class="kpi-v" style="color:var(--amber);">${incompleteTeachers}</div><div class="kpi-bot" style="background:var(--amber);width:${totalTeachers?Math.round(incompleteTeachers/totalTeachers*100):0}%;"></div></div>
         <div class="kpi"><div class="kpi-l">Без ученици</div><div class="kpi-v" style="color:var(--tx3);">${noStudents}</div><div class="kpi-bot" style="background:var(--tx3);width:${totalTeachers?Math.round(noStudents/totalTeachers*100):0}%;"></div></div>
       </div>
 
