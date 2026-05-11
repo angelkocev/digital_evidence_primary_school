@@ -2923,10 +2923,9 @@ async function renderSupervision(){
   el.innerHTML='<div class="empty-s">Се вчитува надзор...</div>';
 
   try{
-    // Обиди се прво со last_login_at, full_name и email.
-    // Ако некоја од овие колони не постои, направи fallback со основните колони.
+    // Надзор: читај ги само колоните што сигурно се потребни.
+    // last_login_at сега постои во Supabase, затоа го земаме директно тука.
     let profiles=[];
-    let pErr=null;
 
     let res=await sb
       .from('profiles')
@@ -2934,14 +2933,10 @@ async function renderSupervision(){
       .order('uciliste',{ascending:true});
 
     if(res.error){
-      console.warn('Supervision full profiles select failed, trying fallback:',res.error);
-      res=await sb
-        .from('profiles')
-        .select('id,uciliste,oddelenie,paralelka,is_admin')
-        .order('uciliste',{ascending:true});
+      console.error('Supervision profiles select failed:',res.error);
+      throw res.error;
     }
 
-    if(res.error)throw res.error;
     profiles=res.data||[];
 
     const teachers=(profiles||[]).filter(p => p.uciliste && p.oddelenie && p.paralelka);
@@ -2982,27 +2977,17 @@ async function renderSupervision(){
           <thead>
             <tr>
               <th>Одделенски раководител</th>
-              <th style="width:160px;">Последна најава</th>
-              <th style="width:190px;">Училиште</th>
-              <th style="width:105px;">Одделение</th>
-              <th style="width:170px;">Паралелка</th>
-              <th style="width:85px;text-align:center;">Ученици</th>
+              <th style="width:190px;">Паралелка</th>
               <th style="width:125px;text-align:center;">Пополнети</th>
-              <th style="width:170px;">Статус</th>
+              <th style="width:190px;">Статус</th>
+              <th style="width:160px;">Последна најава</th>
             </tr>
           </thead>
           <tbody>
             ${rows.map(r=>`
               <tr>
-                <td>
-                  <div style="font-weight:700;color:var(--tx);">${r.p.full_name||r.p.email||('Раководител '+(r.p.id||'').slice(0,8))||'—'}</div>
-                  <div style="font-size:10px;color:var(--tx3);">${r.p.email||''}</div>
-                </td>
-                <td style="color:var(--tx2);">${formatDateTimeMK(r.p.last_login_at)}</td>
-                <td style="color:var(--tx2);">${r.schoolName}</td>
-                <td style="color:var(--tx2);">${r.oddLbl}</td>
+                <td style="font-weight:700;color:var(--tx);">${r.p.full_name||'—'}</td>
                 <td style="font-family:var(--FC);font-weight:600;">${r.p.paralelka||'—'}</td>
-                <td style="text-align:center;font-family:var(--FD);font-weight:700;">${r.total}</td>
                 <td style="text-align:center;">
                   <span style="font-family:var(--FD);font-weight:700;color:${r.pct===100?'var(--teal)':'var(--amber)'};">${r.completed}/${r.total}</span>
                 </td>
@@ -3015,6 +3000,7 @@ async function renderSupervision(){
                   </div>
                   <div style="font-size:10px;color:${r.statusColor};margin-top:3px;font-weight:700;">${r.status}</div>
                 </td>
+                <td style="color:var(--tx2);">${formatDateTimeMK(r.p.last_login_at)}</td>
               </tr>
             `).join('')}
           </tbody>
