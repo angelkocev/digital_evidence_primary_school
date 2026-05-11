@@ -323,6 +323,7 @@ input#fop::-webkit-outer-spin-button,input#fop::-webkit-inner-spin-button,input#
   <button class="nb" onclick="gT('real',this)">Реализација на настава</button>
   <button class="nb" onclick="gT('rep',this)">Извештај за паралелка</button>
   <button class="nb" id="nb-admin" style="display:none;" onclick="gT('admin',this)">Преглед на ниво на училиште</button>
+  <button class="nb" id="nb-supervision" style="display:none;" onclick="gT('supervision',this)">Надзор</button>
 </div>
 
 <div id="p-lst" class="panel on">
@@ -337,6 +338,7 @@ input#fop::-webkit-outer-spin-button,input#fop::-webkit-inner-spin-button,input#
 <div id="p-rep" class="panel"><div id="rwrap"><div class="empty-s">Нема ученици за извештај.</div></div></div>
 
 <div id="p-admin" class="panel"><div id="adminwrap"><div class="empty-s">Се вчитува...</div></div></div>
+<div id="p-supervision" class="panel"><div id="supervisionwrap"><div class="empty-s">Се вчитува...</div></div></div>
 
 <!-- MODAL -->
 <div class="overlay" id="modal" style="display:none;" onclick="if(event.target===this)closeModal()">
@@ -543,11 +545,20 @@ async function onLogin(user){
     if(pErr)console.error('Profile error:',pErr);
     currentUser.is_admin=profile?.is_admin||false;
 
+    // Надзор: ажурирај последна најава во profiles.last_login_at
+    try{
+      await sb.from('profiles').update({last_login_at:new Date().toISOString()}).eq('id',user.id);
+    }catch(e){
+      console.warn('last_login_at update skipped:',e);
+    }
+
     if(currentUser.is_admin){
       const badge=document.querySelector('.user-badge span');
       if(badge)badge.textContent=''+name+' (Администратор)';
       const nb=document.getElementById('nb-admin');
       if(nb)nb.style.display='block';
+      const nbSup=document.getElementById('nb-supervision');
+      if(nbSup)nbSup.style.display='block';
       // Ако администраторот има назначена паралелка, постави ја по default (без заклучување)
       if(profile&&profile.uciliste&&profile.oddelenie&&profile.paralelka){
         curUch=profile.uciliste;
@@ -584,6 +595,7 @@ async function onLogin(user){
 
     await loadFromSupabase();
     renderL();upBadge();
+    if(currentUser.is_admin){renderSupervision();}
   } catch(e){
     console.error('onLogin error:',e);
     document.getElementById('loading-screen').style.display='none';
@@ -2881,6 +2893,135 @@ function buildAdminFilters(uchs,odds,pars,mols,fUch,fOdd,fPar,fPol,fEtn,fMol,fNa
   </div>`;
 }
 
+
+/* ══ НАДЗОР ══ */
+function isStudentCompleteForSupervision(s){
+  if(!s)return false;
+  const hasBasic=!!(s.ime&&s.prz&&s.pol&&s.mol&&s.etnik);
+  const gr=s.gr||{};
+  const hasGrades=Object.values(gr).some(v=>v!==''&&v!==null&&v!==undefined);
+  return hasBasic&&hasGrades;
+}
+
+function formatDateTimeMK(v){
+  if(!v)return'—';
+  try{
+    const d=new Date(v);
+    if(isNaN(d.getTime()))return'—';
+    return d.toLocaleString('mk-MK',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  }catch(e){return'—';}
+}
+
+async function renderSupervision(){
+  const el=document.getElementById('supervisionwrap');
+  if(!el)return;
+  if(!currentUser?.is_admin){
+    el.innerHTML='<div class="empty-s">Овој панел е достапен само за администратор.</div>';
+    return;
+  }
+
+  el.innerHTML='<div class="empty-s">Се вчитува надзор...</div>';
+
+  try{
+    const {data:profiles,error:pErr}=await sb
+      .from('profiles')
+      .select('id,full_name,email,uciliste,oddelenie,paralelka,is_admin,last_login_at')
+      .order('uciliste',{ascending:true});
+
+    if(pErr)throw pErr;
+
+    const teachers=(profiles||[]).filter(p=>!p.is_admin);
+
+    const rows=teachers.map(p=>{
+      const key=p.uciliste&&p.oddelenie&&p.paralelka ? `${p.uciliste}|${p.oddelenie}|${p.paralelka}` : '';
+      const sts=key?(allData[key]||[]):[];
+      const total=sts.length;
+      const completed=sts.filter(isStudentCompleteForSupervision).length;
+      const pct=total?Math.round((completed/total)*100):0;
+      const status=total===0?'Нема ученици':(pct===100?'Комплетно':'Некомплетно');
+      const statusColor=total===0?'#94A3B8':(pct===100?'var(--teal)':'var(--amber)');
+      const schoolName=(UCH_DATA[p.uciliste]?.name)||p.uciliste||'—';
+      const oddLbl=ODD_LBL[p.oddelenie]||p.oddelenie||'—';
+      return {p,key,sts,total,completed,pct,status,statusColor,schoolName,oddLbl};
+    }).sort((a,b)=>{
+      const ak=(a.schoolName||'')+' '+(a.p.oddelenie||'')+' '+(a.p.paralelka||'');
+      const bk=(b.schoolName||'')+' '+(b.p.oddelenie||'')+' '+(b.p.paralelka||'');
+      return ak.localeCompare(bk,'mk');
+    });
+
+    const totalTeachers=rows.length;
+    const completeTeachers=rows.filter(r=>r.total>0&&r.pct===100).length;
+    const incompleteTeachers=rows.filter(r=>r.total>0&&r.pct<100).length;
+    const noStudents=rows.filter(r=>r.total===0).length;
+
+    el.innerHTML=`
+      <div class="kpis" style="grid-template-columns:repeat(4,1fr);">
+        <div class="kpi"><div class="kpi-l">Раководители</div><div class="kpi-v">${totalTeachers}</div><div class="kpi-bot" style="background:var(--acc);width:100%;"></div></div>
+        <div class="kpi"><div class="kpi-l">Комплетни</div><div class="kpi-v" style="color:var(--teal);">${completeTeachers}</div><div class="kpi-bot" style="background:var(--teal);width:${totalTeachers?Math.round(completeTeachers/totalTeachers*100):0}%;"></div></div>
+        <div class="kpi"><div class="kpi-l">Некомплетни</div><div class="kpi-v" style="color:var(--amber);">${incompleteTeachers}</div><div class="kpi-bot" style="background:var(--amber);width:${totalTeachers?Math.round(incompleteTeachers/totalTeachers*100):0}%;"></div></div>
+        <div class="kpi"><div class="kpi-l">Без ученици</div><div class="kpi-v" style="color:var(--tx3);">${noStudents}</div><div class="kpi-bot" style="background:var(--tx3);width:${totalTeachers?Math.round(noStudents/totalTeachers*100):0}%;"></div></div>
+      </div>
+
+      <div class="rcard">
+        <div class="rttl">Надзор на одделенски раководители</div>
+        <table class="rtbl" style="table-layout:auto;">
+          <thead>
+            <tr>
+              <th>Одделенски раководител</th>
+              <th style="width:160px;">Последна најава</th>
+              <th style="width:190px;">Училиште</th>
+              <th style="width:105px;">Одделение</th>
+              <th style="width:170px;">Паралелка</th>
+              <th style="width:85px;text-align:center;">Ученици</th>
+              <th style="width:125px;text-align:center;">Пополнети</th>
+              <th style="width:170px;">Статус</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map(r=>`
+              <tr>
+                <td>
+                  <div style="font-weight:700;color:var(--tx);">${r.p.full_name||r.p.email||'—'}</div>
+                  <div style="font-size:10px;color:var(--tx3);">${r.p.email||''}</div>
+                </td>
+                <td style="color:var(--tx2);">${formatDateTimeMK(r.p.last_login_at)}</td>
+                <td style="color:var(--tx2);">${r.schoolName}</td>
+                <td style="color:var(--tx2);">${r.oddLbl}</td>
+                <td style="font-family:var(--FC);font-weight:600;">${r.p.paralelka||'—'}</td>
+                <td style="text-align:center;font-family:var(--FD);font-weight:700;">${r.total}</td>
+                <td style="text-align:center;">
+                  <span style="font-family:var(--FD);font-weight:700;color:${r.pct===100?'var(--teal)':'var(--amber)'};">${r.completed}/${r.total}</span>
+                </td>
+                <td>
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <div style="flex:1;height:8px;background:var(--bg3);border-radius:6px;overflow:hidden;">
+                      <div style="height:100%;width:${r.pct}%;background:${r.statusColor};border-radius:6px;"></div>
+                    </div>
+                    <span style="font-size:11px;font-weight:700;color:${r.statusColor};min-width:42px;text-align:right;">${r.pct}%</span>
+                  </div>
+                  <div style="font-size:10px;color:${r.statusColor};margin-top:3px;font-weight:700;">${r.status}</div>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="rcard" style="border-color:rgba(251,191,36,.25);background:rgba(251,191,36,.05);">
+        <div class="rttl" style="color:var(--amber);">Напомена</div>
+        <div style="font-size:12px;color:var(--tx2);line-height:1.5;">
+          За да се прикажува „Последна најава“, во Supabase табелата <b>profiles</b> треба да постои колоната <b>last_login_at</b> од тип <b>timestamptz</b>.
+          Апликацијата автоматски ја ажурира оваа колона при секоја успешна најава.
+        </div>
+      </div>
+    `;
+  }catch(e){
+    console.error('renderSupervision error:',e);
+    el.innerHTML='<div class="empty-s">Не може да се вчита надзорот. Проверете дали во profiles постои колоната last_login_at и дали администраторот има дозвола за читање.</div>';
+  }
+}
+
+
 function gT(id,btn){
   document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
@@ -2889,6 +3030,7 @@ function gT(id,btn){
   if(id==='real')renderReal();
   if(id==='rep')renderR();
   if(id==='admin')renderAdmin();
+  if(id==='supervision')renderSupervision();
 }
 initAuth();
 </script>
