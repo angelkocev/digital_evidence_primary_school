@@ -395,17 +395,13 @@ input#fop::-webkit-outer-spin-button,input#fop::-webkit-inner-spin-button,input#
 
   <div id="pop-wrap" style="display:none;background:var(--bg3);border:1px solid var(--bdr);border-radius:9px;padding:10px 14px;margin-bottom:12px;">
     <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--acc);margin-bottom:8px;">Посебни образовни потреби (ПОП)</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-      <div class="fld"><label>Програма</label>
-        <select id="fpop" style="font-family:var(--F);font-size:13px;border:1px solid var(--bdr);border-radius:9px;padding:9px 14px;color:var(--tx);background:var(--bg2);outline:none;width:100%;">
-          <option value="">Нема ПОП</option>
-          <option value="ИОП">ИОП — Индивидуален образовен план</option>
-          <option value="МНП">МНП — Модифицирана наставна програма</option>
-        </select>
-      </div>
-      <div class="fld"><label>Напомена</label>
-        <input id="fpop-note" type="text" class="cyr" placeholder="Дополнителна напомена">
-      </div>
+    <div class="fld">
+      <label>ПОП програма</label>
+      <select id="fpop" style="font-family:var(--F);font-size:13px;border:1px solid var(--bdr);border-radius:9px;padding:9px 14px;color:var(--tx);background:var(--bg2);outline:none;width:100%;">
+        <option value="">Нема ПОП</option>
+        <option value="ИОП">ИОП — Индивидуален образовен план</option>
+        <option value="МНП">МНП — Модифицирана наставна програма</option>
+      </select>
     </div>
   </div>
 
@@ -628,7 +624,7 @@ async function loadFromSupabase(){
   if(e1){
     console.error('Load ucenici error:',e1);
     // Ако колоната odd_ucenik не постои, обиди се без неа
-    let q2=sb.from('ucenici').select('id,teacher_id,uciliste,oddelenie,paralelka,rn,ime,prz,pol,mol,etnik,op,nop,gr,merki,extra,created_at,updated_at');
+    let q2=sb.from('ucenici').select('id,teacher_id,uciliste,oddelenie,paralelka,rn,ime,prz,pol,mol,etnik,op,nop,gr,merki,extra,pop,pop_note,created_at,updated_at');
     if(!isAdmin)q2=q2.eq('teacher_id',currentUser.id);
     const{data:sts2,error:e2}=await q2;
     if(e2){console.error('Fallback load error:',e2);return;}
@@ -636,7 +632,7 @@ async function loadFromSupabase(){
       sts2.forEach(s=>{
         const k=`${s.uciliste}|${s.oddelenie}|${s.paralelka}`;
         if(!allData[k])allData[k]=[];
-        allData[k].push({rn:s.rn,ime:s.ime,prz:s.prz,pol:s.pol,mol:s.mol,etnik:s.etnik,op:s.op,nop:s.nop,gr:s.gr||{},merki:s.merki||[],extra:s.extra||[],odd_ucenik:0,_dbid:s.id});
+        allData[k].push({rn:s.rn,ime:s.ime,prz:s.prz,pol:s.pol,mol:s.mol,etnik:s.etnik,op:s.op,nop:s.nop,gr:s.gr||{},merki:s.merki||[],extra:s.extra||[],odd_ucenik:0,pop:s.pop||'',popNote:s.pop_note||'',_dbid:s.id});
       });
       Object.keys(allData).forEach(k=>{allData[k].sort((a,b)=>(a.rn||999)-(b.rn||999));});
     }
@@ -651,6 +647,7 @@ async function loadFromSupabase(){
         mol:s.mol,etnik:s.etnik,op:s.op,nop:s.nop,
         gr:s.gr||{},merki:s.merki||[],extra:s.extra||[],
         odd_ucenik:s.odd_ucenik||0,
+        pop:s.pop||'',popNote:s.pop_note||'',
         _dbid:s.id
       });
     });
@@ -684,7 +681,7 @@ function setRealData(d){realData=d;}
 async function persistStudent(s,k){
   if(!currentUser)return;
   const[uch,odd,par]=k.split('|');
-  const row={teacher_id:currentUser.id,uciliste:uch,oddelenie:parseInt(odd),paralelka:par,rn:s.rn,ime:s.ime,prz:s.prz,pol:s.pol,mol:s.mol||'',etnik:s.etnik||'',op:s.op||0,nop:s.nop||0,gr:s.gr||{},merki:s.merki||[],extra:s.extra||[],odd_ucenik:s.odd_ucenik||0};
+  const row={teacher_id:currentUser.id,uciliste:uch,oddelenie:parseInt(odd),paralelka:par,rn:s.rn,ime:s.ime,prz:s.prz,pol:s.pol,mol:s.mol||'',etnik:s.etnik||'',op:s.op||0,nop:s.nop||0,gr:s.gr||{},merki:s.merki||[],extra:s.extra||[],odd_ucenik:s.odd_ucenik||0,pop:s.pop||'',pop_note:s.popNote||''};
   if(s._dbid){
     await sb.from('ucenici').update(row).eq('id',s._dbid);
   } else {
@@ -1058,26 +1055,24 @@ function loadExtra(extra=[]){
 }
 // ПОП functions — admin only
 function getPOP(){
-  return{pop:document.getElementById('fpop')?.value||'',popNote:document.getElementById('fpop-note')?.value||''};
+  return{pop:document.getElementById('fpop')?.value||'',popNote:''};
 }
 function loadPOP(s){
   const popWrap=document.getElementById('pop-wrap');
   const fpop=document.getElementById('fpop');
-  const fnote=document.getElementById('fpop-note');
-
-  const hasPOP=!!(s?.pop||s?.popNote)||/ПОП/i.test(curPar||'');
-
-  // Прикажи го ПОП делот само кај ученици што навистина имаат ПОП
-  // или во паралелка што е означена како ПОП.
-  if(popWrap)popWrap.style.display=hasPOP?'block':'none';
-
-  if(fpop)fpop.value=hasPOP?(s?.pop||''):'';
-  if(fnote)fnote.value=hasPOP?(s?.popNote||''):'';
-
-  // Само администраторот може да уредува, наставникот само гледа ако постои ПОП
   const isAdmin=currentUser?.is_admin||false;
-  if(fpop){fpop.disabled=!isAdmin;fpop.style.opacity=isAdmin?'1':'0.6';fpop.style.cursor=isAdmin?'pointer':'not-allowed';}
-  if(fnote){fnote.disabled=!isAdmin;fnote.style.opacity=isAdmin?'1':'0.6';fnote.style.cursor=isAdmin?'text':'not-allowed';}
+  const hasPOP=!!(s?.pop);
+
+  // Администратор: секогаш го гледа полето и може да назначи/отстрани ПОП.
+  // Одделенски раководител: го гледа само ако ученикот е назначен со ПОП.
+  if(popWrap)popWrap.style.display=(isAdmin||hasPOP)?'block':'none';
+
+  if(fpop)fpop.value=s?.pop||'';
+  if(fpop){
+    fpop.disabled=!isAdmin;
+    fpop.style.opacity=isAdmin?'1':'0.75';
+    fpop.style.cursor=isAdmin?'pointer':'not-allowed';
+  }
 
   const popTitle=document.querySelector('#pop-wrap div');
   if(popTitle)popTitle.textContent=isAdmin?'Посебни образовни потреби (ПОП)':'Посебни образовни потреби (ПОП) — само за преглед';
@@ -1194,7 +1189,7 @@ async function saveSt(){
     op:parseInt(document.getElementById('fop').value)||0,
     nop:parseInt(document.getElementById('fnp').value)||0,
     gr:getGr(),merki:getMerki(),extra:getExtra(),
-    ...(currentUser?.is_admin?getPOP():{pop:existingSt?.pop||'',popNote:existingSt?.popNote||''})};
+    ...(currentUser?.is_admin?getPOP():{pop:existingSt?.pop||'',popNote:''})};
 
   // Задржи го _dbid при уредување
   if(editIdx>=0){
