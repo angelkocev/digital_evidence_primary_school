@@ -1586,7 +1586,7 @@ function renderR(){
 
   const comboAvgHTML=comboList.map(([key,val])=>{
     const a=comboAvgVal(val)||null;
-    const pct=a?bw(Math.round((a/maxAvg)*100)):0;
+    const pct=a?bw(Math.round((a/5)*100)):0;
     const fill=key.startsWith('Машко')?'#60A5FA':'#F9A8D4';
     const aStr=a?a.toFixed(2):'—';
     return`<div class="crow"><span class="clbl">${key} <span style="font-size:10px;color:var(--tx3);">(${val.cnt})</span></span><div class="ctrk"><div class="cfil" style="width:${pct}%;background:${fill};opacity:.8;">${pct>20?'<span class="cval-in">'+aStr+'</span>':''}</div>${pct<=20?'<span class="cval-out" style="left:'+(pct+2)+'%;">'+aStr+'</span>':''}</div></div>`;
@@ -1803,7 +1803,7 @@ function renderRepBody(sts){
 
   const comboAvgHTML=comboList.map(([key,val])=>{
     const a=comboAvgVal(val)||null;
-    const pct=a?bw(Math.round((a/maxAvg)*100)):0;
+    const pct=a?bw(Math.round((a/5)*100)):0;
     const fill=key.startsWith('Машко')?'#60A5FA':'#F9A8D4';
     const aStr=a?a.toFixed(2):'—';
     return'<div class="crow"><span class="clbl">'+key+' <span style="font-size:10px;color:var(--tx3);">('+val.cnt+')</span></span><div class="ctrk"><div class="cfil" style="width:'+pct+'%;background:'+fill+';opacity:.8;">'+(pct>20?'<span class="cval-in">'+aStr+'</span>':'')+'</div>'+(pct<=20?'<span class="cval-out" style="left:'+(pct+2)+'%;">'+aStr+'</span>':'')+'</div></div>';
@@ -2617,7 +2617,7 @@ function renderAdmin(){
     <div class="rttl">Просечен успех по пол и етничка припадност</div>
     ${comboList.map(([key,val])=>{
       const a=comboAvgVal(val)||null;
-      const pct=a?bw(Math.round((a/maxComboAvg)*100)):0;
+      const pct=a?bw(Math.round((a/5)*100)):0;
       const fill=key.startsWith('Машко')?'#60A5FA':'#F9A8D4';
       const aStr=a?a.toFixed(2):'—';
       return'<div class="crow"><span class="clbl">'+key+' <span style="font-size:10px;color:var(--tx3);">('+val.cnt+')</span></span><div class="ctrk"><div class="cfil" style="width:'+pct+'%;background:'+fill+';opacity:.8;">'+(pct>20?'<span class="cval-in">'+aStr+'</span>':'')+'</div>'+(pct<=20?'<span class="cval-out" style="left:'+(pct+2)+'%;">'+aStr+'</span>':'')+'</div></div>';
