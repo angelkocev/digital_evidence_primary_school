@@ -1062,16 +1062,23 @@ function getPOP(){
 }
 function loadPOP(s){
   const popWrap=document.getElementById('pop-wrap');
-  if(popWrap)popWrap.style.display='block'; // Секогаш прикажи
   const fpop=document.getElementById('fpop');
   const fnote=document.getElementById('fpop-note');
-  if(fpop)fpop.value=s?.pop||'';
-  if(fnote)fnote.value=s?.popNote||'';
-  // Само администраторот може да уредува
+
+  const hasPOP=!!(s?.pop||s?.popNote)||/ПОП/i.test(curPar||'');
+
+  // Прикажи го ПОП делот само кај ученици што навистина имаат ПОП
+  // или во паралелка што е означена како ПОП.
+  if(popWrap)popWrap.style.display=hasPOP?'block':'none';
+
+  if(fpop)fpop.value=hasPOP?(s?.pop||''):'';
+  if(fnote)fnote.value=hasPOP?(s?.popNote||''):'';
+
+  // Само администраторот може да уредува, наставникот само гледа ако постои ПОП
   const isAdmin=currentUser?.is_admin||false;
   if(fpop){fpop.disabled=!isAdmin;fpop.style.opacity=isAdmin?'1':'0.6';fpop.style.cursor=isAdmin?'pointer':'not-allowed';}
   if(fnote){fnote.disabled=!isAdmin;fnote.style.opacity=isAdmin?'1':'0.6';fnote.style.cursor=isAdmin?'text':'not-allowed';}
-  // Промени насловот ако не е администратор
+
   const popTitle=document.querySelector('#pop-wrap div');
   if(popTitle)popTitle.textContent=isAdmin?'Посебни образовни потреби (ПОП)':'Посебни образовни потреби (ПОП) — само за преглед';
 }
