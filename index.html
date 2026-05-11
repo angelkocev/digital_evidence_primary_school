@@ -704,6 +704,11 @@ async function persistStudent(s,k){
     pop_note:s.popNote||''
   };
   if(s._dbid){
+    // Кај постоечки ученик не дозволувај случајно префрлање на teacher_id.
+    // Ако администратор уредува, teacher_id мора да остане оригиналниот.
+    if(currentUser?.is_admin && s._teacher_id){
+      row.teacher_id=s._teacher_id;
+    }
     await sb.from('ucenici').update(row).eq('id',s._dbid);
   } else {
     // Користи upsert — ако постои запис со ист rn+paralelka+oddelenie+uciliste+teacher_id, ажурирај го
@@ -1217,9 +1222,11 @@ async function saveSt(){
     extra:isAdmin&&existingSt?(getExtra().length?getExtra():existingSt.extra||[]):getExtra(),
     ...(currentUser?.is_admin?getPOP():{pop:existingSt?.pop||'',popNote:''})};
 
-  // Задржи го _dbid при уредување
+  // Задржи ги _dbid и оригиналниот teacher_id при уредување
+  // Ова е критично: ако администратор уредува ПОП, ученикот не смее да се префрли кај admin профилот.
   if(editIdx>=0){
     s._dbid=sts[editIdx]._dbid;
+    s._teacher_id=sts[editIdx]._teacher_id||sts[editIdx].teacher_id||currentUser.id;
     sts[editIdx]=s;
   } else {
     sts.push(s);
