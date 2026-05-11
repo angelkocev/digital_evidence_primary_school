@@ -2946,64 +2946,6 @@ function renderAdmin(){
             </tr>`;
           }).join('')}</tbody>
         </table>
-      </div>
-
-      <div class="rcard">
-        <div class="rttl">Надзор на ниво на одделение</div>
-        <table class="rtbl">
-          <thead>
-            <tr>
-              <th>Одделение</th>
-              <th style="width:140px;text-align:center;">Пополнети</th>
-              <th style="width:220px;">Статус</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${oddRows.map(r=>`
-              <tr>
-                <td style="font-weight:600;">${r.odd}</td>
-                <td style="text-align:center;font-weight:700;">${r.completed}</td>
-                <td>
-                  <div style="display:flex;align-items:center;gap:8px;">
-                    <div style="flex:1;height:8px;background:var(--bg3);border-radius:6px;overflow:hidden;">
-                      <div style="height:100%;width:${r.pct}%;background:${r.color};border-radius:6px;"></div>
-                    </div>
-                    <span style="font-size:11px;font-weight:700;color:${r.color};min-width:42px;text-align:right;">${r.pct}%</span>
-                  </div>
-                </td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      </div>
-
-      <div class="rcard">
-        <div class="rttl">Надзор на ниво на училиште</div>
-        <table class="rtbl">
-          <thead>
-            <tr>
-              <th>Училиште</th>
-              <th style="width:140px;text-align:center;">Пополнети</th>
-              <th style="width:220px;">Статус</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${schoolRows.map(r=>`
-              <tr>
-                <td style="font-weight:600;">${r.school}</td>
-                <td style="text-align:center;font-weight:700;">${r.completed}</td>
-                <td>
-                  <div style="display:flex;align-items:center;gap:8px;">
-                    <div style="flex:1;height:8px;background:var(--bg3);border-radius:6px;overflow:hidden;">
-                      <div style="height:100%;width:${r.pct}%;background:${r.color};border-radius:6px;"></div>
-                    </div>
-                    <span style="font-size:11px;font-weight:700;color:${r.color};min-width:42px;text-align:right;">${r.pct}%</span>
-                  </div>
-                </td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
       </div>`;
     }).join('');
   })()}
@@ -3073,10 +3015,6 @@ async function renderSupervision(){
   el.innerHTML='<div class="empty-s">Се вчитува надзор...</div>';
 
   try{
-    // Надзор: читај ги само колоните што сигурно се потребни.
-    // last_login_at сега постои во Supabase, затоа го земаме директно тука.
-    let profiles=[];
-
     let res=await sb
       .from('profiles')
       .select('id,full_name,email,uciliste,oddelenie,paralelka,is_admin,last_login_at')
@@ -3087,9 +3025,8 @@ async function renderSupervision(){
       throw res.error;
     }
 
-    profiles=res.data||[];
-
-    const teachers=(profiles||[]).filter(p => p.uciliste && p.oddelenie && p.paralelka);
+    const profiles=res.data||[];
+    const teachers=profiles.filter(p=>p.uciliste&&p.oddelenie&&p.paralelka);
 
     const rows=teachers.map(p=>{
       const key=p.uciliste&&p.oddelenie&&p.paralelka ? `${p.uciliste}|${p.oddelenie}|${p.paralelka}` : '';
@@ -3113,48 +3050,55 @@ async function renderSupervision(){
     const incompleteTeachers=rows.filter(r=>r.total>0&&r.pct<100).length;
     const noStudents=rows.filter(r=>r.total===0).length;
 
-    
-  // Агрегации по одделение
-  const oddMap={};
-  rows.forEach(r=>{
-    const key=(r.p.oddelenie||'—');
-    if(!oddMap[key])oddMap[key]={completed:0,total:0};
-    oddMap[key].completed+=r.completed||0;
-    oddMap[key].total+=r.total||0;
-  });
+    const oddMap={};
+    rows.forEach(r=>{
+      const key=r.p.oddelenie||'—';
+      if(!oddMap[key])oddMap[key]={completed:0,total:0};
+      oddMap[key].completed+=r.completed||0;
+      oddMap[key].total+=r.total||0;
+    });
 
-  const oddRows=Object.entries(oddMap).map(([odd,v])=>{
-    const pct=v.total?Math.round((v.completed/v.total)*100):0;
-    return{
-      odd:ODD_LBL[odd]||odd,
-      completed:`${v.completed}/${v.total}`,
-      pct,
-      status:pct===100?'Целосно пополнето':(pct>=70?'Делумно пополнето':'Недоволно пополнето'),
-      color:pct===100?'var(--teal)':(pct>=70?'var(--amber)':'var(--rose)')
-    };
-  }).sort((a,b)=>a.odd.localeCompare(b.odd,'mk'));
+    const oddRows=Object.entries(oddMap).map(([odd,v])=>{
+      const pct=v.total?Math.round((v.completed/v.total)*100):0;
+      const color=pct===100?'var(--teal)':(pct>=70?'var(--amber)':'var(--rose)');
+      return{
+        odd:ODD_LBL[odd]||odd,
+        completed:`${v.completed}/${v.total}`,
+        pct,
+        color
+      };
+    }).sort((a,b)=>a.odd.localeCompare(b.odd,'mk'));
 
-  // Агрегации по училиште
-  const schoolMap={};
-  rows.forEach(r=>{
-    const key=r.schoolName||'—';
-    if(!schoolMap[key])schoolMap[key]={completed:0,total:0};
-    schoolMap[key].completed+=r.completed||0;
-    schoolMap[key].total+=r.total||0;
-  });
+    const schoolMap={};
+    rows.forEach(r=>{
+      const key=r.schoolName||'—';
+      if(!schoolMap[key])schoolMap[key]={completed:0,total:0};
+      schoolMap[key].completed+=r.completed||0;
+      schoolMap[key].total+=r.total||0;
+    });
 
-  const schoolRows=Object.entries(schoolMap).map(([school,v])=>{
-    const pct=v.total?Math.round((v.completed/v.total)*100):0;
-    return{
-      school,
-      completed:`${v.completed}/${v.total}`,
-      pct,
-      status:pct===100?'Целосно пополнето':(pct>=70?'Делумно пополнето':'Недоволно пополнето'),
-      color:pct===100?'var(--teal)':(pct>=70?'var(--amber)':'var(--rose)')
-    };
-  }).sort((a,b)=>a.school.localeCompare(b.school,'mk'));
+    const schoolRows=Object.entries(schoolMap).map(([school,v])=>{
+      const pct=v.total?Math.round((v.completed/v.total)*100):0;
+      const color=pct===100?'var(--teal)':(pct>=70?'var(--amber)':'var(--rose)');
+      return{
+        school,
+        completed:`${v.completed}/${v.total}`,
+        pct,
+        color
+      };
+    }).sort((a,b)=>a.school.localeCompare(b.school,'mk'));
 
-el.innerHTML=`
+    function statusCell(r){
+      return `
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="flex:1;height:8px;background:var(--bg3);border-radius:6px;overflow:hidden;">
+            <div style="height:100%;width:${r.pct}%;background:${r.color};border-radius:6px;"></div>
+          </div>
+          <span style="font-size:11px;font-weight:700;color:${r.color};min-width:42px;text-align:right;">${r.pct}%</span>
+        </div>`;
+    }
+
+    el.innerHTML=`
       <div class="kpis" style="grid-template-columns:repeat(4,1fr);">
         <div class="kpi"><div class="kpi-l">Раководители</div><div class="kpi-v">${totalTeachers}</div><div class="kpi-bot" style="background:var(--acc);width:100%;"></div></div>
         <div class="kpi"><div class="kpi-l">Комплетни</div><div class="kpi-v" style="color:var(--teal);">${completeTeachers}</div><div class="kpi-bot" style="background:var(--teal);width:${totalTeachers?Math.round(completeTeachers/totalTeachers*100):0}%;"></div></div>
@@ -3168,7 +3112,8 @@ el.innerHTML=`
           <thead>
             <tr>
               <th>Одделенски раководител</th>
-              <th style="width:180px;">Училиште</th><th style="width:190px;">Паралелка</th>
+              <th style="width:180px;">Училиште</th>
+              <th style="width:190px;">Паралелка</th>
               <th style="width:125px;text-align:center;">Пополнети</th>
               <th style="width:190px;">Статус</th>
               <th style="width:160px;">Последна најава</th>
@@ -3178,7 +3123,8 @@ el.innerHTML=`
             ${rows.map(r=>`
               <tr>
                 <td style="font-weight:700;color:var(--tx);">${r.p.full_name||'—'}</td>
-                <td style="color:var(--tx2);">${r.schoolName||"—"}</td><td style="font-family:var(--FC);font-weight:600;">${r.p.paralelka||'—'}</td>
+                <td style="color:var(--tx2);">${r.schoolName}</td>
+                <td style="font-family:var(--FC);font-weight:600;">${r.p.paralelka||'—'}</td>
                 <td style="text-align:center;">
                   <span style="font-family:var(--FD);font-weight:700;color:${r.pct===100?'var(--teal)':'var(--amber)'};">${r.completed}/${r.total}</span>
                 </td>
@@ -3198,11 +3144,39 @@ el.innerHTML=`
         </table>
       </div>
 
-      
+      <div class="rcard">
+        <div class="rttl">Надзор на ниво на одделение</div>
+        <table class="rtbl">
+          <thead><tr><th>Одделение</th><th style="width:140px;text-align:center;">Пополнети</th><th style="width:220px;">Статус</th></tr></thead>
+          <tbody>
+            ${oddRows.map(r=>`
+              <tr>
+                <td style="font-weight:600;">${r.odd}</td>
+                <td style="text-align:center;font-weight:700;">${r.completed}</td>
+                <td>${statusCell(r)}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="rcard">
+        <div class="rttl">Надзор на ниво на училиште</div>
+        <table class="rtbl">
+          <thead><tr><th>Училиште</th><th style="width:140px;text-align:center;">Пополнети</th><th style="width:220px;">Статус</th></tr></thead>
+          <tbody>
+            ${schoolRows.map(r=>`
+              <tr>
+                <td style="font-weight:600;">${r.school}</td>
+                <td style="text-align:center;font-weight:700;">${r.completed}</td>
+                <td>${statusCell(r)}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
     `;
   }catch(e){
     console.error('renderSupervision error:',e);
-    el.innerHTML='<div class="empty-s">Не може да се вчита надзорот. Проверете дали во profiles постои колоната last_login_at и дали администраторот има дозвола за читање.</div>';
+    el.innerHTML='<div class="empty-s">Не може да се вчита надзорот. Проверете ги RLS дозволите за profiles.</div>';
   }
 }
 
