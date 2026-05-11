@@ -2944,7 +2944,7 @@ async function renderSupervision(){
     if(res.error)throw res.error;
     profiles=res.data||[];
 
-    const teachers=(profiles||[]).filter(p=>!p.is_admin);
+    const teachers=(profiles||[]).filter(p => p.uciliste && p.oddelenie && p.paralelka);
 
     const rows=teachers.map(p=>{
       const key=p.uciliste&&p.oddelenie&&p.paralelka ? `${p.uciliste}|${p.oddelenie}|${p.paralelka}` : '';
