@@ -2923,12 +2923,26 @@ async function renderSupervision(){
   el.innerHTML='<div class="empty-s">Се вчитува надзор...</div>';
 
   try{
-    const {data:profiles,error:pErr}=await sb
+    // Обиди се прво со last_login_at, full_name и email.
+    // Ако некоја од овие колони не постои, направи fallback со основните колони.
+    let profiles=[];
+    let pErr=null;
+
+    let res=await sb
       .from('profiles')
       .select('id,full_name,email,uciliste,oddelenie,paralelka,is_admin,last_login_at')
       .order('uciliste',{ascending:true});
 
-    if(pErr)throw pErr;
+    if(res.error){
+      console.warn('Supervision full profiles select failed, trying fallback:',res.error);
+      res=await sb
+        .from('profiles')
+        .select('id,uciliste,oddelenie,paralelka,is_admin')
+        .order('uciliste',{ascending:true});
+    }
+
+    if(res.error)throw res.error;
+    profiles=res.data||[];
 
     const teachers=(profiles||[]).filter(p=>!p.is_admin);
 
@@ -2981,7 +2995,7 @@ async function renderSupervision(){
             ${rows.map(r=>`
               <tr>
                 <td>
-                  <div style="font-weight:700;color:var(--tx);">${r.p.full_name||r.p.email||'—'}</div>
+                  <div style="font-weight:700;color:var(--tx);">${r.p.full_name||r.p.email||('Раководител '+(r.p.id||'').slice(0,8))||'—'}</div>
                   <div style="font-size:10px;color:var(--tx3);">${r.p.email||''}</div>
                 </td>
                 <td style="color:var(--tx2);">${formatDateTimeMK(r.p.last_login_at)}</td>
@@ -3010,7 +3024,7 @@ async function renderSupervision(){
       <div class="rcard" style="border-color:rgba(251,191,36,.25);background:rgba(251,191,36,.05);">
         <div class="rttl" style="color:var(--amber);">Напомена</div>
         <div style="font-size:12px;color:var(--tx2);line-height:1.5;">
-          За да се прикажува „Последна најава“, во Supabase табелата <b>profiles</b> треба да постои колоната <b>last_login_at</b> од тип <b>timestamptz</b>.
+          Ако колоната <b>last_login_at</b> не постои во Supabase табелата <b>profiles</b>, панелот сепак ќе работи, но кај „Последна најава“ ќе стои <b>—</b>.
           Апликацијата автоматски ја ажурира оваа колона при секоја успешна најава.
         </div>
       </div>
