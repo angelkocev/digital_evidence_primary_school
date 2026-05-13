@@ -287,10 +287,11 @@ input#fop::-webkit-outer-spin-button,input#fop::-webkit-inner-spin-button,input#
 <div class="hdr">
   <div style="display:flex;align-items:flex-start;justify-content:space-between;width:100%;flex-wrap:wrap;gap:10px;">
     <div>
-      <div class="eyebrow">Дигитална евиденција · 2025/2026</div>
+      <div class="eyebrow" id="eyebrow-year">Дигитална евиденција · 2025/2026</div>
       <h1>Евиденција на паралелка</h1>
     </div>
     <div id="hdr-right-content" style="display:flex;align-items:center;gap:8px;">
+      <div id="period-display" style="display:flex;align-items:center;gap:8px;"></div>
       <div class="theme-switcher">
         <label>Тема</label>
         <button class="theme-btn active" style="background:#4F8EF7;" onclick="setTheme('')" title="Стандардна темна" id="tbtn-0"></button>
@@ -444,6 +445,10 @@ const sb=supabase.createClient(SUPA_URL,SUPA_KEY);
 
 let currentUser=null;
 let authMode='login'; // 'login' | 'register'
+let activeSchoolYear='2025/2026';
+let activePeriod='K';
+const PERIOD_LABELS={'T1':'Прво тримесечје','P1':'Прво полугодие','T3':'Трето тримесечје','K':'Крај на учебна година'};
+const PERIOD_ORDER=['T1','P1','T3','K'];
 
 async function doAuth(){
   const email=document.getElementById('auth-email').value.trim();
@@ -614,11 +619,62 @@ function showSaveInd(){
 }
 
 /* ── SUPABASE DATA SYNC ── */
+async function loadAppSettings(){
+  const{data:settings}=await sb.from('app_settings').select('*');
+  if(settings){
+    settings.forEach(s=>{
+      if(s.key==='school_year')activeSchoolYear=s.value;
+      if(s.key==='period')activePeriod=s.value;
+    });
+  }
+  renderPeriodDisplay();
+}
+
+function renderPeriodDisplay(){
+  const el=document.getElementById('period-display');
+  const ey=document.getElementById('eyebrow-year');
+  if(ey)ey.textContent='Дигитална евиденција · '+activeSchoolYear;
+  if(!el)return;
+  if(currentUser?.is_admin){
+    // Admin: selectors
+    const years=['2024/2025','2025/2026','2026/2027','2027/2028'];
+    el.innerHTML=
+      '<select id="sel-year" onchange="adminSetYear(this.value)" style="font-family:var(--F);font-size:11px;font-weight:700;border:1px solid var(--bdr);border-radius:7px;padding:4px 10px;color:var(--tx);background:var(--bg3);outline:none;cursor:pointer;">'+
+      years.map(y=>'<option value="'+y+'"'+(y===activeSchoolYear?' selected':'')+'>'+y+'</option>').join('')+
+      '</select>'+
+      '<select id="sel-period" onchange="adminSetPeriod(this.value)" style="font-family:var(--F);font-size:11px;font-weight:700;border:1px solid var(--bdr);border-radius:7px;padding:4px 10px;color:var(--tx);background:var(--bg3);outline:none;cursor:pointer;">'+
+      PERIOD_ORDER.map(p=>'<option value="'+p+'"'+(p===activePeriod?' selected':'')+'>'+PERIOD_LABELS[p]+'</option>').join('')+
+      '</select>';
+  } else {
+    // Наставник: само текст
+    el.innerHTML='<span style="font-size:11px;font-weight:700;color:var(--acc);background:var(--accl);padding:4px 10px;border-radius:7px;border:1px solid var(--bdr);">'+
+      activeSchoolYear+' · '+( PERIOD_LABELS[activePeriod]||activePeriod)+'</span>';
+  }
+}
+
+async function adminSetYear(val){
+  activeSchoolYear=val;
+  await sb.from('app_settings').upsert({key:'school_year',value:val},{onConflict:'key'});
+  renderPeriodDisplay();
+  await loadFromSupabase();
+  renderCurrent();
+}
+
+async function adminSetPeriod(val){
+  activePeriod=val;
+  await sb.from('app_settings').upsert({key:'period',value:val},{onConflict:'key'});
+  renderPeriodDisplay();
+  await loadFromSupabase();
+  renderCurrent();
+}
+
 async function loadFromSupabase(){
   if(!currentUser)return;
   allData={};electiveNames={};realData={};
   const isAdmin=currentUser.is_admin||false;
-  let q=sb.from('ucenici').select('*');
+  let q=sb.from('ucenici').select('*')
+    .eq('school_year',activeSchoolYear)
+    .eq('period',activePeriod);
   if(!isAdmin)q=q.eq('teacher_id',currentUser.id);
   const{data:sts,error:e1}=await q;
   if(e1){
@@ -655,14 +711,18 @@ async function loadFromSupabase(){
       allData[k].sort((a,b)=>(a.rn||999)-(b.rn||999));
     });
   }
-  let qe=sb.from('elective_names').select('*');
+  let qe=sb.from('elective_names').select('*')
+    .eq('school_year',activeSchoolYear)
+    .eq('period',activePeriod);
   if(!isAdmin)qe=qe.eq('teacher_id',currentUser.id);
   const{data:en}=await qe;
   if(en){en.forEach(e=>{
     const k=`${e.uciliste}|${e.oddelenie}|${e.paralelka}`;
     electiveNames[k]={s1:e.s1,s2:e.s2,i9:e.i9};
   });}
-  let qr=sb.from('realizacija').select('*');
+  let qr=sb.from('realizacija').select('*')
+    .eq('school_year',activeSchoolYear)
+    .eq('period',activePeriod);
   if(!isAdmin)qr=qr.eq('teacher_id',currentUser.id);
   const{data:real}=await qr;
   if(real){
@@ -701,7 +761,9 @@ async function persistStudent(s,k){
     extra:s.extra||[],
     odd_ucenik:s.odd_ucenik||0,
     pop:s.pop||'',
-    pop_note:s.popNote||''
+    pop_note:s.popNote||'',
+    school_year:activeSchoolYear,
+    period:activePeriod
   };
   if(s._dbid){
     // Кај постоечки ученик не дозволувај случајно префрлање на teacher_id.
@@ -729,15 +791,15 @@ async function persistElective(k,en){
   if(!currentUser)return;
   const[uch,odd,par]=k.split('|');
   await sb.from('elective_names').upsert(
-    {teacher_id:currentUser.id,uciliste:uch,oddelenie:parseInt(odd),paralelka:par,s1:en.s1,s2:en.s2,i9:en.i9},
-    {onConflict:'teacher_id,uciliste,oddelenie,paralelka'}
+    {teacher_id:currentUser.id,uciliste:uch,oddelenie:parseInt(odd),paralelka:par,s1:en.s1,s2:en.s2,i9:en.i9,school_year:activeSchoolYear,period:activePeriod},
+    {onConflict:'teacher_id,uciliste,oddelenie,paralelka,school_year,period'}
   );
 }
 
 async function persistReal(k,subj,vals){
   if(!currentUser)return;
   const[uch,odd,par]=k.split('|');
-  await sb.from('realizacija').upsert({teacher_id:currentUser.id,uciliste:uch,oddelenie:parseInt(odd),paralelka:par,predmet:subj,real:vals.real||0,nereal:vals.nereal||0,dop:vals.dop||0,dod:vals.dod||0},{onConflict:'teacher_id,uciliste,oddelenie,paralelka,predmet'});
+  await sb.from('realizacija').upsert({teacher_id:currentUser.id,uciliste:uch,oddelenie:parseInt(odd),paralelka:par,predmet:subj,real:vals.real||0,nereal:vals.nereal||0,dop:vals.dop||0,dod:vals.dod||0,school_year:activeSchoolYear,period:activePeriod},{onConflict:'teacher_id,uciliste,oddelenie,paralelka,predmet,school_year,period'});
   showSaveInd();
 }
 const UCH_DATA={
@@ -1597,6 +1659,7 @@ function renderR(){
   const uchName=UCH_DATA[curUch]?UCH_DATA[curUch].name:'—';
   const oddLabel=ODD_LBL[curOdd]||'—';
   const en=getEN();
+  const periodLabel=PERIOD_LABELS[activePeriod]||activePeriod;
   const n=sts.length;
   const males=sts.filter(s=>s.pol==='М').length;
   const totOp=sts.reduce((a,s)=>a+(s.op||0),0);
