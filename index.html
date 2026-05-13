@@ -621,6 +621,7 @@ async function onLogin(user){
     renderL();upBadge();
     if(currentUser.is_admin){renderSupervision();}
     if(currentUser.role==='supervisor'){
+      renderSupervision();
       // Автоматски отвори го Admin панелот за надзорниците
       const adminBtn=document.getElementById('nb-admin');
       if(adminBtn)adminBtn.click();
@@ -701,16 +702,17 @@ async function loadFromSupabase(){
   if(!currentUser)return;
   allData={};electiveNames={};realData={};
   const isAdmin=currentUser.is_admin||false;
+  const isSup=currentUser.role==='supervisor';
   let q=sb.from('ucenici').select('*')
     .eq('school_year',activeSchoolYear)
     .eq('period',activePeriod);
-  if(!isAdmin)q=q.eq('teacher_id',currentUser.id);
+  if(!isAdmin&&!isSup)q=q.eq('teacher_id',currentUser.id);
   const{data:sts,error:e1}=await q;
   if(e1){
     console.error('Load ucenici error:',e1);
     // Ако колоната odd_ucenik не постои, обиди се без неа
     let q2=sb.from('ucenici').select('id,teacher_id,uciliste,oddelenie,paralelka,rn,ime,prz,pol,mol,etnik,op,nop,gr,merki,extra,pop,pop_note,created_at,updated_at');
-    if(!isAdmin)q2=q2.eq('teacher_id',currentUser.id);
+    if(!isAdmin&&!isSup)q2=q2.eq('teacher_id',currentUser.id);
     const{data:sts2,error:e2}=await q2;
     if(e2){console.error('Fallback load error:',e2);return;}
     if(sts2){
@@ -743,7 +745,7 @@ async function loadFromSupabase(){
   let qe=sb.from('elective_names').select('*')
     .eq('school_year',activeSchoolYear)
     .eq('period',activePeriod);
-  if(!isAdmin)qe=qe.eq('teacher_id',currentUser.id);
+  if(!isAdmin&&!isSup)qe=qe.eq('teacher_id',currentUser.id);
   const{data:en}=await qe;
   if(en){en.forEach(e=>{
     const k=`${e.uciliste}|${e.oddelenie}|${e.paralelka}`;
@@ -752,7 +754,7 @@ async function loadFromSupabase(){
   let qr=sb.from('realizacija').select('*')
     .eq('school_year',activeSchoolYear)
     .eq('period',activePeriod);
-  if(!isAdmin)qr=qr.eq('teacher_id',currentUser.id);
+  if(!isAdmin&&!isSup)qr=qr.eq('teacher_id',currentUser.id);
   const{data:real}=await qr;
   if(real){
     real.forEach(r=>{
@@ -3104,7 +3106,7 @@ function formatDateTimeMK(v){
 async function renderSupervision(){
   const el=document.getElementById('supervisionwrap');
   if(!el)return;
-  if(!currentUser?.is_admin){
+  if(!currentUser?.is_admin&&!isSupervisor()){
     el.innerHTML='<div class="empty-s">Овој панел е достапен само за администратор.</div>';
     return;
   }
