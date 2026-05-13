@@ -542,9 +542,10 @@ async function onLogin(user){
       );
     }
 
-    const{data:profile,error:pErr}=await sb.from('profiles').select('uciliste,oddelenie,paralelka,is_admin').eq('id',user.id).single();
+    const{data:profile,error:pErr}=await sb.from('profiles').select('uciliste,oddelenie,paralelka,is_admin,role').eq('id',user.id).single();
     if(pErr)console.error('Profile error:',pErr);
     currentUser.is_admin=profile?.is_admin||false;
+    currentUser.role=profile?.role||(currentUser.is_admin?'admin':'teacher');
 
     // Надзор: ажурирај последна најава во profiles.last_login_at
     try{
@@ -574,6 +575,27 @@ async function onLogin(user){
         const selPar=document.getElementById('sel-par');
         if(selPar)selPar.value=curPar;
       }
+    } else if(currentUser.role==='supervisor'){
+      // Надзорник — гледа Admin панел и Надзор, но само за преглед
+      const badge=document.querySelector('.user-badge span');
+      if(badge)badge.textContent=''+name+' (Надзор)';
+      const nb=document.getElementById('nb-admin');
+      if(nb)nb.style.display='block';
+      const nbSup=document.getElementById('nb-supervision');
+      if(nbSup)nbSup.style.display='block';
+      // Скриј Список, Реализација, Извештај за паралелка
+      ['p-lst','p-real','p-rep'].forEach(id=>{
+        const el=document.getElementById(id);
+        // Keep panels but hide nav buttons for them
+      });
+      const addBtn=document.getElementById('add-btn-wrap');
+      if(addBtn)addBtn.style.display='none';
+      // Скриј навигациски копчиња за непотребни панели
+      document.querySelectorAll('.nb').forEach(btn=>{
+        if(btn.id==='nb-admin'||btn.id==='nb-supervision')return;
+        btn.style.display='none';
+      });
+      // Автоматски отвори Admin панел
     } else {
       // Скриј „Додај ученик" за наставници
       const addBtn=document.getElementById('add-btn-wrap');
@@ -598,6 +620,11 @@ async function onLogin(user){
     await loadFromSupabase();
     renderL();upBadge();
     if(currentUser.is_admin){renderSupervision();}
+    if(currentUser.role==='supervisor'){
+      // Автоматски отвори го Admin панелот за надзорниците
+      const adminBtn=document.getElementById('nb-admin');
+      if(adminBtn)adminBtn.click();
+    }
   } catch(e){
     console.error('onLogin error:',e);
     document.getElementById('loading-screen').style.display='none';
@@ -636,7 +663,7 @@ function renderPeriodDisplay(){
   const ey=document.getElementById('eyebrow-year');
   if(ey)ey.textContent='Дигитална евиденција · '+activeSchoolYear;
   if(!el)return;
-  if(currentUser?.is_admin){
+  if(currentUser?.is_admin&&!isSupervisor()){
     // Admin: selectors
     const years=['2024/2025','2025/2026','2026/2027','2027/2028'];
     el.innerHTML=
@@ -647,9 +674,10 @@ function renderPeriodDisplay(){
       PERIOD_ORDER.map(p=>'<option value="'+p+'"'+(p===activePeriod?' selected':'')+'>'+PERIOD_LABELS[p]+'</option>').join('')+
       '</select>';
   } else {
-    // Наставник: само текст
+    // Наставник / Надзорник: само текст
+    const roleLabel=isSupervisor()?'👁 Надзор · ':'';
     el.innerHTML='<span style="font-size:11px;font-weight:700;color:var(--acc);background:var(--accl);padding:4px 10px;border-radius:7px;border:1px solid var(--bdr);">'+
-      activeSchoolYear+' · '+( PERIOD_LABELS[activePeriod]||activePeriod)+'</span>';
+      roleLabel+activeSchoolYear+' · '+(PERIOD_LABELS[activePeriod]||activePeriod)+'</span>';
   }
 }
 
@@ -736,8 +764,11 @@ async function loadFromSupabase(){
 }
 
 let realData={};
-function getRealData(){return realData;}
-function setRealData(d){realData=d;}
+function isSupervisor(){return currentUser?.role==='supervisor';}
+function canEdit(){return currentUser?.is_admin||false;}
+function canView(){return currentUser?.is_admin||currentUser?.role==='supervisor';}
+
+
 
 async function persistStudent(s,k){
   if(!currentUser)return;
@@ -2593,7 +2624,9 @@ function saveReal(){
 
 function renderAdmin(){
   const el=document.getElementById('adminwrap');
-  if(!currentUser?.is_admin){el.innerHTML='<div class="empty-s">Немате пристап.</div>';return;}
+  if(!currentUser?.is_admin&&!isSupervisor()){el.innerHTML='<div class="empty-s">Немате пристап.</div>';return;}
+
+  const supervisorBanner=isSupervisor()?'<div style="background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);border-radius:9px;padding:8px 14px;margin-bottom:14px;font-size:12px;color:#FBBF24;display:flex;align-items:center;gap:8px;">👁 Режим на надзор — само преглед, без можност за уредување</div>':'';
 
   const allSts=Object.entries(allData).flatMap(([k,arr])=>arr.map(s=>{
     const[uch,odd,par]=k.split('|');return{...s,_uch:uch,_odd:parseInt(odd),_par:par};
@@ -2661,7 +2694,7 @@ function renderAdmin(){
   // opisnoStats е дефинирана глобално (пред renderAdmin)
 
   if(!n){
-    el.innerHTML=buildAdminFilters(uchs,odds,pars,mols,fUch,fOdd,fPar,fPol,fEtn,fMol,fNastava,UCH_NAMES)+
+    el.innerHTML=supervisorBanner+buildAdminFilters(uchs,odds,pars,mols,fUch,fOdd,fPar,fPol,fEtn,fMol,fNastava,UCH_NAMES)+
       '<div class="empty-s">Нема ученици за избраните филтри.</div>';return;
   }
 
