@@ -594,6 +594,7 @@ async function onLogin(user){
       }
     }
 
+    await loadAppSettings();
     await loadFromSupabase();
     renderL();upBadge();
     if(currentUser.is_admin){renderSupervision();}
