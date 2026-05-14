@@ -766,6 +766,8 @@ async function loadFromSupabase(){
 }
 
 let realData={};
+function getRealData(){return realData;}
+function setRealData(d){realData=d;}
 function isSupervisor(){return currentUser?.role==='supervisor';}
 function canEdit(){return currentUser?.is_admin||false;}
 function canView(){return currentUser?.is_admin||currentUser?.role==='supervisor';}
