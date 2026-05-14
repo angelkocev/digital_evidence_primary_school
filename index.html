@@ -542,10 +542,15 @@ async function onLogin(user){
       );
     }
 
-    const{data:profile,error:pErr}=await sb.from('profiles').select('uciliste,oddelenie,paralelka,is_admin,role').eq('id',user.id).single();
+    const{data:profile,error:pErr}=await sb.from('profiles').select('uciliste,oddelenie,paralelka,is_admin,role,full_name').eq('id',user.id).single();
     if(pErr)console.error('Profile error:',pErr);
     currentUser.is_admin=profile?.is_admin||false;
     currentUser.role=profile?.role||(currentUser.is_admin?'admin':'teacher');
+
+    // Ажурирај badge со full_name од profiles
+    const displayName=profile?.full_name||user.user_metadata?.full_name||user.email;
+    const badge=document.querySelector('.user-badge span');
+    if(badge)badge.textContent='👤 '+displayName;
 
     // Надзор: ажурирај последна најава во profiles.last_login_at
     try{
@@ -556,7 +561,7 @@ async function onLogin(user){
 
     if(currentUser.is_admin){
       const badge=document.querySelector('.user-badge span');
-      if(badge)badge.textContent=''+name+' (Администратор)';
+      if(badge)badge.textContent=''+displayName+' (Администратор)';
       const nb=document.getElementById('nb-admin');
       if(nb)nb.style.display='block';
       const nbSup=document.getElementById('nb-supervision');
@@ -578,7 +583,7 @@ async function onLogin(user){
     } else if(currentUser.role==='supervisor'){
       // Надзорник — гледа Admin панел и Надзор, но само за преглед
       const badge=document.querySelector('.user-badge span');
-      if(badge)badge.textContent=''+name+' (Надзор)';
+      if(badge)badge.textContent=''+displayName+' (Надзор)';
       const nb=document.getElementById('nb-admin');
       if(nb)nb.style.display='block';
       const nbSup=document.getElementById('nb-supervision');
