@@ -2919,7 +2919,7 @@ function renderAdmin(){
   const povtoruvanje=sts.filter(s=>(s.extra||[]).includes('Повторување на одделение'))
     .sort((a,b)=>(a.rn||999)-(b.rn||999));
 
-  el.innerHTML=buildAdminFilters(uchs,odds,pars,mols,fUch,fOdd,fPar,fPol,fEtn,fMol,fNastava,UCH_NAMES)+`
+  el.innerHTML=buildAdminFilters(uchs,odds,pars,mols,fUch,fOdd,fPar,fPol,fEtn,fMol,fNastava,fUcPeriod,UCH_NAMES)+`
 
   <div class="kpis" style="grid-template-columns:repeat(5,1fr);">
     <div class="kpi"><div class="kpi-l">Ученици</div><div class="kpi-v">${n}</div><div class="kpi-bot" style="background:var(--acc);width:100%;"></div></div>
