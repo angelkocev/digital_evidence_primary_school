@@ -299,7 +299,7 @@ input#fop::-webkit-outer-spin-button,input#fop::-webkit-inner-spin-button,input#
       </div>
     </div>
   </div>
-  <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;margin-top:10px;">
+  <div id="class-selectors" style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;margin-top:10px;">
     <div class="hdr-sel"><label>Училиште</label>
       <select id="sel-uch" onchange="onUchChange()">
         <option value="">— изберете —</option>
@@ -584,6 +584,9 @@ async function onLogin(user){
       // Надзорник — гледа Admin панел и Надзор, но само за преглед
       const badge=document.querySelector('.user-badge span');
       if(badge)badge.textContent=''+displayName+' (Надзор)';
+      // Скриј филтрите Училиште/Одделение/Паралелка
+      const selDiv=document.getElementById('class-selectors');
+      if(selDiv)selDiv.style.display='none';
       const nb=document.getElementById('nb-admin');
       if(nb)nb.style.display='block';
       const nbSup=document.getElementById('nb-supervision');
@@ -1387,6 +1390,13 @@ function renderL(){
               const lbl=allDone?'Внесено':(!allGradesFilled?'Оценките не се пополнети':'Белешката не е внесена');
               return'<span title="'+lbl+'" style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:'+col+'22;color:'+col+';border:1px solid '+col+'55;font-size:13px;font-weight:700;flex-shrink:0;">'+icon+'</span>';
             })()}
+            ${(()=>{
+              if(!isOpisnoGr(s.gr||{}))return'';
+              const lvl=opisnoAvg(s.gr||{});
+              if(!lvl)return'';
+              const st=opisnoLevelStyle(lvl);
+              return'<span title="Просечно ниво: '+lvl+'" style="font-size:9px;font-weight:800;padding:2px 7px;border-radius:99px;background:'+st.bg+';color:'+st.c+';border:1px solid '+st.c+'44;white-space:nowrap;">'+lvl+'</span>';
+            })()}
             <button class="ib edit" onclick="openModal(${s._i})" title="Уреди">✎</button>
             ${currentUser?.is_admin?`<button class="ib del" onclick="delSt(${s._i})" title="Избриши">✕</button>`:''}
           </div>
@@ -1404,6 +1414,17 @@ function delSt(i){
 }
 
 /* ══ REPORT ══ */
+
+function opisnoAvg(gr){
+  // I ниво=3, II ниво=2, III ниво=1, /=прескокни
+  const map={'I ниво':3,'II ниво':2,'III ниво':1};
+  const vals=Object.values(gr||{}).filter(v=>map[v]!==undefined).map(v=>map[v]);
+  if(!vals.length)return null;
+  const avg=vals.reduce((a,b)=>a+b,0)/vals.length;
+  if(avg>=2.5)return'I ниво';
+  if(avg>=1.5)return'II ниво';
+  return'III ниво';
+}
 
 function opisnoLevel(gr){
   const vals=Object.values(gr||{}).filter(v=>OPISNO_VALS.includes(String(v)));
@@ -2176,12 +2197,16 @@ function renderRepBody(sts){
         <th style="width:70px;text-align:center;">Вкупно изостаноци</th>
         <th style="width:65px;text-align:center;">Просек</th>
         <th style="width:115px;text-align:center;">Категорија</th>
+        ${curOdd<=3?'<th style="width:100px;text-align:center;">Просечно ниво</th>':''}
         <th>Забелешка</th>
       </tr></thead>
       <tbody>${sortedForBody.map(s=>{
         const a=computeAvg(s.gr||{}),gs4=gStyle(a),ki=katInfo(s.gr||{});
         const st=gradeStatus(s.gr||{});
         const totAbs=(s.op||0)+(s.nop||0);
+        // Просечно ниво за описно оценување
+        const opisnoAvgLvl=curOdd<=3?opisnoAvg(s.gr||{}):null;
+        const opisnoSt=opisnoAvgLvl?opisnoLevelStyle(opisnoAvgLvl):null;
         // Забелешка: слаби оценки или делумно оценети предмети
         let beleshka='';
         if(st==='slab'){
@@ -2199,6 +2224,7 @@ function renderRepBody(sts){
           <td style="text-align:center;font-weight:700;font-family:var(--FD);color:var(--tx);">${totAbs}</td>
           <td style="text-align:center;"><span class="pill" style="background:${gs4.bg};color:${gs4.c};font-size:10px;">${a?a.toFixed(2):'—'}</span></td>
           <td style="text-align:center;"><span class="kat ${ki.cls}">${ki.lbl}</span></td>
+          ${curOdd<=3?`<td style="text-align:center;">${opisnoAvgLvl?`<span style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:99px;background:${opisnoSt.bg};color:${opisnoSt.c};border:1px solid ${opisnoSt.c}44;">${opisnoAvgLvl}</span>`:'<span style="color:var(--tx3);font-size:11px;">—</span>'}</td>`:''}
           <td><div style="display:flex;gap:4px;flex-wrap:wrap;">${beleshka||'<span style="font-size:11px;color:var(--tx3);">—</span>'}</div></td>
         </tr>`;
       }).join('')}</tbody>
