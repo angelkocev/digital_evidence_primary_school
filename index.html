@@ -729,6 +729,7 @@ async function onLogin(user){
     }
 
     await loadAppSettings();
+    await loadSubjectsFromDB();
     await loadFromSupabase();
     renderL();upBadge();
     if(currentUser.is_admin){renderSupervision();}
@@ -989,7 +990,7 @@ const UCH_DATA={
 const UCH_ODD={C:[1,2,3,4,5,6,7,8,9],K:[1,2,3,4,5],P:[1,2,3,4,5],V:[1,2,3,4,5],CR:[1,2,3,4,5]};
 const ODD_LBL={1:'I одделение',2:'II одделение',3:'III одделение',4:'IV одделение',5:'V одделение',6:'VI одделение',7:'VII одделение',8:'VIII одделение',9:'IX одделение'};
 
-const PROG={
+const PROG_FALLBACK={
   1:[
     {g:'Јазична писменост',s:['Македонски јазик']},
     {g:'Користење други јазици',s:['Англиски јазик']},
@@ -1074,6 +1075,60 @@ const PROG={
     {g:'Изборен предмет',s:['Изборен предмет']},
   ],
 };
+
+// PROG е сега динамичен — се гради од Supabase табелата `subjects`.
+// PROG_FALLBACK служи како резерва ако вчитувањето не успее.
+let PROG=JSON.parse(JSON.stringify(PROG_FALLBACK));
+
+// Мапирање subject_area → редослед на групи (како во наставниот план)
+const AREA_ORDER=[
+  'Јазична писменост',
+  'Користење други јазици',
+  'Математика и природни науки',
+  'Општество и демократска култура',
+  'Дигитална писменост и Техника, технологија и претприемништво',
+  'Уметничко изразување и култура',
+  'Личен и социјален развој',
+  'Слободни изборни предмети',
+  'Изборен предмет'
+];
+
+async function loadSubjectsFromDB(){
+  try{
+    const{data,error}=await sb.from('subjects').select('*');
+    if(error||!data||!data.length){console.warn('subjects fallback',error);return;}
+    const built={};
+    for(let g=1;g<=9;g++){
+      // Предмети што важат за ова одделение (grade_level точно, или grade_from..grade_to опсег)
+      const subs=data.filter(s=>{
+        if(s.grade_level!=null&&Number(s.grade_level)===g)return true;
+        if(s.grade_from!=null&&s.grade_to!=null&&g>=Number(s.grade_from)&&g<=Number(s.grade_to))return true;
+        return false;
+      });
+      if(!subs.length)continue;
+      // Групирај по subject_area
+      const groups={};
+      subs.forEach(s=>{
+        const area=s.subject_area||'Останато';
+        if(!groups[area])groups[area]=[];
+        // За слободни изборни предмети — користи го описот како назив (ако постои)
+        let displayName=s.name;
+        const isElective=/Слободен изборен предмет/i.test(s.name||'');
+        if(isElective&&s.subject_description&&s.subject_description.trim()){
+          displayName=s.subject_description.trim();
+        }
+        groups[area].push({name:displayName, raw:s.name});
+      });
+      // Подреди ги групите по AREA_ORDER, остатокот на крај
+      const orderedAreas=Object.keys(groups).sort((a,b)=>{
+        const ia=AREA_ORDER.indexOf(a), ib=AREA_ORDER.indexOf(b);
+        return (ia<0?999:ia)-(ib<0?999:ib);
+      });
+      built[g]=orderedAreas.map(area=>({g:area, s:groups[area].map(x=>x.name)}));
+    }
+    if(Object.keys(built).length){PROG=built;}
+  }catch(e){console.warn('loadSubjectsFromDB error',e);}
+}
 
 const GRADE_OPTS=[5,4,3,2,1,'/'];
 const GRADE_OPTS_OPISNO=['I ниво','II ниво','III ниво','/'];
@@ -1347,8 +1402,8 @@ function buildSG(gr={}){
           const display=isE1?en.s1:(isE2?en.s2:(isI9?en.i9:(subj.includes(' - ')?subj.split(' - ')[1]:subj)));
           const nameEl=(isE1||isE2||isI9)
             ?`<input class="el-inp" value="${display}" placeholder="${subj}" onchange="saveEN('${isE1?'s1':(isE2?'s2':'i9')}',this.value)">`
-            :`<span class="srow-name">${display}</span>`;
-          const isEl=isE1||isE2; // i9 НЕ е ограничен — користи ги сите оценки
+            :`<span class="srow-name" title="${subj}">${display}</span>`;
+          const isEl=/Слободен изборен предмет|изборен/i.test(subj)&&!isI9;
           const opisno=effectiveOdd<=3;
           const opts=opisno?GRADE_OPTS_OPISNO:(isEl?[5,3,1,'/']:GRADE_OPTS);
           return`<div class="srow" title="${subj}">
