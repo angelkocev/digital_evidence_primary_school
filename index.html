@@ -1171,6 +1171,7 @@ async function loadSubjectsFromDB(){
     const{data,error}=await sb.from('subjects').select('*');
     if(error||!data||!data.length){console.warn('subjects fallback',error);return;}
     const built={};
+    const builtFond={};
     for(let g=1;g<=9;g++){
       // Предмети што важат за ова одделение (grade_level точно, или grade_from..grade_to опсег)
       const subs=data.filter(s=>{
@@ -1180,6 +1181,7 @@ async function loadSubjectsFromDB(){
         return false;
       });
       if(!subs.length)continue;
+      builtFond[g]={};
       // Групирај по subject_area
       const groups={};
       subs.forEach(s=>{
@@ -1192,6 +1194,11 @@ async function loadSubjectsFromDB(){
           displayName=s.subject_description.trim();
         }
         groups[area].push({name:displayName, raw:s.name});
+        // Годишен фонд: yearly_hours ако постои, инаку weekly_hours×36
+        let yh=null;
+        if(s.yearly_hours!=null&&!isNaN(Number(s.yearly_hours)))yh=Number(s.yearly_hours);
+        else if(s.weekly_hours!=null&&!isNaN(Number(s.weekly_hours)))yh=Number(s.weekly_hours)*36;
+        if(yh!=null)builtFond[g][displayName]=yh;
       });
       // Подреди ги групите по AREA_ORDER, остатокот на крај
       const orderedAreas=Object.keys(groups).sort((a,b)=>{
@@ -1201,6 +1208,7 @@ async function loadSubjectsFromDB(){
       built[g]=orderedAreas.map(area=>({g:area, s:groups[area].map(x=>x.name)}));
     }
     if(Object.keys(built).length){PROG=built;}
+    if(Object.keys(builtFond).length){FOND=builtFond;}
   }catch(e){console.warn('loadSubjectsFromDB error',e);}
 }
 
@@ -2772,7 +2780,7 @@ function doPrint(){
   setTimeout(()=>window.print(),300);
 }
 /* ══ ФОНД НА ЧАСОВИ 2025/2026 ══ */
-const FOND={
+const FOND_FALLBACK={
   1:{'Македонски јазик':180,'Англиски јазик':72,'Математика':180,'Природа и општество':72,'Музичко образование':36,'Ликовно образование':36,'Физичко и здравствено образование':108, 'Слободни активности': 72},
   2:{'Македонски јазик':180,'Англиски јазик':72,'Математика':180,'Природа и општество':72,'Музичко образование':36,'Ликовно образование':36,'Физичко и здравствено образование':108, 'Слободни активности': 72},
   3:{'Македонски јазик':180,'Англиски јазик':72,'Математика':180,'Природа и општини':72,'Музичко образование':36,'Ликовно образование':36,'Физичко и здравствено образование':108, 'Слободни активности': 72},
@@ -2783,6 +2791,9 @@ const FOND={
   8:{'Македонски јазик':144,'Англиски јазик':108,'Француски јазик':72,'Математика':144,'Биологија':72,'Физика':72,'Хемија':72,'Географија':72,'Историја':72,'Граѓанско образование':36,'Музичко образование':36,'Ликовно образование':36,'Физичко и здравствено образование':108,'Слободен изборен предмет 1':36,'Слободен изборен предмет 2':36},
   9:{'Македонски јазик':144,'Англиски јазик':108,'Француски јазик':72,'Математика':144,'Биологија':72,'Физика':72,'Хемија':72,'Географија':72,'Историја':72,'Граѓанско образование':36,'Иновации':36,'Музичко образование':36,'Ликовно образование':36,'Физичко и здравствено образование':108,'Изборен предмет':72},
 };
+
+// FOND е динамичен — се гради од subjects (yearly_hours). FOND_FALLBACK е резерва.
+let FOND=JSON.parse(JSON.stringify(FOND_FALLBACK));
 
 function realKey(){return`${curUch}|${curOdd}|${curPar}`;}
 
