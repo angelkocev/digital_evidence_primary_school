@@ -737,6 +737,7 @@ async function onLogin(user){
 
     await loadAppSettings();
     await loadSubjectsFromDB();
+    await loadClassesFromDB();
     await loadFromSupabase();
     renderL();upBadge();
     if(currentUser.is_admin){renderSupervision();}
@@ -958,7 +959,7 @@ async function persistReal(k,subj,vals){
   await sb.from('realizacija').upsert({teacher_id:currentUser.id,uciliste:uch,oddelenie:parseInt(odd),paralelka:par,predmet:subj,real:vals.real||0,nereal:vals.nereal||0,dop:vals.dop||0,dod:vals.dod||0,school_year:activeSchoolYear,period:activePeriod},{onConflict:'teacher_id,uciliste,oddelenie,paralelka,predmet,school_year,period'});
   showSaveInd();
 }
-const UCH_DATA={
+const UCH_DATA_FALLBACK={
   C:{name:'Централно училиште',odds:{
     1:['I-а','I-б','I-в'],2:['II-а','II-б','II-в'],3:['III-а','III-б','III-в'],
     4:['IV-а','IV-б','IV-в','IV одделение со ПОП'],5:['V-а','V-б','V-в'],
@@ -994,8 +995,55 @@ const UCH_DATA={
     5:['II, III, V одделение ПУ с. Црвени Брегови'],
   }},
 };
-const UCH_ODD={C:[1,2,3,4,5,6,7,8,9],K:[1,2,3,4,5],P:[1,2,3,4,5],V:[1,2,3,4,5],CR:[1,2,3,4,5]};
+const UCH_ODD_FALLBACK={C:[1,2,3,4,5,6,7,8,9],K:[1,2,3,4,5],P:[1,2,3,4,5],V:[1,2,3,4,5],CR:[1,2,3,4,5]};
 const ODD_LBL={1:'I одделение',2:'II одделение',3:'III одделение',4:'IV одделение',5:'V одделение',6:'VI одделение',7:'VII одделение',8:'VIII одделение',9:'IX одделение'};
+
+// Динамички: училишта/одделенија/паралелки од `classes` табелата (исто како главната апликација)
+let UCH_DATA=JSON.parse(JSON.stringify(UCH_DATA_FALLBACK));
+let UCH_ODD=JSON.parse(JSON.stringify(UCH_ODD_FALLBACK));
+
+const SCHOOL_NAME_TO_CODE={
+  'Централно училиште':'C',
+  'ПУ с. Криволак':'K',
+  'ПУ с. Пепелиште':'P',
+  'ПУ с. Војшанци':'V',
+  'ПУ с. Црвени Брегови':'CR'
+};
+// Гради назив на паралелка усогласено со мигрираните имиња во ucenici:
+// Централно (со секција) → 'IV-а' ; Подрачни/комбинирани → 'N одд.' по поединечно одделение
+function evClassLabelForGrade(cls,g){
+  if(cls.section&&cls.section.trim()){
+    return (ROMAN_EV[cls.grade]||cls.grade)+'-'+cls.section.toLowerCase();
+  }
+  return (ROMAN_EV[g]||g)+' одд.';
+}
+
+async function loadClassesFromDB(){
+  try{
+    const{data,error}=await sb.from('classes').select('*, schools(school_name)');
+    if(error||!data||!data.length){console.warn('classes fallback',error);return;}
+    const built={}, builtOdd={};
+    data.forEach(cls=>{
+      const sname=cls.schools?.school_name||'';
+      const code=SCHOOL_NAME_TO_CODE[sname];
+      if(!code)return;
+      if(!built[code])built[code]={name:sname,odds:{}};
+      // Одделенијата што ги опфаќа оваа паралелка
+      const grades=cls.combined_grades
+        ? cls.combined_grades.split(',').map(x=>parseInt(x.trim())).filter(Boolean)
+        : [cls.grade];
+      grades.forEach(g=>{
+        const label=evClassLabelForGrade(cls,g);
+        if(!built[code].odds[g])built[code].odds[g]=[];
+        if(!built[code].odds[g].includes(label))built[code].odds[g].push(label);
+        if(!builtOdd[code])builtOdd[code]=[];
+        if(!builtOdd[code].includes(g))builtOdd[code].push(g);
+      });
+    });
+    Object.keys(builtOdd).forEach(code=>builtOdd[code].sort((a,b)=>a-b));
+    if(Object.keys(built).length){UCH_DATA=built;UCH_ODD=builtOdd;}
+  }catch(e){console.warn('loadClassesFromDB error',e);}
+}
 
 const PROG_FALLBACK={
   1:[
@@ -1170,10 +1218,8 @@ function avgPolEtnSort(a,b){
 
 // Комбинирани паралелки — клуч: паралелка, вредност: можни одделенија
 const COMBINED_CLASSES={
-  'I, V одделение ПУ с. Војшанци':[1,5],
-  'III, IV одделение ПУ с. Војшанци':[3,4],
-  'I, IV одделение ПУ с. Црвени Брегови':[1,4],
-  'II, III, V одделение ПУ с. Црвени Брегови':[2,3,5],
+  // По миграцијата, комбинираните паралелки се поделени по поединечно одделение
+  // (I одд., V одд. итн.), па повеќе нема единствена комбинирана паралелка.
 };
 function isCombined(par){return par&&COMBINED_CLASSES[par];}
 function getStudentOdd(s){
