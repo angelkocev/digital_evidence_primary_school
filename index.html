@@ -658,6 +658,10 @@ async function onLogin(user){
     currentUser.is_admin=profile?.is_admin||false;
     currentUser.role=profile?.role||(currentUser.is_admin?'admin':'teacher');
 
+    // Вчитај ги предметите и паралелките од базата ПРЕД градење на менијата
+    await loadSubjectsFromDB();
+    await loadClassesFromDB();
+
     // Ажурирај badge со full_name од profiles
     const displayName=profile?.full_name||user.user_metadata?.full_name||user.email;
     const badge=document.querySelector('.user-badge span');
@@ -736,8 +740,6 @@ async function onLogin(user){
     }
 
     await loadAppSettings();
-    await loadSubjectsFromDB();
-    await loadClassesFromDB();
     await loadFromSupabase();
     renderL();upBadge();
     if(currentUser.is_admin){renderSupervision();}
