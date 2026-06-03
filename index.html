@@ -358,6 +358,10 @@ input#fop::-webkit-outer-spin-button,input#fop::-webkit-inner-spin-button,input#
   .nb-short{display:inline!important;}
   .nb{padding:5px 7px;font-size:10px;}
 }
+/* Кога е вградено во iframe (главната апликација) — сокриј го хедерот за беспрекорна интеграција */
+body.embedded .hdr{display:none!important;}
+body.embedded .app{padding-top:12px!important;}
+body.embedded{background:transparent!important;}
 </style>
 
 </head>
@@ -546,6 +550,9 @@ input#fop::-webkit-outer-spin-button,input#fop::-webkit-inner-spin-button,input#
 const SUPA_URL='https://misgjrmpotlzjtgrujkp.supabase.co';
 const SUPA_KEY='sb_publishable_s4v_-I0V4341WYPyD01Sfg_OpJiSp5R';
 const sb=supabase.createClient(SUPA_URL,SUPA_KEY);
+
+// Детекција: дали Евиденцијата работи вградена во iframe (внатре во главната апликација)
+try{ if(window.self!==window.top){ document.documentElement.classList.add('embedded'); document.addEventListener('DOMContentLoaded',()=>document.body.classList.add('embedded')); } }catch(e){ document.documentElement.classList.add('embedded'); document.addEventListener('DOMContentLoaded',()=>document.body.classList.add('embedded')); }
 
 let currentUser=null;
 let authMode='login'; // 'login' | 'register'
