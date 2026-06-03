@@ -1086,6 +1086,8 @@ const AREA_ORDER=[
   'Користење други јазици',
   'Математика и природни науки',
   'Општество и демократска култура',
+  'Техника, технологија и претприемништво',
+  'Дигитална писменост',
   'Дигитална писменост и Техника, технологија и претприемништво',
   'Уметничко изразување и култура',
   'Личен и социјален развој',
@@ -1094,6 +1096,19 @@ const AREA_ORDER=[
 ];
 
 async function loadSubjectsFromDB(){
+  // Мапирање на текстуални одделенија → број
+  const GRADE_TEXT_MAP={
+    'прво одделение':1,'второ одделение':2,'трето одделение':3,
+    'четврто одделение':4,'петто одделение':5,'шесто одделение':6,
+    'седмо одделение':7,'осмо одделение':8,'деветто одделение':9
+  };
+  const parseGrade=(v)=>{
+    if(v==null)return null;
+    const s=String(v).trim().toLowerCase();
+    if(GRADE_TEXT_MAP[s])return GRADE_TEXT_MAP[s];
+    const n=parseInt(s);
+    return isNaN(n)?null:n;
+  };
   try{
     const{data,error}=await sb.from('subjects').select('*');
     if(error||!data||!data.length){console.warn('subjects fallback',error);return;}
@@ -1101,7 +1116,8 @@ async function loadSubjectsFromDB(){
     for(let g=1;g<=9;g++){
       // Предмети што важат за ова одделение (grade_level точно, или grade_from..grade_to опсег)
       const subs=data.filter(s=>{
-        if(s.grade_level!=null&&Number(s.grade_level)===g)return true;
+        const gl=parseGrade(s.grade_level);
+        if(gl!=null&&gl===g)return true;
         if(s.grade_from!=null&&s.grade_to!=null&&g>=Number(s.grade_from)&&g<=Number(s.grade_to))return true;
         return false;
       });
@@ -1109,7 +1125,7 @@ async function loadSubjectsFromDB(){
       // Групирај по subject_area
       const groups={};
       subs.forEach(s=>{
-        const area=s.subject_area||'Останато';
+        const area=(s.subject_area&&s.subject_area.trim())||'Останато';
         if(!groups[area])groups[area]=[];
         // За слободни изборни предмети — користи го описот како назив (ако постои)
         let displayName=s.name;
