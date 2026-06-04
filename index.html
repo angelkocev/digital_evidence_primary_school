@@ -1479,7 +1479,7 @@ function buildSG(gr={}){
           const isE1=subj==='Слободен изборен предмет 1';
           const isE2=subj==='Слободен изборен предмет 2';
           const isI9=subj==='Изборен предмет';
-          const display=isE1?en.s1:(isE2?en.s2:(isI9?en.i9:(subj.includes(' - ')?subj.split(' - ')[1]:subj)));
+          const display=isE1?en.s1:(isE2?en.s2:(isI9?en.i9:((subj.includes(' - ')&&!/Модул/i.test(subj))?subj.split(' - ')[1]:subj)));
           const nameEl=(isE1||isE2||isI9)
             ?`<input class="el-inp" value="${display}" placeholder="${subj}" onchange="saveEN('${isE1?'s1':(isE2?'s2':'i9')}',this.value)">`
             :`<span class="srow-name" title="${subj}">${display}</span>`;
@@ -1804,7 +1804,7 @@ function buildRealizacijaCharts(uciliste,oddelenie,paralelka){
   const fond=FOND[odd]||{};
   const subjs=allSubjs(odd);
   const en=getEN();
-  function dN(s){if(s==='Слободен изборен предмет 1')return en.s1;if(s==='Слободен изборен предмет 2')return en.s2;if(s==='Изборен предмет')return en.i9||'Изборен предмет';return s.includes(' - ')?s.split(' - ')[1]:s;}
+  function dN(s){if(s==='Слободен изборен предмет 1')return en.s1;if(s==='Слободен изборен предмет 2')return en.s2;if(s==='Изборен предмет')return en.i9||'Изборен предмет';return (s.includes(' - ')&&!/Модул/i.test(s))?s.split(' - ')[1]:s;}
   if(!subjs.length)return'';
   let totPlan=0,totReal=0,totNereal=0,totDop=0,totDod=0;
   subjs.forEach(s=>{totPlan+=(fond[s]||0);totReal+=(rd[s]?.real||0);totNereal+=(rd[s]?.nereal||0);totDop+=(rd[s]?.dop||0);totDod+=(rd[s]?.dod||0);});
@@ -2009,7 +2009,7 @@ function renderR(){
     if(s==='Слободен изборен предмет 1')return en.s1;
     if(s==='Слободен изборен предмет 2')return en.s2;
     if(s==='Изборен предмет')return en.i9||'Изборен предмет';
-    return s.includes(' - ')?s.split(' - ')[1]:s;
+    return (s.includes(' - ')&&!/Модул/i.test(s))?s.split(' - ')[1]:s;
   }
 
   const subjHTML=filtSubjs.map(s=>{
@@ -2234,7 +2234,7 @@ function renderRepBody(sts){
     if(s==='Слободен изборен предмет 1')return en.s1;
     if(s==='Слободен изборен предмет 2')return en.s2;
     if(s==='Изборен предмет')return en.i9||'Изборен предмет';
-    return s.includes(' - ')?s.split(' - ')[1]:s;
+    return (s.includes(' - ')&&!/Модул/i.test(s))?s.split(' - ')[1]:s;
   }
 
   const subjHTML=filtSubjs.map(s=>{
@@ -2809,7 +2809,7 @@ function renderReal(){
     if(s==='Слободен изборен предмет 1')return en.s1;
     if(s==='Слободен изборен предмет 2')return en.s2;
     if(s==='Изборен предмет')return en.i9||'Изборен предмет';
-    return s.includes(' - ')?s.split(' - ')[1]:s;
+    return (s.includes(' - ')&&!/Модул/i.test(s))?s.split(' - ')[1]:s;
   }
 
   el.innerHTML=`
