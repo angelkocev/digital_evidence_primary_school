@@ -1428,9 +1428,9 @@ function openModal(idx){
   const qfOpts=opisno?GRADE_OPTS_OPISNO:GRADE_OPTS;
   qfSel.innerHTML='<option value="">—</option>'+qfOpts.map(g=>`<option value="${g}">${g==='/'?'/ (Неоценет)':g}</option>`).join('');
   buildMerkiWrap(s?s.merki:[]);
-  loadExtra(s?s.extra:[]);
   loadPOP(s);
   buildSG(s?s.gr:{});
+  loadExtra(s?s.extra:[]);
   document.getElementById('fmsg').className='fmsg';
   document.getElementById('modal').style.display='flex';
 }
@@ -1444,6 +1444,65 @@ function buildMerkiWrap(sel=[]){
     </div>`).join('');
 }
 function onExtraChange(){}// dropdown — no action needed, value read in getExtra
+
+// Динамички ги одредува дозволените опции за „Дополнителни белешки"
+// според состојбата на оценките на ученикот.
+function refreshExtraOptions(){
+  const sel=document.getElementById('extra-sel');
+  if(!sel)return;
+  const prev=sel.value;
+  // Очекувани предмети за оваа паралелка (без оние без оценка: ЧОЗ во VIII/IX)
+  const effectiveOdd=curOdd;
+  let subjs=allSubjs(effectiveOdd,curPar).filter(subj=>{
+    if(subj==='Час на одделенска заедница'&&effectiveOdd>=8)return false;
+    return true;
+  });
+  const gr=getGr();
+  let graded=0, unmarked=0, failing=0;
+  subjs.forEach(subj=>{
+    const v=gr[subj];
+    if(v===undefined||v===''||v===null||v==='/'){unmarked++;return;}
+    // Оценето (бројчано 2-5 или описно I-III ниво)
+    if(Number(v)===1){failing++;graded++;}
+    else graded++;
+  });
+
+  // Определи дозволени опции
+  let allowed=[];
+  if(unmarked>0){
+    // Неоценет по неколку предмети
+    allowed=['Одделенски испит','Повторување на одделение'];
+  } else if(failing>=3){
+    allowed=['Повторување на одделение'];
+  } else if(failing>=1){
+    allowed=['Поправен испит'];
+  } else {
+    // Сите оценети со 2-5 / I-III ниво
+    allowed=['Успешна реализација'];
+  }
+
+  // Изгради ги опциите
+  const labels={
+    'Успешна реализација':'Успешна реализација',
+    'Поправен испит':'Поправен испит',
+    'Одделенски испит':'Одделенски испит',
+    'Повторување на одделение':'Повторување на одделение'
+  };
+  let html='';
+  // Ако единствена опција е „Успешна реализација" — само неа (автоматски)
+  if(allowed.length===1&&allowed[0]==='Успешна реализација'){
+    html='<option value="Успешна реализација">Успешна реализација</option>';
+  } else {
+    html='<option value="">— Изберете белешка —</option>';
+    allowed.forEach(a=>{html+=`<option value="${a}">${labels[a]}</option>`;});
+  }
+  sel.innerHTML=html;
+  // Зачувај претходен избор ако е сè уште валиден
+  if(allowed.includes(prev)){sel.value=prev;}
+  else if(allowed.length===1&&allowed[0]==='Успешна реализација'){sel.value='Успешна реализација';}
+  else{sel.value='';}
+}
+
 function getExtra(){
   const sel=document.getElementById('extra-sel');
   if(!sel||!sel.value)return[];
@@ -1452,7 +1511,14 @@ function getExtra(){
 function loadExtra(extra=[]){
   const sel=document.getElementById('extra-sel');
   if(!sel)return;
-  sel.value=(extra&&extra.length)?extra[0]:'';
+  // Прво пресметај ги дозволените опции според оценките
+  refreshExtraOptions();
+  // Потоа постави ја зачуваната вредност ако е валидна опција
+  const saved=(extra&&extra.length)?extra[0]:'';
+  if(saved){
+    const opt=Array.from(sel.options).find(o=>o.value===saved);
+    if(opt)sel.value=saved;
+  }
 }
 // ПОП functions — admin only
 function getPOP(){
@@ -1529,7 +1595,7 @@ function buildSG(gr={}){
           const opts=opisno?GRADE_OPTS_OPISNO:(isEl?[5,3,1,'/']:GRADE_OPTS);
           return`<div class="srow" title="${subj}">
             ${nameEl}
-            <select class="gr-sel" data-s="${subj}">
+            <select class="gr-sel" data-s="${subj}" onchange="refreshExtraOptions()">
               <option value="">—</option>
               ${opts.map(g=>'<option value="'+g+'"'+(String(val)===String(g)?' selected':'')+'>'+g+'</option>').join('')}
             </select>
@@ -1701,6 +1767,13 @@ function opisnoAvg(gr){
   const vals=Object.values(gr||{}).filter(v=>map[v]!==undefined).map(v=>map[v]);
   if(!vals.length)return null;
   const avg=vals.reduce((a,b)=>a+b,0)/vals.length;
+  if(avg>=2.5)return'I ниво';
+  if(avg>=1.5)return'II ниво';
+  return'III ниво';
+}
+
+function opisnoLevelFromAvg(avg){
+  if(avg==null)return null;
   if(avg>=2.5)return'I ниво';
   if(avg>=1.5)return'II ниво';
   return'III ниво';
@@ -2408,7 +2481,7 @@ function renderRepBody(sts){
     <div class="kpi"><div class="kpi-l">Ученици</div><div class="kpi-v">${n}</div><div class="kpi-bot" style="background:var(--acc);width:100%;"></div></div>
     <div class="kpi"><div class="kpi-l">Машки</div><div class="kpi-v" style="color:#60A5FA;">${males}</div><div class="kpi-bot" style="background:#60A5FA;width:${n?bw(Math.round(males/n*100)):0}%;"></div></div>
     <div class="kpi"><div class="kpi-l">Женски</div><div class="kpi-v" style="color:#F9A8D4;">${n-males}</div><div class="kpi-bot" style="background:#F9A8D4;width:${n?bw(Math.round((n-males)/n*100)):0}%;"></div></div>
-    <div class="kpi"><div class="kpi-l">Просечен успех</div><div class="kpi-v" style="color:${gs.c}">${cAvg?cAvg.toFixed(2):'—'}</div><div class="kpi-bot" style="background:${gs.bar};width:${cAvg?bw(Math.round(((cAvg-1)/4)*100)):0}%;"></div></div>
+    <div class="kpi"><div class="kpi-l">Просечен успех</div><div class="kpi-v" style="color:${gs.c}">${cAvg?(curOdd<=3?opisnoLevelFromAvg(cAvg):cAvg.toFixed(2)):'—'}</div><div class="kpi-bot" style="background:${gs.bar};width:${cAvg?bw(Math.round(((cAvg-1)/4)*100)):0}%;"></div></div>
   </div>
 
   ${buildDemoCharts(sts)}
@@ -3104,7 +3177,7 @@ function renderAdmin(){
     <div class="kpi"><div class="kpi-l">Ученици</div><div class="kpi-v">${n}</div><div class="kpi-bot" style="background:var(--acc);width:100%;"></div></div>
     <div class="kpi"><div class="kpi-l">Машки</div><div class="kpi-v" style="color:#60A5FA;">${males}</div><div class="kpi-bot" style="background:#60A5FA;width:${n?bw(Math.round(males/n*100)):0}%;"></div></div>
     <div class="kpi"><div class="kpi-l">Женски</div><div class="kpi-v" style="color:#F9A8D4;">${n-males}</div><div class="kpi-bot" style="background:#F9A8D4;width:${n?bw(Math.round((n-males)/n*100)):0}%;"></div></div>
-    <div class="kpi"><div class="kpi-l">Просечен успех</div><div class="kpi-v" style="color:${gs.c}">${cAvg?cAvg.toFixed(2):'—'}</div><div class="kpi-bot" style="background:${gs.bar};width:${cAvg?bw(Math.round(((cAvg-1)/4)*100)):0}%;"></div></div>
+    <div class="kpi"><div class="kpi-l">Просечен успех</div><div class="kpi-v" style="color:${gs.c}">${cAvg?((fOdd!=='__svi__'&&parseInt(fOdd)<=3)?opisnoLevelFromAvg(cAvg):cAvg.toFixed(2)):'—'}</div><div class="kpi-bot" style="background:${gs.bar};width:${cAvg?bw(Math.round(((cAvg-1)/4)*100)):0}%;"></div></div>
     <div class="kpi"><div class="kpi-l">Паралелки</div><div class="kpi-v">${classList.length}</div><div class="kpi-bot" style="background:var(--teal);width:100%;"></div></div>
   </div>
 
