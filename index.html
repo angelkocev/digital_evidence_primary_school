@@ -1341,7 +1341,7 @@ function opisnoStatus(gr){
   if(!vals.length)return null;
   if(vals.every(v=>v==='I ниво'))return'I ниво';
   if(vals.every(v=>v==='III ниво'))return'III ниво';
-  return'Мешано ниво';
+  return opisnoAvg(gr);
 }
 function katInfo(gr){
   const st=gradeStatus(gr||{});
@@ -1349,16 +1349,13 @@ function katInfo(gr){
   if(st==='celoso')return{lbl:'Целосно неоценет',cls:'kat-cn'};
   if(st==='delumno')return{lbl:'Делумно оценет',cls:'kat-dn'};
   if(st==='slab'){const c=countOnes(gr);return{lbl:`${c} ${c===1?'слаба оценка':'слаби оценки'}`,cls:'kat-slab'};}
-  // Описно оценување
+  // Описно оценување — врати го просечното ниво (I/II/III)
   if(isOpisnoGr(gr)){
-    const vals=Object.values(gr||{}).filter(v=>OPISNO_VALS.includes(String(v)));
-    const allI=vals.every(v=>v==='I ниво');
-    const allIII=vals.every(v=>v==='III ниво');
-    const allII=vals.every(v=>v==='II ниво');
-  if(allI)return{lbl:'I ниво',cls:'kat-5'};
-  if(allII)return{lbl:'II ниво',cls:'kat-4'};
-  if(allIII)return{lbl:'III ниво',cls:'kat-3'};
-  return{lbl:'Мешано ниво',cls:'kat-4'};
+    const lvl=opisnoAvg(gr);
+    if(lvl==='I ниво')return{lbl:'I ниво',cls:'kat-5'};
+    if(lvl==='II ниво')return{lbl:'II ниво',cls:'kat-4'};
+    if(lvl==='III ниво')return{lbl:'III ниво',cls:'kat-3'};
+    return{lbl:'—',cls:'kat-n'};
   }
   const a=computeAvg(gr);
   if(a===null)return{lbl:'—',cls:'kat-n'};
@@ -2750,10 +2747,11 @@ function updateRaspredel(){
 
 function buildUspehChart(stsList){
   const cats=(curOdd<=3?[
-    {lbl:'I ниво',  c:'#34D399',f:'rgba(52,211,153,.15)', fn:s=>opisnoAvg(s.gr||{})==='I ниво'},
-    {lbl:'II ниво', c:'#FBBF24',f:'rgba(251,191,36,.15)', fn:s=>opisnoAvg(s.gr||{})==='II ниво'},
-    {lbl:'III ниво',c:'#F87171',f:'rgba(248,113,113,.15)',fn:s=>opisnoAvg(s.gr||{})==='III ниво'},
-    {lbl:'Неоценети',c:'#94A3B8',f:'rgba(148,163,184,.15)',fn:s=>opisnoAvg(s.gr||{})===null},
+    {lbl:'I ниво',  c:'#34D399',f:'rgba(52,211,153,.15)', fn:s=>gradeStatus(s.gr||{})==='ok'&&opisnoAvg(s.gr||{})==='I ниво'},
+    {lbl:'II ниво', c:'#FBBF24',f:'rgba(251,191,36,.15)', fn:s=>gradeStatus(s.gr||{})==='ok'&&opisnoAvg(s.gr||{})==='II ниво'},
+    {lbl:'III ниво',c:'#F87171',f:'rgba(248,113,113,.15)',fn:s=>gradeStatus(s.gr||{})==='ok'&&opisnoAvg(s.gr||{})==='III ниво'},
+    {lbl:'Делумно неоценет',c:'#F59E0B',f:'rgba(245,158,11,.15)',fn:s=>gradeStatus(s.gr||{})==='delumno'},
+    {lbl:'Целосно неоценет',c:'#94A3B8',f:'rgba(148,163,184,.15)',fn:s=>{const st=gradeStatus(s.gr||{});return st==='celoso'||st==='no-data';}},
   ]:[
     {lbl:'Одличен',     c:'#34D399',f:'rgba(52,211,153,.15)', fn:s=>{const a=computeAvg(s.gr||{});return a!==null&&a>=4.5;}},
     {lbl:'Многу добар', c:'#60A5FA',f:'rgba(96,165,250,.15)', fn:s=>{const a=computeAvg(s.gr||{});return a!==null&&a>=3.5&&a<4.5;}},
@@ -2787,32 +2785,11 @@ function buildUspehChart(stsList){
 
 function buildOpisnoUspehChart(stsList){
   const cats=[
-    {lbl:'I ниво',c:'#34D399',f:'rgba(52,211,153,.15)',fn:s=>{
-      const gr=s.gr||{};
-      if(gradeStatus(gr)!=='ok'||!isOpisnoGr(gr))return false;
-      const vals=Object.values(gr).filter(v=>OPISNO_VALS.includes(String(v)));
-      return vals.length&&vals.every(v=>v==='I ниво');
-    }},
-    {lbl:'II ниво',c:'#60A5FA',f:'rgba(96,165,250,.15)',fn:s=>{
-      const gr=s.gr||{};
-      if(gradeStatus(gr)!=='ok'||!isOpisnoGr(gr))return false;
-      const vals=Object.values(gr).filter(v=>OPISNO_VALS.includes(String(v)));
-      return vals.length&&vals.every(v=>v==='II ниво');
-    }},
-    {lbl:'III ниво',c:'#FBBF24',f:'rgba(251,191,36,.15)',fn:s=>{
-      const gr=s.gr||{};
-      if(gradeStatus(gr)!=='ok'||!isOpisnoGr(gr))return false;
-      const vals=Object.values(gr).filter(v=>OPISNO_VALS.includes(String(v)));
-      return vals.length&&vals.every(v=>v==='III ниво');
-    }},
-    {lbl:'Мешано ниво',c:'#A78BFA',f:'rgba(167,139,250,.15)',fn:s=>{
-      const gr=s.gr||{};
-      if(gradeStatus(gr)!=='ok'||!isOpisnoGr(gr))return false;
-      const vals=Object.values(gr).filter(v=>OPISNO_VALS.includes(String(v)));
-      return vals.length&&!vals.every(v=>v==='I ниво')&&!vals.every(v=>v==='II ниво')&&!vals.every(v=>v==='III ниво');
-    }},
-    {lbl:'Делумно оценети',c:'#F59E0B',f:'rgba(245,158,11,.15)',fn:s=>gradeStatus(s.gr||{})==='delumno'},
-    {lbl:'Целосно неоценети',c:'#94A3B8',f:'rgba(148,163,184,.15)',fn:s=>{const st=gradeStatus(s.gr||{});return st==='celoso'||st==='no-data';}},
+    {lbl:'I ниво',  c:'#34D399',f:'rgba(52,211,153,.15)', fn:s=>gradeStatus(s.gr||{})==='ok'&&opisnoAvg(s.gr||{})==='I ниво'},
+    {lbl:'II ниво', c:'#60A5FA',f:'rgba(96,165,250,.15)', fn:s=>gradeStatus(s.gr||{})==='ok'&&opisnoAvg(s.gr||{})==='II ниво'},
+    {lbl:'III ниво',c:'#FBBF24',f:'rgba(251,191,36,.15)', fn:s=>gradeStatus(s.gr||{})==='ok'&&opisnoAvg(s.gr||{})==='III ниво'},
+    {lbl:'Делумно неоценет',c:'#F59E0B',f:'rgba(245,158,11,.15)',fn:s=>gradeStatus(s.gr||{})==='delumno'},
+    {lbl:'Целосно неоценет',c:'#94A3B8',f:'rgba(148,163,184,.15)',fn:s=>{const st=gradeStatus(s.gr||{});return st==='celoso'||st==='no-data';}},
   ].map(c=>({...c,cnt:stsList.filter(c.fn).length})).filter(c=>c.cnt>0);
   if(!cats.length)return'<div style="font-size:13px;color:var(--tx3);padding:8px 0;">Нема ученици за прикажување.</div>';
   const maxCnt=Math.max(...cats.map(c=>c.cnt),1);
