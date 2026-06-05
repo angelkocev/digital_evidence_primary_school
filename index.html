@@ -1609,6 +1609,7 @@ function saveEN(k,v){const en=getEN();en[k]=v||(k==='s1'?'Слободен из�
 function applyQF(){
   const v=document.getElementById('qfval').value;if(!v)return;
   document.querySelectorAll('#sgw .gr-sel').forEach(s=>s.value=v);
+  refreshExtraOptions();
 }
 function updTot(){
   document.getElementById('atot').textContent=(parseInt(document.getElementById('fop').value)||0)+(parseInt(document.getElementById('fnp').value)||0);
@@ -2548,8 +2549,7 @@ function renderRepBody(sts){
         <th style="width:80px;text-align:center;">Оправдани изостаноци</th>
         <th style="width:88px;text-align:center;">Неоправдани изостаноци</th>
         <th style="width:70px;text-align:center;">Вкупно изостаноци</th>
-        <th style="width:65px;text-align:center;">Просек</th>
-        <th style="width:115px;text-align:center;">Категорија</th>
+        ${curOdd>3?'<th style="width:65px;text-align:center;">Просек</th><th style="width:115px;text-align:center;">Категорија</th>':''}
         ${curOdd<=3?'<th style="width:100px;text-align:center;">Просечно ниво</th>':''}
         <th>Забелешка</th>
       </tr></thead>
@@ -2575,8 +2575,8 @@ function renderRepBody(sts){
           <td style="text-align:center;font-weight:600;color:var(--teal);">${s.op||0}</td>
           <td style="text-align:center;font-weight:600;color:${(s.nop||0)>0?'var(--rose)':'var(--tx3)'};">${s.nop||0}</td>
           <td style="text-align:center;font-weight:700;font-family:var(--FD);color:var(--tx);">${totAbs}</td>
-          <td style="text-align:center;"><span class="pill" style="background:${gs4.bg};color:${gs4.c};font-size:10px;">${a?a.toFixed(2):'—'}</span></td>
-          <td style="text-align:center;"><span class="kat ${ki.cls}">${ki.lbl}</span></td>
+          ${curOdd>3?`<td style="text-align:center;"><span class="pill" style="background:${gs4.bg};color:${gs4.c};font-size:10px;">${a?a.toFixed(2):'—'}</span></td>
+          <td style="text-align:center;"><span class="kat ${ki.cls}">${ki.lbl}</span></td>`:''}
           ${curOdd<=3?`<td style="text-align:center;">${opisnoAvgLvl?`<span style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:99px;background:${opisnoSt.bg};color:${opisnoSt.c};border:1px solid ${opisnoSt.c}44;">${opisnoAvgLvl}</span>`:'<span style="color:var(--tx3);font-size:11px;">—</span>'}</td>`:''}
           <td><div style="display:flex;gap:4px;flex-wrap:wrap;">${beleshka||'<span style="font-size:11px;color:var(--tx3);">—</span>'}</div></td>
         </tr>`;
@@ -2749,7 +2749,12 @@ function updateRaspredel(){
 }
 
 function buildUspehChart(stsList){
-  const cats=[
+  const cats=(curOdd<=3?[
+    {lbl:'I ниво',  c:'#34D399',f:'rgba(52,211,153,.15)', fn:s=>opisnoAvg(s.gr||{})==='I ниво'},
+    {lbl:'II ниво', c:'#FBBF24',f:'rgba(251,191,36,.15)', fn:s=>opisnoAvg(s.gr||{})==='II ниво'},
+    {lbl:'III ниво',c:'#F87171',f:'rgba(248,113,113,.15)',fn:s=>opisnoAvg(s.gr||{})==='III ниво'},
+    {lbl:'Неоценети',c:'#94A3B8',f:'rgba(148,163,184,.15)',fn:s=>opisnoAvg(s.gr||{})===null},
+  ]:[
     {lbl:'Одличен',     c:'#34D399',f:'rgba(52,211,153,.15)', fn:s=>{const a=computeAvg(s.gr||{});return a!==null&&a>=4.5;}},
     {lbl:'Многу добар', c:'#60A5FA',f:'rgba(96,165,250,.15)', fn:s=>{const a=computeAvg(s.gr||{});return a!==null&&a>=3.5&&a<4.5;}},
     {lbl:'Добар',       c:'#FBBF24',f:'rgba(251,191,36,.15)', fn:s=>{const a=computeAvg(s.gr||{});return a!==null&&a>=2.5&&a<3.5;}},
@@ -2757,7 +2762,7 @@ function buildUspehChart(stsList){
     {lbl:'Слаби оценки',c:'#FCA5A5',f:'rgba(239,68,68,.2)',  fn:s=>gradeStatus(s.gr||{})==='slab'},
     {lbl:'Делумно оценети',c:'#FBBF24',f:'rgba(251,191,36,.12)',fn:s=>gradeStatus(s.gr||{})==='delumno'},
     {lbl:'Целосно неоценети',c:'#94A3B8',f:'rgba(148,163,184,.15)',fn:s=>{const st=gradeStatus(s.gr||{});return st==='celoso'||st==='no-data';}},
-  ].map(c=>({...c,cnt:stsList.filter(c.fn).length})).filter(c=>c.cnt>0);
+  ]).map(c=>({...c,cnt:stsList.filter(c.fn).length})).filter(c=>c.cnt>0);
   if(!cats.length)return'<div style="font-size:13px;color:var(--tx3);padding:8px 0;">Нема ученици за прикажување.</div>';
   const maxCnt=Math.max(...cats.map(c=>c.cnt),1);
   const barH=140;
