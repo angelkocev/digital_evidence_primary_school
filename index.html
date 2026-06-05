@@ -840,9 +840,9 @@ async function loadFromSupabase(){
     if(e2){console.error('Fallback load error:',e2);return;}
     if(sts2){
       sts2.forEach(s=>{
-        const k=`${s.uciliste}|${s.oddelenie}|${s.paralelka}`;
+        const k=`${s.uciliste}|${keyOddFor(s.paralelka,s.oddelenie)}|${s.paralelka}`;
         if(!allData[k])allData[k]=[];
-        allData[k].push({rn:s.rn,ime:s.ime,prz:s.prz,pol:s.pol,mol:s.mol,etnik:s.etnik,op:s.op,nop:s.nop,gr:s.gr||{},merki:s.merki||[],extra:s.extra||[],odd_ucenik:0,pop:s.pop||'',popNote:s.pop_note||'',_teacher_id:s.teacher_id,_dbid:s.id});
+        allData[k].push({rn:s.rn,ime:s.ime,prz:s.prz,pol:s.pol,mol:s.mol,etnik:s.etnik,op:s.op,nop:s.nop,gr:s.gr||{},merki:s.merki||[],extra:s.extra||[],odd_ucenik:s.odd_ucenik||0,pop:s.pop||'',popNote:s.pop_note||'',_teacher_id:s.teacher_id,_dbid:s.id});
       });
       Object.keys(allData).forEach(k=>{allData[k].sort((a,b)=>(a.rn||999)-(b.rn||999));});
     }
@@ -850,7 +850,7 @@ async function loadFromSupabase(){
   }
   if(sts){
     sts.forEach(s=>{
-      const k=`${s.uciliste}|${s.oddelenie}|${s.paralelka}`;
+      const k=`${s.uciliste}|${keyOddFor(s.paralelka,s.oddelenie)}|${s.paralelka}`;
       if(!allData[k])allData[k]=[];
       allData[k].push({
         rn:s.rn,ime:s.ime,prz:s.prz,pol:s.pol,
@@ -1025,26 +1025,36 @@ async function loadClassesFromDB(){
   try{
     const{data,error}=await sb.from('classes').select('*, schools(school_name)');
     if(error||!data||!data.length){console.warn('classes fallback',error);return;}
-    const built={}, builtOdd={};
+    const built={}, builtOdd={}, builtCombined={};
     data.forEach(cls=>{
       const sname=cls.schools?.school_name||'';
       const code=SCHOOL_NAME_TO_CODE[sname];
       if(!code)return;
       if(!built[code])built[code]={name:sname,odds:{}};
-      // Одделенијата што ги опфаќа оваа паралелка
-      const grades=cls.combined_grades
-        ? cls.combined_grades.split(',').map(x=>parseInt(x.trim())).filter(Boolean)
-        : [cls.grade];
-      grades.forEach(g=>{
+      const isCombo=cls.combined_grades&&cls.combined_grades.includes(',');
+      if(isCombo){
+        // Обединета комбинирана паралелка: едно име, се прикажува во секое одделение
+        const grades=cls.combined_grades.split(',').map(x=>parseInt(x.trim())).filter(Boolean).sort((a,b)=>a-b);
+        const label=grades.map(g=>ROMAN_EV[g]||g).join('-')+' одд.';
+        builtCombined[label]=grades; // за isCombined()
+        grades.forEach(g=>{
+          if(!built[code].odds[g])built[code].odds[g]=[];
+          if(!built[code].odds[g].includes(label))built[code].odds[g].push(label);
+          if(!builtOdd[code])builtOdd[code]=[];
+          if(!builtOdd[code].includes(g))builtOdd[code].push(g);
+        });
+      } else {
+        const g=cls.grade;
         const label=evClassLabelForGrade(cls,g);
         if(!built[code].odds[g])built[code].odds[g]=[];
         if(!built[code].odds[g].includes(label))built[code].odds[g].push(label);
         if(!builtOdd[code])builtOdd[code]=[];
         if(!builtOdd[code].includes(g))builtOdd[code].push(g);
-      });
+      }
     });
     Object.keys(builtOdd).forEach(code=>builtOdd[code].sort((a,b)=>a-b));
     if(Object.keys(built).length){UCH_DATA=built;UCH_ODD=builtOdd;}
+    COMBINED_CLASSES=builtCombined;
   }catch(e){console.warn('loadClassesFromDB error',e);}
 }
 
@@ -1253,9 +1263,8 @@ function avgPolEtnSort(a,b){
 
 
 // Комбинирани паралелки — клуч: паралелка, вредност: можни одделенија
-const COMBINED_CLASSES={
-  // По миграцијата, комбинираните паралелки се поделени по поединечно одделение
-  // (I одд., V одд. итн.), па повеќе нема единствена комбинирана паралелка.
+let COMBINED_CLASSES={
+  // Се гради динамички од classes.combined_grades во loadClassesFromDB
 };
 function isCombined(par){return par&&COMBINED_CLASSES[par];}
 function getStudentOdd(s){
@@ -1270,7 +1279,14 @@ let allData={};
 let electiveNames={};
 let editIdx=-1;
 
-function stKey(){return`${curUch}|${curOdd}|${curPar}`;}
+function stKey(){return`${curUch}|${keyOddFor(curPar,curOdd)}|${curPar}`;}
+// За комбинирани паралелки клучот користи најниско одделение (нормализирано),
+// за да се групираат сите ученици заедно без разлика на нивното odd_ucenik.
+function keyOddFor(par,fallbackOdd){
+  const combo=COMBINED_CLASSES[par];
+  if(combo&&combo.length)return Math.min(...combo);
+  return fallbackOdd;
+}
 function allSubjs(o,par){
   if(!o||!PROG[o])return [];
   let list=PROG[o].flatMap(g=>g.s);
