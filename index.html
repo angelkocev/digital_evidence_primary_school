@@ -668,6 +668,7 @@ async function onLogin(user){
     // Вчитај ги предметите и паралелките од базата ПРЕД градење на менијата
     await loadSubjectsFromDB();
     await loadClassesFromDB();
+    await loadVonnastavni();
 
     // Ажурирај badge со full_name од profiles
     const displayName=profile?.full_name||user.user_metadata?.full_name||user.email;
@@ -888,9 +889,9 @@ async function loadFromSupabase(){
   const{data:real}=await qr;
   if(real){
     real.forEach(r=>{
-      const k=`${r.uciliste}|${r.oddelenie}|${r.paralelka}`;
+      const k=`${r.uciliste}|${keyOddFor(r.paralelka,r.oddelenie)}|${r.paralelka}`;
       if(!realData[k])realData[k]={};
-      realData[k][r.predmet]={real:r.real,nereal:r.nereal,dop:r.dop,dod:r.dod};
+      realData[k][r.predmet]={real:r.real,nereal:r.nereal,dop:r.dop,dod:r.dod,aktiv:r.aktiv||0};
     });
   }
 }
@@ -965,8 +966,26 @@ async function persistElective(k,en){
 async function persistReal(k,subj,vals){
   if(!currentUser)return;
   const[uch,odd,par]=k.split('|');
-  await sb.from('realizacija').upsert({teacher_id:currentUser.id,uciliste:uch,oddelenie:parseInt(odd),paralelka:par,predmet:subj,real:vals.real||0,nereal:vals.nereal||0,dop:vals.dop||0,dod:vals.dod||0,school_year:activeSchoolYear,period:activePeriod},{onConflict:'teacher_id,uciliste,oddelenie,paralelka,predmet,school_year,period'});
+  await sb.from('realizacija').upsert({teacher_id:currentUser.id,uciliste:uch,oddelenie:parseInt(odd),paralelka:par,predmet:subj,real:vals.real||0,nereal:vals.nereal||0,dop:vals.dop||0,dod:vals.dod||0,aktiv:vals.aktiv||0,school_year:activeSchoolYear,period:activePeriod},{onConflict:'teacher_id,uciliste,oddelenie,paralelka,predmet,school_year,period'});
   showSaveInd();
+}
+
+// ── ВОННАСТАВНИ АКТИВНОСТИ ──
+let vonnastavniData={};
+function getVonnastavni(){return vonnastavniData[realKey()]||0;}
+async function saveVonnastavni(val){
+  const v=parseInt(val)||0;
+  vonnastavniData[realKey()]=v;
+  if(!currentUser)return;
+  const[uch,odd,par]=realKey().split('|');
+  await sb.from('vonnastavni_aktivnosti').upsert({teacher_id:currentUser.id,uciliste:uch,oddelenie:parseInt(odd),paralelka:par,broj:v,school_year:activeSchoolYear,period:activePeriod},{onConflict:'teacher_id,uciliste,oddelenie,paralelka,school_year,period'});
+  showSaveInd();
+}
+async function loadVonnastavni(){
+  try{
+    const{data}=await sb.from('vonnastavni_aktivnosti').select('*');
+    if(data){data.forEach(r=>{vonnastavniData[`${r.uciliste}|${keyOddFor(r.paralelka,r.oddelenie)}|${r.paralelka}`]=r.broj||0;});}
+  }catch(e){console.warn('loadVonnastavni',e);}
 }
 const UCH_DATA_FALLBACK={
   C:{name:'Централно училиште',odds:{
@@ -2919,7 +2938,7 @@ const FOND_FALLBACK={
 // FOND е динамичен — се гради од subjects (yearly_hours). FOND_FALLBACK е резерва.
 let FOND=JSON.parse(JSON.stringify(FOND_FALLBACK));
 
-function realKey(){return`${curUch}|${curOdd}|${curPar}`;}
+function realKey(){return`${curUch}|${keyOddFor(curPar,curOdd)}|${curPar}`;}
 
 function renderReal(){
   const el=document.getElementById('realwrap');
@@ -2954,6 +2973,7 @@ function renderReal(){
       <th style="width:110px;text-align:center;">Нереализирани часови</th>
       <th style="width:110px;text-align:center;">Дополнителна настава</th>
       <th style="width:95px;text-align:center;">Додатна настава</th>
+      ${curOdd<=5?'<th style="width:90px;text-align:center;">Активности</th>':''}
     </tr></thead>
     <tbody>
     ${subjs.map(s=>{
@@ -2963,6 +2983,7 @@ function renderReal(){
       const nereal=r.nereal||0;
       const dop=r.dop||0;
       const dod=r.dod||0;
+      const aktiv=r.aktiv||0;
       const diff=plan-real-nereal;
       const diffColor=diff===0?'var(--teal)':(diff>0?'var(--amber)':'var(--rose)');
       return`<tr>
@@ -2972,6 +2993,7 @@ function renderReal(){
         <td style="text-align:center;"><input type="number" min="0" value="${nereal}" data-subj="${s}" data-f="nereal" onchange="updateRealRow(this)" style="font-family:var(--FD);font-size:14px;font-weight:500;width:70px;text-align:center;border:1px solid var(--bdr);border-radius:6px;padding:5px;background:var(--bg3);color:var(--tx);outline:none;"></td>
         <td style="text-align:center;"><input type="number" min="0" value="${dop}" data-subj="${s}" data-f="dop" onchange="updateRealRow(this)" style="font-family:var(--FD);font-size:14px;font-weight:500;width:70px;text-align:center;border:1px solid var(--bdr);border-radius:6px;padding:5px;background:var(--bg3);color:var(--tx);outline:none;"></td>
         <td style="text-align:center;"><input type="number" min="0" value="${dod}" data-subj="${s}" data-f="dod" onchange="updateRealRow(this)" style="font-family:var(--FD);font-size:14px;font-weight:500;width:70px;text-align:center;border:1px solid var(--bdr);border-radius:6px;padding:5px;background:var(--bg3);color:var(--tx);outline:none;"></td>
+        ${curOdd<=5?`<td style="text-align:center;"><input type="number" min="0" value="${aktiv}" data-subj="${s}" data-f="aktiv" onchange="updateRealRow(this)" style="font-family:var(--FD);font-size:14px;font-weight:500;width:70px;text-align:center;border:1px solid var(--bdr);border-radius:6px;padding:5px;background:var(--bg3);color:var(--tx);outline:none;"></td>`:''}
       </tr>`;
     }).join('')}
     </tbody>
@@ -2983,10 +3005,18 @@ function renderReal(){
         <td id="tot-nereal" style="text-align:center;font-family:var(--FD);font-size:14px;font-weight:600;color:var(--rose);">${subjs.reduce((a,s)=>a+((saved[s]?.nereal)||0),0)}</td>
         <td id="tot-dop" style="text-align:center;font-family:var(--FD);font-size:14px;font-weight:600;color:var(--teal);">${subjs.reduce((a,s)=>a+((saved[s]?.dop)||0),0)}</td>
         <td id="tot-dod" style="text-align:center;font-family:var(--FD);font-size:14px;font-weight:600;color:var(--teal);">${subjs.reduce((a,s)=>a+((saved[s]?.dod)||0),0)}</td>
+        ${curOdd<=5?`<td id="tot-aktiv" style="text-align:center;font-family:var(--FD);font-size:14px;font-weight:600;color:var(--acc);">${subjs.reduce((a,s)=>a+((saved[s]?.aktiv)||0),0)}</td>`:''}
       </tr>
     </tfoot>
   </table></div>
-  <div style="font-size:11px;color:var(--tx3);margin-top:10px;">* Планираните часови се согласно годишниот фонд од Наставниот план за основно образование 2025/2026.</div>`;
+  <div style="font-size:11px;color:var(--tx3);margin-top:10px;">* Планираните часови се согласно годишниот фонд од Наставниот план за основно образование 2025/2026.</div>
+  <div style="margin-top:18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--bg3);border:1px solid var(--bdr);border-radius:10px;padding:14px 16px;">
+    <div style="flex:1;min-width:200px;">
+      <div style="font-size:13px;font-weight:600;color:var(--tx);">Воннаставни активности</div>
+      <div style="font-size:11px;color:var(--tx3);margin-top:2px;">Број на реализирани воннаставни активности во одделението</div>
+    </div>
+    <input type="number" min="0" id="vonnastavni-inp" value="${getVonnastavni()}" onchange="saveVonnastavni(this.value)" style="font-family:var(--FD);font-size:16px;font-weight:600;width:90px;text-align:center;border:1px solid var(--bdr);border-radius:8px;padding:8px;background:var(--bg2);color:var(--acc);outline:none;">
+  </div>`;
 }
 
 function updateRealRow(inp){
@@ -2994,12 +3024,12 @@ function updateRealRow(inp){
   const field=inp.dataset.f;
   const val=parseInt(inp.value)||0;
   if(!realData[realKey()])realData[realKey()]={};
-  if(!realData[realKey()][subj])realData[realKey()][subj]={real:0,nereal:0,dop:0,dod:0};
+  if(!realData[realKey()][subj])realData[realKey()][subj]={real:0,nereal:0,dop:0,dod:0,aktiv:0};
   realData[realKey()][subj][field]=val;
   // Update totals
   const subjs=allSubjs(curOdd,curPar);
   const saved=realData[realKey()];
-  ['real','nereal','dop','dod'].forEach(f=>{
+  ['real','nereal','dop','dod','aktiv'].forEach(f=>{
     const tot=subjs.reduce((a,s)=>a+((saved[s]?.[f])||0),0);
     const el=document.getElementById('tot-'+f);
     if(el)el.textContent=tot;
@@ -3015,7 +3045,7 @@ function saveReal(){
   if(!d[k])d[k]={};
   inputs.forEach(inp=>{
     const subj=inp.dataset.subj,field=inp.dataset.f,val=parseInt(inp.value)||0;
-    if(!d[k][subj])d[k][subj]={real:0,nereal:0,dop:0,dod:0};
+    if(!d[k][subj])d[k][subj]={real:0,nereal:0,dop:0,dod:0,aktiv:0};
     d[k][subj][field]=val;
   });
   setRealData(d);
