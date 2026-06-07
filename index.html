@@ -477,7 +477,7 @@ body.embedded{background:transparent!important;}
     <div class="fld"><label>Презиме</label><input id="fp" type="text" class="cyr" placeholder="Внеси го презимето"></div>
   </div>
   <div class="fg3">
-    <div class="fld"><label>Пол</label>
+    <div class="fld" id="fld-pol"><label>Пол</label>
       <select id="fs"><option value="">— изберете —</option><option value="М">Машки</option><option value="Ж">Женски</option></select>
     </div>
     <div class="fld" id="fld-mol"><label>Место на живеење</label>
@@ -1429,7 +1429,7 @@ function openModal(idx){
     }
   });
   // Сокриј етничка припадност и место на живеење за одделенски раководители
-  ['fld-mol','fld-etnik'].forEach(id=>{
+  ['fld-mol','fld-etnik','fld-pol'].forEach(id=>{
     const el=document.getElementById(id);
     if(el)el.style.display=currentUser?.is_admin?'':'none';
   });
