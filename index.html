@@ -209,7 +209,7 @@ body{font-family:var(--F);color:var(--tx);background:var(--bg);font-size:14px;pa
 .rtbl tbody tr:hover td{background:var(--bg3);}
 @media print{
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
-  body{background:#0D1117!important;color:#E8EBF0!important;padding:0;}
+  body{background:#fff!important;color:#000!important;padding:0;}
   .nav,.hdr-right,.sc-acts,.btn-sm{display:none!important;}
   #p-lst{display:none!important;}
   #p-rep{display:block!important;}
@@ -218,6 +218,13 @@ body{font-family:var(--F);color:var(--tx);background:var(--bg);font-size:14px;pa
   .rcard{break-inside:avoid;page-break-inside:avoid;}
   .kpis{break-inside:avoid;}
   .rep-duo{break-inside:avoid;}
+  /* Бела позадина за печатење — преклопи ги темните позадини */
+  #p-rep, #p-rep *{color:#000!important;}
+  #p-rep .kpi,#p-rep .rcard,#p-rep .rtbl,#p-rep table,#p-rep td,#p-rep th,
+  #p-rep .sc-card,#p-rep [class*="card"]{background:#fff!important;border-color:#ccc!important;}
+  #p-rep .rttl,#p-rep .kpi-l{color:#444!important;}
+  #p-rep h1,#p-rep h2,#p-rep h3,#p-rep .kpi-v{color:#000!important;}
+  #p-rep th{background:#f0f0f0!important;}
 }
 /* ── LOGIN SCREEN ── */
 .login-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg);padding:1rem;}
