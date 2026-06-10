@@ -544,6 +544,7 @@ body.embedded{background:transparent!important;}
     </div>
   </div>
 
+  <div id="grades-section">
   <div class="sl">Оценки по предмети</div>
   <div class="qfill-bar">
     <label>Брзо внеси иста оценка за сите предмети:</label>
@@ -553,7 +554,9 @@ body.embedded{background:transparent!important;}
     <button onclick="applyQF()">Примени на сите</button>
   </div>
   <div id="sgw"></div>
+  </div>
 
+  <div id="extra-section">
   <div class="sl">Дополнителни белешки</div>
   <div style="margin-bottom:12px;">
     <select id="extra-sel" onchange="onExtraChange()" style="font-family:var(--F);font-size:13px;border:1px solid var(--bdr);border-radius:9px;padding:9px 14px;color:var(--tx);background:var(--bg3);outline:none;cursor:pointer;width:100%;">
@@ -563,6 +566,7 @@ body.embedded{background:transparent!important;}
       <option value="Повторување на одделение">Повторување на одделение</option>
       <option value="Успешна реализација">Успешна реализација</option>
     </select>
+  </div>
   </div>
 
 <div class="form-actions">
@@ -1695,6 +1699,11 @@ function toggleIspishan(){
   const on=document.getElementById('fispishan').checked;
   const det=document.getElementById('ispishan-detali');
   if(det)det.style.display=on?'flex':'none';
+  // За испишани ученици — сокриј ги оценките и дополнителните белешки
+  const gradesSec=document.getElementById('grades-section');
+  const extraSec=document.getElementById('extra-section');
+  if(gradesSec)gradesSec.style.display=on?'none':'block';
+  if(extraSec)extraSec.style.display=on?'none':'block';
 }
 function getGr(){
   const g={};
@@ -2807,6 +2816,27 @@ function renderRepBody(sts){
 
   ${buildPOPStudentsTable(sortedForBody,'class')}
 
+  ${(()=>{
+     const isp=sts.filter(s=>s.ispishan);
+     if(!isp.length)return'';
+     const fmtD=(d)=>{if(!d)return'—';const dt=new Date(d+'T00:00:00');if(isNaN(dt))return'—';return String(dt.getDate()).padStart(2,'0')+'.'+String(dt.getMonth()+1).padStart(2,'0')+'.'+dt.getFullYear();};
+     return'<div class="rcard"><div class="rttl">Испишани ученици во текот на учебната година</div>'+
+       '<div style="overflow-x:auto;"><table class="rtbl" style="table-layout:auto;"><thead><tr>'+
+       '<th style="width:30px;">Бр.</th><th style="width:165px;">Ученик</th>'+
+       '<th style="width:90px;text-align:center;">Датум</th><th style="width:150px;">Причина</th>'+
+       '<th style="width:80px;text-align:center;">Оправдани</th><th style="width:90px;text-align:center;">Неоправдани</th>'+
+       '<th style="width:70px;text-align:center;">Вкупно</th></tr></thead><tbody>'+
+       isp.map((s,i)=>`<tr>
+         <td style="text-align:center;color:var(--tx3);">${i+1}</td>
+         <td style="font-family:var(--FC);font-weight:600;">${s.ime} ${s.prz}</td>
+         <td style="text-align:center;color:var(--tx2);">${fmtD(s.datumIspishuvanje)}</td>
+         <td style="color:var(--tx2);">${s.prichinaIspishuvanje||'—'}</td>
+         <td style="text-align:center;color:var(--teal);font-weight:600;">${s.op||0}</td>
+         <td style="text-align:center;color:${(s.nop||0)>0?'var(--rose)':'var(--tx3)'};font-weight:600;">${s.nop||0}</td>
+         <td style="text-align:center;font-weight:700;font-family:var(--FD);">${(s.op||0)+(s.nop||0)}</td>
+       </tr>`).join('')+'</tbody></table></div></div>';
+   })()}
+
   ${buildRealizacijaCharts(curUch,curOdd,curPar)}`;
 }
 
@@ -3528,6 +3558,28 @@ function renderAdmin(){
   })()}
 
   ${buildPOPStudentsTable(sts,'admin')}
+
+  ${(()=>{
+     const isp=sts.filter(s=>s.ispishan);
+     if(!isp.length)return'';
+     const fmtD=(d)=>{if(!d)return'—';const dt=new Date(d+'T00:00:00');if(isNaN(dt))return'—';return String(dt.getDate()).padStart(2,'0')+'.'+String(dt.getMonth()+1).padStart(2,'0')+'.'+dt.getFullYear();};
+     return'<div class="rcard" style="margin-top:1.5rem;"><div class="rttl">Испишани ученици во текот на учебната година</div>'+
+       '<div style="overflow-x:auto;"><table class="rtbl" style="table-layout:auto;"><thead><tr>'+
+       '<th style="width:30px;">Бр.</th><th style="width:160px;">Ученик</th>'+
+       '<th style="width:130px;">Училиште</th><th style="width:90px;text-align:center;">Датум</th><th style="width:140px;">Причина</th>'+
+       '<th style="width:75px;text-align:center;">Оправдани</th><th style="width:85px;text-align:center;">Неоправдани</th>'+
+       '<th style="width:65px;text-align:center;">Вкупно</th></tr></thead><tbody>'+
+       isp.map((s,i)=>`<tr>
+         <td style="text-align:center;color:var(--tx3);">${i+1}</td>
+         <td style="font-family:var(--FC);font-weight:600;">${s.ime} ${s.prz}</td>
+         <td style="color:var(--tx2);font-size:11px;">${UCH_DATA[s._uch]?.name||s._uch||'—'}</td>
+         <td style="text-align:center;color:var(--tx2);">${fmtD(s.datumIspishuvanje)}</td>
+         <td style="color:var(--tx2);">${s.prichinaIspishuvanje||'—'}</td>
+         <td style="text-align:center;color:var(--teal);font-weight:600;">${s.op||0}</td>
+         <td style="text-align:center;color:${(s.nop||0)>0?'var(--rose)':'var(--tx3)'};font-weight:600;">${s.nop||0}</td>
+         <td style="text-align:center;font-weight:700;font-family:var(--FD);">${(s.op||0)+(s.nop||0)}</td>
+       </tr>`).join('')+'</tbody></table></div></div>';
+   })()}
 
   `;
 }
