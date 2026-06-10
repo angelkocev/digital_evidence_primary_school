@@ -506,6 +506,29 @@ body.embedded{background:transparent!important;}
     <div class="atile tot"><div class="al">Вкупно</div><div class="tot-v" id="atot">0</div></div>
   </div>
 
+  <div class="sl">Статус на ученикот</div>
+  <div style="background:var(--bg3);border:1px solid var(--bdr);border-radius:10px;padding:12px 14px;margin-bottom:4px;">
+    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--tx);">
+      <input type="checkbox" id="fispishan" onchange="toggleIspishan()" style="width:16px;height:16px;cursor:pointer;">
+      Испишан ученик (префрлен / наполнил 16 години)
+    </label>
+    <div id="ispishan-detali" style="display:none;margin-top:10px;display:none;gap:10px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:140px;">
+        <label style="font-size:11px;color:var(--tx3);display:block;margin-bottom:3px;">Датум на испишување</label>
+        <input type="date" id="fispishan-datum" style="width:100%;background:var(--bg2);border:1px solid var(--bdr);border-radius:6px;padding:6px 8px;font-size:12px;color:var(--tx);">
+      </div>
+      <div style="flex:1;min-width:140px;">
+        <label style="font-size:11px;color:var(--tx3);display:block;margin-bottom:3px;">Причина</label>
+        <select id="fispishan-prichina" style="width:100%;background:var(--bg2);border:1px solid var(--bdr);border-radius:6px;padding:6px 8px;font-size:12px;color:var(--tx);">
+          <option value="">— изберете —</option>
+          <option value="Префрлен во друго училиште">Префрлен во друго училиште</option>
+          <option value="Наполнил 16 години">Наполнил 16 години</option>
+          <option value="Друго">Друго</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
   <div class="sl">Педагошки мерки</div>
   <div class="merki-grid" id="merki-wrap"></div>
 
@@ -865,6 +888,9 @@ async function loadFromSupabase(){
         mol:s.mol,etnik:s.etnik,op:s.op,nop:s.nop,
         gr:s.gr||{},merki:s.merki||[],extra:s.extra||[],
         odd_ucenik:s.odd_ucenik||0,
+        ispishan:s.ispishan||false,
+        datumIspishuvanje:s.datum_ispishuvanje||null,
+        prichinaIspishuvanje:s.prichina_ispishuvanje||null,
         pop:s.pop||'',popNote:s.pop_note||'',
         _teacher_id:s.teacher_id,_dbid:s.id
       });
@@ -927,6 +953,9 @@ async function persistStudent(s,k){
     merki:s.merki||[],
     extra:s.extra||[],
     odd_ucenik:s.odd_ucenik||0,
+    ispishan:s.ispishan||false,
+    datum_ispishuvanje:s.datumIspishuvanje||null,
+    prichina_ispishuvanje:s.prichinaIspishuvanje||null,
     pop:s.pop||'',
     pop_note:s.popNote||'',
     school_year:activeSchoolYear,
@@ -1430,6 +1459,10 @@ function openModal(idx){
   document.getElementById('fl').value=s?s.mol:'';
   document.getElementById('fet').value=s?s.etnik:'';
   document.getElementById('fop').value=s?(s.op||0):0;
+  document.getElementById('fispishan').checked=s?!!s.ispishan:false;
+  document.getElementById('fispishan-datum').value=s&&s.datumIspishuvanje?s.datumIspishuvanje:'';
+  document.getElementById('fispishan-prichina').value=s&&s.prichinaIspishuvanje?s.prichinaIspishuvanje:'';
+  toggleIspishan();
   document.getElementById('fnp').value=s?(s.nop||0):0;
   document.getElementById('atot').textContent=s?((s.op||0)+(s.nop||0)):0;
   // Заклучи ги полињата само за администратор
@@ -1658,6 +1691,11 @@ function applyQF(){
 function updTot(){
   document.getElementById('atot').textContent=(parseInt(document.getElementById('fop').value)||0)+(parseInt(document.getElementById('fnp').value)||0);
 }
+function toggleIspishan(){
+  const on=document.getElementById('fispishan').checked;
+  const det=document.getElementById('ispishan-detali');
+  if(det)det.style.display=on?'flex':'none';
+}
 function getGr(){
   const g={};
   document.querySelectorAll('#sgw .gr-sel').forEach(s=>{if(s.value!=='')g[s.dataset.s]=s.value==='/'?'/':(isNaN(parseInt(s.value))?s.value:parseInt(s.value));});
@@ -1690,7 +1728,9 @@ async function saveSt(){
 
   // Наставниците мора да внесат оценки.
   // Администраторот може да уредува само ПОП без внесување оценки.
-  if(!isAdmin){
+  const isIspishan=document.getElementById('fispishan').checked;
+  // Наставниците мора да внесат оценки — освен за испишани ученици
+  if(!isAdmin&&!isIspishan){
     const emptyGrades=document.querySelectorAll('#sgw .gr-sel');
     for(const sel of emptyGrades){
       if(sel.value===''){
@@ -1714,6 +1754,9 @@ async function saveSt(){
   const s={rn,ime,prz,pol,mol,etnik,odd_ucenik,
     op:parseInt(document.getElementById('fop').value)||0,
     nop:parseInt(document.getElementById('fnp').value)||0,
+    ispishan:isIspishan,
+    datumIspishuvanje:isIspishan?(document.getElementById('fispishan-datum').value||null):null,
+    prichinaIspishuvanje:isIspishan?(document.getElementById('fispishan-prichina').value||null):null,
     gr:isAdmin&&existingSt?(Object.values(getGr()).every(v=>v==='')?existingSt.gr:getGr()):getGr(),
     merki:getMerki(),
     extra:isAdmin&&existingSt?(getExtra().length?getExtra():existingSt.extra||[]):getExtra(),
@@ -1761,7 +1804,7 @@ function renderL(){
         <div class="sc-rn">${s.rn!=null?s.rn:'—'}</div>
         <div class="ava" style="background:${ac.bg};color:${ac.c};">${(s.ime[0]||'')+(s.prz[0]||'')}</div>
         <div class="sc-info">
-          <div class="sc-name">${s.ime} ${s.prz} ${currentUser?.is_admin?`<span class="tag ${s.pol==='М'?'mt':'ft'}" style="margin-left:5px;">${s.pol}</span>`:''}${s.odd_ucenik?'<span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:99px;background:rgba(251,191,36,.2);color:var(--amber);margin-left:4px;">'+(ODD_LBL[s.odd_ucenik]||s.odd_ucenik+' одд.')+'</span>':''}</div>
+          <div class="sc-name">${s.ime} ${s.prz} ${currentUser?.is_admin?`<span class="tag ${s.pol==='М'?'mt':'ft'}" style="margin-left:5px;">${s.pol}</span>`:''}${s.ispishan?'<span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:99px;background:rgba(248,113,113,.18);color:#F87171;margin-left:4px;">ИСПИШАН</span>':''}${s.odd_ucenik?'<span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:99px;background:rgba(251,191,36,.2);color:var(--amber);margin-left:4px;">'+(ODD_LBL[s.odd_ucenik]||s.odd_ucenik+' одд.')+'</span>':''}</div>
           ${currentUser?.is_admin?`<div class="sc-meta">${s.etnik||'—'}${s.mol?' · '+s.mol:''} </div>`:''}
         </div>
         <div class="sc-right">
@@ -2793,6 +2836,7 @@ function updateRaspredel(){
 }
 
 function buildUspehChart(stsList){
+  stsList=stsList.filter(s=>!s.ispishan);
   const cats=(curOdd<=3?[
     {lbl:'I ниво',  c:'#34D399',f:'rgba(52,211,153,.15)', fn:s=>gradeStatus(s.gr||{})==='ok'&&opisnoAvg(s.gr||{})==='I ниво'},
     {lbl:'II ниво', c:'#FBBF24',f:'rgba(251,191,36,.15)', fn:s=>gradeStatus(s.gr||{})==='ok'&&opisnoAvg(s.gr||{})==='II ниво'},
@@ -2831,6 +2875,7 @@ function buildUspehChart(stsList){
 
 
 function buildOpisnoUspehChart(stsList){
+  stsList=stsList.filter(s=>!s.ispishan);
   const cats=[
     {lbl:'I ниво',  c:'#34D399',f:'rgba(52,211,153,.15)', fn:s=>gradeStatus(s.gr||{})==='ok'&&opisnoAvg(s.gr||{})==='I ниво'},
     {lbl:'II ниво', c:'#60A5FA',f:'rgba(96,165,250,.15)', fn:s=>gradeStatus(s.gr||{})==='ok'&&opisnoAvg(s.gr||{})==='II ниво'},
