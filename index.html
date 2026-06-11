@@ -2172,10 +2172,11 @@ function renderR(){
   const oddLabel=ODD_LBL[curOdd]||'—';
   const en=getEN();
   const periodLabel=PERIOD_LABELS[activePeriod]||activePeriod;
-  const n=sts.length;
-  const males=sts.filter(s=>s.pol==='М').length;
-  const totOp=sts.reduce((a,s)=>a+(s.op||0),0);
-  const totNop=sts.reduce((a,s)=>a+(s.nop||0),0);
+  const activeSts=sts.filter(s=>!s.ispishan);
+  const n=activeSts.length;
+  const males=activeSts.filter(s=>s.pol==='М').length;
+  const totOp=activeSts.reduce((a,s)=>a+(s.op||0),0);
+  const totNop=activeSts.reduce((a,s)=>a+(s.nop||0),0);
 
   // само OK ученици за просек
   const okSts=sts.filter(s=>gradeStatus(s.gr||{})==='ok');
@@ -2399,8 +2400,11 @@ function applyGlobalFilter(){
 function renderRepBody(sts){
   const el=document.getElementById('rep-body');
   if(!el)return;
+  // Испишаните ученици не се бројат во активниот состав на паралелката
+  const allStsWithIsp=sts;
+  sts=sts.filter(s=>!s.ispishan);
   const n=sts.length;
-  if(!n){el.innerHTML='<div class="empty-s">Нема ученици за прикажаните филтри.</div>';return;}
+  if(!n&&!allStsWithIsp.some(s=>s.ispishan)){el.innerHTML='<div class="empty-s">Нема ученици за прикажаните филтри.</div>';return;}
 
   const males=sts.filter(s=>s.pol==='М').length;
   const totOp=sts.reduce((a,s)=>a+(s.op||0),0);
@@ -2817,7 +2821,7 @@ function renderRepBody(sts){
   ${buildPOPStudentsTable(sortedForBody,'class')}
 
   ${(()=>{
-     const isp=sts.filter(s=>s.ispishan);
+     const isp=allStsWithIsp.filter(s=>s.ispishan);
      if(!isp.length)return'';
      const fmtD=(d)=>{if(!d)return'—';const dt=new Date(d+'T00:00:00');if(isNaN(dt))return'—';return String(dt.getDate()).padStart(2,'0')+'.'+String(dt.getMonth()+1).padStart(2,'0')+'.'+dt.getFullYear();};
      return'<div class="rcard"><div class="rttl">Испишани ученици во текот на учебната година</div>'+
@@ -3161,6 +3165,9 @@ function renderAdmin(){
   if(fUcPeriod==='p2')sts=sts.filter(s=>s._odd>=4&&s._odd<=6);
   if(fUcPeriod==='p3')sts=sts.filter(s=>s._odd>=7);
 
+  // Испишаните не се бројат во активниот состав
+  const allStsWithIsp=sts;
+  sts=sts.filter(s=>!s.ispishan);
   const n=sts.length;
 
   const UCH_NAMES={C:'Централно училиште',K:'ПУ с. Криволак',P:'ПУ с. Пепелиште',V:'ПУ с. Војшанци',CR:'ПУ с. Црвени Брегови'};
@@ -3560,7 +3567,7 @@ function renderAdmin(){
   ${buildPOPStudentsTable(sts,'admin')}
 
   ${(()=>{
-     const isp=sts.filter(s=>s.ispishan);
+     const isp=allStsWithIsp.filter(s=>s.ispishan);
      if(!isp.length)return'';
      const fmtD=(d)=>{if(!d)return'—';const dt=new Date(d+'T00:00:00');if(isNaN(dt))return'—';return String(dt.getDate()).padStart(2,'0')+'.'+String(dt.getMonth()+1).padStart(2,'0')+'.'+dt.getFullYear();};
      return'<div class="rcard" style="margin-top:1.5rem;"><div class="rttl">Испишани ученици во текот на учебната година</div>'+
