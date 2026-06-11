@@ -1826,6 +1826,11 @@ function renderL(){
         <div class="sc-right">
           <div class="sc-acts">
             ${(()=>{
+              // За испишани ученици — статусот е „внесено" (немаат оценки/белешка)
+              if(s.ispishan){
+                const col='#94A3B8';
+                return'<span title="Испишан ученик" style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:'+col+'22;color:'+col+';border:1px solid '+col+'55;font-size:13px;font-weight:700;flex-shrink:0;">↪</span>';
+              }
               // Зелено = сите полиња за оценки се пополнети (со 1-5 или /) И белешката е избрана
               const gr=s.gr||{};
               const subjs=allSubjs(getStudentOdd(s));
