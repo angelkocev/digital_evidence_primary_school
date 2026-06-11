@@ -2182,8 +2182,8 @@ function renderR(){
   const activeSts=sts.filter(s=>!s.ispishan);
   const n=activeSts.length;
   const males=activeSts.filter(s=>s.pol==='М').length;
-  const totOp=activeSts.reduce((a,s)=>a+(s.op||0),0);
-  const totNop=activeSts.reduce((a,s)=>a+(s.nop||0),0);
+  const totOp=sts.reduce((a,s)=>a+(s.op||0),0);
+  const totNop=sts.reduce((a,s)=>a+(s.nop||0),0);
 
   // само OK ученици за просек
   const okSts=sts.filter(s=>gradeStatus(s.gr||{})==='ok');
@@ -2414,8 +2414,8 @@ function renderRepBody(sts){
   if(!n&&!allStsWithIsp.some(s=>s.ispishan)){el.innerHTML='<div class="empty-s">Нема ученици за прикажаните филтри.</div>';return;}
 
   const males=sts.filter(s=>s.pol==='М').length;
-  const totOp=sts.reduce((a,s)=>a+(s.op||0),0);
-  const totNop=sts.reduce((a,s)=>a+(s.nop||0),0);
+  const totOp=allStsWithIsp.reduce((a,s)=>a+(s.op||0),0);
+  const totNop=allStsWithIsp.reduce((a,s)=>a+(s.nop||0),0);
   const okSts=sts.filter(s=>gradeStatus(s.gr||{})==='ok');
   const allA=okSts.map(s=>computeAvg(s.gr)).filter(x=>x!==null);
   const cAvg=allA.length?allA.reduce((a,b)=>a+b,0)/allA.length:null;
@@ -2511,7 +2511,7 @@ function renderRepBody(sts){
       '</div></div>'
     ).join('')+'</div>';
 
-  const mc={};sts.forEach(s=>(s.merki||[]).forEach(m=>{mc[m]=(mc[m]||0)+1;}));
+  const mc={};allStsWithIsp.forEach(s=>(s.merki||[]).forEach(m=>{mc[m]=(mc[m]||0)+1;}));
   const merkiRows=MERKI_LIST.filter(m=>mc[m]).map(m=>
     '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--bdr);font-size:12px;"><span style="color:var(--tx2);">'+m+'</span><span style="font-weight:700;font-family:var(--FD);font-size:14px;color:var(--amber);">'+mc[m]+'</span></div>'
   ).join('');
@@ -3223,15 +3223,15 @@ function renderAdmin(){
   }
 
   const males=sts.filter(s=>s.pol==='М').length;
-  const totOp=sts.reduce((a,s)=>a+(s.op||0),0);
-  const totNop=sts.reduce((a,s)=>a+(s.nop||0),0);
+  const totOp=allStsWithIsp.reduce((a,s)=>a+(s.op||0),0);
+  const totNop=allStsWithIsp.reduce((a,s)=>a+(s.nop||0),0);
   const okSts=sts.filter(s=>gradeStatus(s.gr||{})==='ok');
   const allA=okSts.map(s=>computeAvg(s.gr)).filter(x=>x!==null);
   const cAvg=allA.length?allA.reduce((a,b)=>a+b,0)/allA.length:null;
   const gs=gStyle(cAvg);
 
   // Педагошки мерки
-  const mc={};sts.forEach(s=>(s.merki||[]).forEach(m=>{mc[m]=(mc[m]||0)+1;}));
+  const mc={};allStsWithIsp.forEach(s=>(s.merki||[]).forEach(m=>{mc[m]=(mc[m]||0)+1;}));
   const totMerki=Object.values(mc).reduce((a,b)=>a+b,0);
   const maxMerki=Math.max(...Object.values(mc),1);
   const merkiColors={'Усна опомена':'#60A5FA','Писмена опомена':'#FBBF24','Укор':'#F87171',
