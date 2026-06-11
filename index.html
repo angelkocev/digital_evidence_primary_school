@@ -40,6 +40,7 @@ body.theme-slate{
 input#fop::-webkit-outer-spin-button,input#fop::-webkit-inner-spin-button,
 input#fnp::-webkit-outer-spin-button,input#fnp::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
 input[data-f]::-webkit-outer-spin-button,input[data-f]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+input#vonnastavni-inp::-webkit-outer-spin-button,input#vonnastavni-inp::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
 input[data-f]{-moz-appearance:textfield;}
 body{font-family:var(--F);color:var(--tx);background:var(--bg);font-size:14px;padding:1rem 1.5rem 3rem;}
 .app{max-width:980px;margin:0 auto;}
@@ -506,8 +507,8 @@ body.embedded{background:transparent!important;}
     <div class="atile tot"><div class="al">Вкупно</div><div class="tot-v" id="atot">0</div></div>
   </div>
 
-  <div class="sl">Статус на ученикот</div>
-  <div style="background:var(--bg3);border:1px solid var(--bdr);border-radius:10px;padding:12px 14px;margin-bottom:4px;">
+  <div class="sl" id="status-section-label">Статус на ученикот</div>
+  <div id="status-section" style="background:var(--bg3);border:1px solid var(--bdr);border-radius:10px;padding:12px 14px;margin-bottom:4px;">
     <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--tx);">
       <input type="checkbox" id="fispishan" onchange="toggleIspishan()" style="width:16px;height:16px;cursor:pointer;">
       Испишан ученик (префрлен / наполнил 16 години)
@@ -1486,6 +1487,11 @@ function openModal(idx){
   });
   // Сокриј етничка припадност и место на живеење за одделенски раководители
   ['fld-mol','fld-etnik','fld-pol'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el)el.style.display=currentUser?.is_admin?'':'none';
+  });
+  // Само администраторот може да внесува испишан ученик
+  ['status-section','status-section-label'].forEach(id=>{
     const el=document.getElementById(id);
     if(el)el.style.display=currentUser?.is_admin?'':'none';
   });
@@ -3094,7 +3100,7 @@ function renderReal(){
       <div style="font-size:13px;font-weight:600;color:var(--tx);">Воннаставни активности</div>
       <div style="font-size:11px;color:var(--tx3);margin-top:2px;">Број на реализирани воннаставни активности во одделението</div>
     </div>
-    <input type="number" min="0" id="vonnastavni-inp" value="${getVonnastavni()}" onchange="saveVonnastavni(this.value)" style="font-family:var(--FD);font-size:16px;font-weight:600;width:90px;text-align:center;border:1px solid var(--bdr);border-radius:8px;padding:8px;background:var(--bg2);color:var(--acc);outline:none;">
+    <input type="number" min="0" id="vonnastavni-inp" value="${getVonnastavni()}" onchange="saveVonnastavni(this.value)" onwheel="this.blur()" style="font-family:var(--FD);font-size:16px;font-weight:600;width:90px;text-align:center;border:1px solid var(--bdr);border-radius:8px;padding:8px;background:var(--bg2);color:var(--acc);outline:none;-moz-appearance:textfield;appearance:textfield;">
   </div>`;
 }
 
