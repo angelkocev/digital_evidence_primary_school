@@ -2608,18 +2608,38 @@ function renderRepBody(sts,oddOverride,targetElId){
         '</div>';
       }
       const molSegs=molArr.map(([m,v],i)=>({v,col:PIE_COLORS[i%PIE_COLORS.length],lbl:m}));
+      // Vertical bar chart
+      function vbarChart(items){
+        if(!items.length)return'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>';
+        const maxV=Math.max(...items.map(i=>i.v),1);
+        const n=items.length;
+        const cw=Math.max(46,Math.min(90,Math.floor(420/n)));
+        const gap=14,chartH=150,W=n*cw+(n-1)*gap+10,H=chartH+44;
+        let bars='';
+        items.forEach((it,i)=>{
+          const x=5+i*(cw+gap);
+          const bh=Math.max(2,Math.round(it.v/maxV*chartH));
+          const y=10+chartH-bh;
+          const col=PIE_COLORS[i%PIE_COLORS.length];
+          bars+='<rect x="'+x+'" y="'+y+'" width="'+cw+'" height="'+bh+'" rx="5" fill="'+col+'" opacity="0.85"/>'+
+            '<text x="'+(x+cw/2)+'" y="'+(y-5)+'" text-anchor="middle" font-family="var(--FD)" font-size="13" font-weight="600" fill="'+col+'">'+it.v+'</text>'+
+            '<text x="'+(x+cw/2)+'" y="'+(chartH+26)+'" text-anchor="middle" font-size="10" fill="var(--tx2)">'+(it.lbl.length>10?it.lbl.slice(0,9)+'…':it.lbl)+'</text>';
+        });
+        return'<div style="overflow-x:auto;margin-top:8px;"><svg width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'" style="max-width:100%;">'+
+          '<line x1="0" y1="'+(chartH+10)+'" x2="'+W+'" y2="'+(chartH+10)+'" stroke="var(--bdr)" stroke-width="1"/>'+bars+'</svg></div>';
+      }
 
       const sharedHtml=
         '<div class="rep-duo" style="margin-bottom:14px;">'+
           '<div class="rcard" style="margin-bottom:0;"><div class="rttl">Вкупен број на ученици</div>'+
-            donutChart([{v:allM,col:'#60A5FA',lbl:'Машки'},{v:allF,col:'#F9A8D4',lbl:'Женски'}],allN,'ученици')+
+            pieChart([{v:allM,col:'#60A5FA',lbl:'Машки'},{v:allF,col:'#F9A8D4',lbl:'Женски'}])+
           '</div>'+
           '<div class="rcard" style="margin-bottom:0;"><div class="rttl">Вкупно ученици по место на живеење</div>'+
             (molSegs.length?pieChart(molSegs):'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>')+
           '</div>'+
         '</div>'+
         '<div class="rep-duo" style="margin-bottom:1.5rem;">'+
-          '<div class="rcard" style="margin-bottom:0;"><div class="rttl">Вкупно ученици по етничка припадност</div>'+(etnArr.length?etnArr.map(([e,v])=>cntBar(e,v,maxEtnC,'#A78BFA')).join(''):'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>')+'</div>'+
+          '<div class="rcard" style="margin-bottom:0;"><div class="rttl">Вкупно ученици по етничка припадност</div>'+vbarChart(etnArr.map(([e,v])=>({lbl:e,v})))+'</div>'+
           '<div class="rcard" style="margin-bottom:0;"><div class="rttl">Вкупно изостаноци</div>'+
             donutChart([{v:allOp,col:'#34D399',lbl:'Оправдани'},{v:allNop,col:'#F87171',lbl:'Неоправдани'}],(allOp+allNop),'изостаноци')+
           '</div>'+
