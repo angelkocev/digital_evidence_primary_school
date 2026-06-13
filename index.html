@@ -2597,11 +2597,12 @@ function renderRepBody(sts,oddOverride,targetElId){
           '<div style="flex:1;min-width:120px;">'+legend+'</div>'+
         '</div>';
       }
-      function pieChart(segs){
+      function pieChart(segs,totalLabel){
         const tot=segs.reduce((a,s)=>a+s.v,0)||1;
         let ang=0,paths='';
         segs.forEach(s=>{if(s.v<=0)return;const a1=ang+(s.v/tot)*360;paths+='<path d="'+arcPath(80,80,70,ang,a1===ang?ang+0.01:a1)+'" fill="'+s.col+'"/>';ang=a1;});
-        const legend=segs.map(s=>'<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;"><span style="width:11px;height:11px;border-radius:3px;background:'+s.col+';flex-shrink:0;"></span><span style="font-size:12px;color:var(--tx2);">'+s.lbl+': <strong style="color:'+s.col+';">'+s.v+'</strong> ('+(tot?Math.round(s.v/tot*100):0)+'%)</span></div>').join('');
+        let legend=segs.map(s=>'<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;"><span style="width:11px;height:11px;border-radius:3px;background:'+s.col+';flex-shrink:0;"></span><span style="font-size:12px;color:var(--tx2);">'+s.lbl+': <strong style="color:'+s.col+';">'+s.v+'</strong> ('+(tot?Math.round(s.v/tot*100):0)+'%)</span></div>').join('');
+        if(totalLabel)legend+='<div style="display:flex;align-items:center;gap:6px;margin-top:6px;padding-top:6px;border-top:1px solid var(--bdr);"><span style="font-size:12px;font-weight:600;color:var(--tx);">'+totalLabel+': <strong style="color:var(--acc);font-family:var(--FD);">'+segs.reduce((a,s)=>a+s.v,0)+'</strong></span></div>';
         return'<div style="display:flex;align-items:center;justify-content:center;gap:18px;flex-wrap:wrap;margin-top:8px;">'+
           '<svg width="160" height="160" viewBox="0 0 160 160" style="flex-shrink:0;">'+paths+'</svg>'+
           '<div style="flex:1;min-width:120px;">'+legend+'</div>'+
@@ -2614,28 +2615,30 @@ function renderRepBody(sts,oddOverride,targetElId){
         const maxV=Math.max(...items.map(i=>i.v),1);
         const n=items.length;
         const cw=Math.max(46,Math.min(90,Math.floor(420/n)));
-        const gap=14,chartH=150,W=n*cw+(n-1)*gap+10,H=chartH+44;
+        const gap=14,topPad=26,chartH=150,W=n*cw+(n-1)*gap+10,H=topPad+chartH+34;
         let bars='';
         items.forEach((it,i)=>{
           const x=5+i*(cw+gap);
           const bh=Math.max(2,Math.round(it.v/maxV*chartH));
-          const y=10+chartH-bh;
+          const y=topPad+chartH-bh;
           const col=PIE_COLORS[i%PIE_COLORS.length];
           bars+='<rect x="'+x+'" y="'+y+'" width="'+cw+'" height="'+bh+'" rx="5" fill="'+col+'" opacity="0.85"/>'+
-            '<text x="'+(x+cw/2)+'" y="'+(y-5)+'" text-anchor="middle" font-family="var(--FD)" font-size="13" font-weight="600" fill="'+col+'">'+it.v+'</text>'+
-            '<text x="'+(x+cw/2)+'" y="'+(chartH+26)+'" text-anchor="middle" font-size="10" fill="var(--tx2)">'+(it.lbl.length>10?it.lbl.slice(0,9)+'…':it.lbl)+'</text>';
+            '<text x="'+(x+cw/2)+'" y="'+(y-6)+'" text-anchor="middle" font-family="var(--FD)" font-size="13" font-weight="600" fill="'+col+'">'+it.v+'</text>'+
+            '<text x="'+(x+cw/2)+'" y="'+(topPad+chartH+18)+'" text-anchor="middle" font-size="10" fill="var(--tx2)">'+(it.lbl.length>10?it.lbl.slice(0,9)+'…':it.lbl)+'</text>';
         });
         return'<div style="overflow-x:auto;margin-top:8px;text-align:center;"><svg width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'" style="max-width:100%;display:inline-block;">'+
-          '<line x1="0" y1="'+(chartH+10)+'" x2="'+W+'" y2="'+(chartH+10)+'" stroke="var(--bdr)" stroke-width="1"/>'+bars+'</svg></div>';
+          '<line x1="0" y1="'+(topPad+chartH)+'" x2="'+W+'" y2="'+(topPad+chartH)+'" stroke="var(--bdr)" stroke-width="1"/>'+bars+'</svg></div>';
       }
 
       const sharedHtml=
         '<div class="rep-duo" style="margin-bottom:14px;">'+
           '<div class="rcard" style="margin-bottom:0;"><div class="rttl">Вкупен број на ученици</div>'+
-            pieChart([{v:allM,col:'#60A5FA',lbl:'Машки'},{v:allF,col:'#F9A8D4',lbl:'Женски'}])+
+            pieChart([{v:allM,col:'#60A5FA',lbl:'Машки'},{v:allF,col:'#F9A8D4',lbl:'Женски'}],'Вкупно ученици')+
           '</div>'+
           '<div class="rcard" style="margin-bottom:0;"><div class="rttl">Вкупно ученици по место на живеење</div>'+
-            (molArr.length?molArr.map(([m,v])=>cntBar(m,v,maxMolC,'#34D399')).join(''):'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>')+
+            (molArr.length===0?'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>':
+             molArr.length===1?'<div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding:14px 16px;background:var(--bg3);border-radius:10px;"><span style="font-size:14px;color:var(--tx);font-weight:600;">'+molArr[0][0]+'</span><span style="font-family:var(--FD);font-size:24px;font-weight:600;color:#34D399;">'+molArr[0][1]+'</span></div><div style="font-size:11px;color:var(--tx3);margin-top:8px;">Сите ученици се од исто место на живеење.</div>':
+             molArr.map(([m,v])=>cntBar(m,v,maxMolC,'#34D399')).join(''))+
           '</div>'+
         '</div>'+
         '<div class="rep-duo" style="margin-bottom:1.5rem;">'+
