@@ -2051,21 +2051,18 @@ function buildRealizacijaCharts(uciliste,oddelenie,paralelka){
         '<div style="margin-left:auto;font-size:11px;color:var(--tx3);">Фонд: <strong style="color:var(--acc);">'+totPlan+'</strong> часа</div>'+
       '</div>'+
     '</div>'+
-    // Дополнителна и додатна
-    (totDop+totDod>0?
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'+
-        '<div style="background:var(--bg3);border-radius:8px;padding:10px 14px;text-align:center;">'+
-          '<div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#60A5FA;margin-bottom:4px;">Дополнителна настава</div>'+
-          '<div style="font-family:var(--FD);font-size:26px;font-weight:500;color:#60A5FA;">'+totDop+'</div>'+
-          '<div style="font-size:10px;color:var(--tx3);">часа</div>'+
-        '</div>'+
-        '<div style="background:var(--bg3);border-radius:8px;padding:10px 14px;text-align:center;">'+
-          '<div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#A78BFA;margin-bottom:4px;">Додатна настава</div>'+
-          '<div style="font-family:var(--FD);font-size:26px;font-weight:500;color:#A78BFA;">'+totDod+'</div>'+
-          '<div style="font-size:10px;color:var(--tx3);">часа</div>'+
-        '</div>'+
-      '</div>'
-    :'');
+    // KPI картички: Дополнителна, Додатна, [Активности за I-V], Воннаставни
+    (()=>{
+      const k=uciliste+'|'+odd+'|'+paralelka;
+      const totVon=(typeof vonnastavniData!=='undefined'?(vonnastavniData[k]||0):0);
+      const showAkt=odd<=5;
+      const cards=[];
+      cards.push('<div style="background:var(--bg3);border-radius:8px;padding:10px 14px;text-align:center;"><div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#60A5FA;margin-bottom:4px;">Дополнителна настава</div><div style="font-family:var(--FD);font-size:26px;font-weight:500;color:#60A5FA;">'+totDop+'</div><div style="font-size:10px;color:var(--tx3);">часа</div></div>');
+      cards.push('<div style="background:var(--bg3);border-radius:8px;padding:10px 14px;text-align:center;"><div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#A78BFA;margin-bottom:4px;">Додатна настава</div><div style="font-family:var(--FD);font-size:26px;font-weight:500;color:#A78BFA;">'+totDod+'</div><div style="font-size:10px;color:var(--tx3);">часа</div></div>');
+      if(showAkt)cards.push('<div style="background:var(--bg3);border-radius:8px;padding:10px 14px;text-align:center;"><div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#34D399;margin-bottom:4px;">Активности</div><div style="font-family:var(--FD);font-size:26px;font-weight:500;color:#34D399;">'+totAktiv+'</div><div style="font-size:10px;color:var(--tx3);">бр.</div></div>');
+      cards.push('<div style="background:var(--bg3);border-radius:8px;padding:10px 14px;text-align:center;"><div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--amber);margin-bottom:4px;">Воннаставни активности</div><div style="font-family:var(--FD);font-size:26px;font-weight:500;color:var(--amber);">'+totVon+'</div><div style="font-size:10px;color:var(--tx3);">бр.</div></div>');
+      return'<div style="display:grid;grid-template-columns:repeat('+cards.length+',1fr);gap:10px;">'+cards.join('')+'</div>';
+    })();
 
   // ═══ ПО ПРЕДМЕТ — Scorecard ═══
   const activeSubjs=subjs.filter(s=>(fond[s]||0)>0);
@@ -2179,11 +2176,11 @@ function buildRealizacijaChartsAggregate(classKeys){
         '<div style="margin-left:auto;font-size:11px;color:var(--tx3);">Фонд: <strong style="color:var(--acc);">'+totPlan+'</strong> часа</div>'+
       '</div>'+
     '</div>'+
-    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;">'+
-      '<div style="background:var(--bg3);border-radius:8px;padding:10px 14px;text-align:center;"><div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#60A5FA;margin-bottom:4px;">Дополнителна</div><div style="font-family:var(--FD);font-size:24px;font-weight:500;color:#60A5FA;">'+totDop+'</div></div>'+
-      '<div style="background:var(--bg3);border-radius:8px;padding:10px 14px;text-align:center;"><div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#A78BFA;margin-bottom:4px;">Додатна</div><div style="font-family:var(--FD);font-size:24px;font-weight:500;color:#A78BFA;">'+totDod+'</div></div>'+
-      (hasAktiv?'<div style="background:var(--bg3);border-radius:8px;padding:10px 14px;text-align:center;"><div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#34D399;margin-bottom:4px;">Активности</div><div style="font-family:var(--FD);font-size:24px;font-weight:500;color:#34D399;">'+totAktiv+'</div></div>':'')+
-      '<div style="background:var(--bg3);border-radius:8px;padding:10px 14px;text-align:center;"><div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--amber);margin-bottom:4px;">Воннаставни</div><div style="font-family:var(--FD);font-size:24px;font-weight:500;color:var(--amber);">'+totVon+'</div></div>'+
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">'+
+      '<div style="background:var(--bg3);border-radius:8px;padding:10px 14px;text-align:center;"><div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#60A5FA;margin-bottom:4px;">Дополнителна настава</div><div style="font-family:var(--FD);font-size:24px;font-weight:500;color:#60A5FA;">'+totDop+'</div></div>'+
+      '<div style="background:var(--bg3);border-radius:8px;padding:10px 14px;text-align:center;"><div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#A78BFA;margin-bottom:4px;">Додатна настава</div><div style="font-family:var(--FD);font-size:24px;font-weight:500;color:#A78BFA;">'+totDod+'</div></div>'+
+      '<div style="background:var(--bg3);border-radius:8px;padding:10px 14px;text-align:center;"><div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#34D399;margin-bottom:4px;">Активности</div><div style="font-family:var(--FD);font-size:24px;font-weight:500;color:#34D399;">'+totAktiv+'</div></div>'+
+      '<div style="background:var(--bg3);border-radius:8px;padding:10px 14px;text-align:center;"><div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--amber);margin-bottom:4px;">Воннаставни активности</div><div style="font-family:var(--FD);font-size:24px;font-weight:500;color:var(--amber);">'+totVon+'</div></div>'+
     '</div>';
 
   // По предмет
@@ -4005,7 +4002,7 @@ async function renderSupervision(){
 
     el.innerHTML=`
       <div class="kpis" style="grid-template-columns:repeat(4,1fr);">
-        <div class="kpi"><div class="kpi-l">Одделенски раководител</div><div class="kpi-v">${totalTeachers}</div><div class="kpi-bot" style="background:var(--acc);width:100%;"></div></div>
+        <div class="kpi"><div class="kpi-l">Одделенски раководители</div><div class="kpi-v">${totalTeachers}</div><div class="kpi-bot" style="background:var(--acc);width:100%;"></div></div>
         <div class="kpi"><div class="kpi-l">Комплетни податоци</div><div class="kpi-v" style="color:var(--teal);">${completeTeachers}</div><div class="kpi-bot" style="background:var(--teal);width:${totalTeachers?Math.round(completeTeachers/totalTeachers*100):0}%;"></div></div>
         <div class="kpi"><div class="kpi-l">Некомплетни податоци</div><div class="kpi-v" style="color:var(--amber);">${incompleteTeachers}</div><div class="kpi-bot" style="background:var(--amber);width:${totalTeachers?Math.round(incompleteTeachers/totalTeachers*100):0}%;"></div></div>
         <div class="kpi"><div class="kpi-l">Просечна пополнетост</div><div class="kpi-v" style="color:var(--acc);">${avgCompletion}%</div><div class="kpi-bot" style="background:var(--acc);width:${avgCompletion}%;"></div></div>
