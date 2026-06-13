@@ -2561,7 +2561,42 @@ function renderRepBody(sts,oddOverride,targetElId){
       const numericSts=sts.filter(s=>getOdd(s)>3);
       const lowestOpisno=Math.min(...grades.filter(g=>g<=3));
       const lowestNumeric=Math.min(...grades.filter(g=>g>3));
+
+      // ── Заеднички дел за СИТЕ ученици во паралелката ──
+      const allN=sts.length;
+      const allM=sts.filter(s=>s.pol==='М').length;
+      const allF=allN-allM;
+      const allOp=allStsWithIsp.reduce((a,s)=>a+(s.op||0),0);
+      const allNop=allStsWithIsp.reduce((a,s)=>a+(s.nop||0),0);
+      // Етничка припадност
+      const etnMap={};sts.forEach(s=>{const e=s.etnik||'Останато';etnMap[e]=(etnMap[e]||0)+1;});
+      const etnArr=Object.entries(etnMap).sort((a,b)=>b[1]-a[1]);
+      const maxEtnC=Math.max(...etnArr.map(([,v])=>v),1);
+      // Место на живеење
+      const molMap={};sts.forEach(s=>{if(s.mol){molMap[s.mol]=(molMap[s.mol]||0)+1;}});
+      const molArr=Object.entries(molMap).sort((a,b)=>b[1]-a[1]);
+      const maxMolC=Math.max(...molArr.map(([,v])=>v),1);
+      function cntBar(lbl,v,maxV,col){const pct=Math.max(4,Math.round(v/maxV*100));return'<div class="brow"><span class="blbl" style="width:140px;min-width:140px;">'+lbl+'</span><div class="btrk"><div class="bfil" style="width:'+pct+'%;background:'+col+';opacity:.8;"></div></div><span class="bval" style="color:'+col+';">'+v+'</span></div>';}
+      const sharedHtml=
+        '<div class="kpis" style="grid-template-columns:repeat(3,1fr);margin-bottom:1.25rem;">'+
+          '<div class="kpi"><div class="kpi-l">Вкупно ученици</div><div class="kpi-v">'+allN+'</div><div class="kpi-bot" style="background:var(--acc);width:100%;"></div></div>'+
+          '<div class="kpi"><div class="kpi-l">Вкупно машки</div><div class="kpi-v" style="color:#60A5FA;">'+allM+'</div><div class="kpi-bot" style="background:#60A5FA;width:'+(allN?Math.round(allM/allN*100):0)+'%;"></div></div>'+
+          '<div class="kpi"><div class="kpi-l">Вкупно женски</div><div class="kpi-v" style="color:#F9A8D4;">'+allF+'</div><div class="kpi-bot" style="background:#F9A8D4;width:'+(allN?Math.round(allF/allN*100):0)+'%;"></div></div>'+
+        '</div>'+
+        '<div class="rep-trio" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:1.5rem;">'+
+          '<div class="rcard" style="margin-bottom:0;"><div class="rttl">Вкупно ученици по етничка припадност</div>'+(etnArr.length?etnArr.map(([e,v])=>cntBar(e,v,maxEtnC,'#A78BFA')).join(''):'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>')+'</div>'+
+          '<div class="rcard" style="margin-bottom:0;"><div class="rttl">Вкупно ученици по место на живеење</div>'+(molArr.length?molArr.map(([m,v])=>cntBar(m,v,maxMolC,'#34D399')).join(''):'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>')+'</div>'+
+          '<div class="rcard" style="margin-bottom:0;"><div class="rttl">Вкупно изостаноци</div>'+
+            '<div style="display:flex;flex-direction:column;gap:10px;margin-top:6px;">'+
+              '<div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:12px;color:var(--tx2);">Оправдани</span><span style="font-family:var(--FD);font-size:22px;font-weight:600;color:var(--teal);">'+allOp+'</span></div>'+
+              '<div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:12px;color:var(--tx2);">Неоправдани</span><span style="font-family:var(--FD);font-size:22px;font-weight:600;color:var(--rose);">'+allNop+'</span></div>'+
+              '<div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--bdr);padding-top:8px;"><span style="font-size:12px;font-weight:600;color:var(--tx);">Вкупно</span><span style="font-family:var(--FD);font-size:22px;font-weight:700;color:var(--acc);">'+(allOp+allNop)+'</span></div>'+
+            '</div>'+
+          '</div>'+
+        '</div>';
+
       el.innerHTML=
+        sharedHtml+
         '<div style="margin-bottom:10px;padding:8px 14px;background:rgba(52,211,153,.1);border-radius:8px;border:1px solid rgba(52,211,153,.25);"><span style="font-size:13px;font-weight:700;color:#34D399;">📝 Описно оценување (I–III одделение)</span></div>'+
         '<div id="rep-body-opisno"></div>'+
         '<div style="margin:24px 0 10px;padding:8px 14px;background:rgba(96,165,250,.1);border-radius:8px;border:1px solid rgba(96,165,250,.25);"><span style="font-size:13px;font-weight:700;color:#60A5FA;">🔢 Бројчано оценување (IV–IX одделение)</span></div>'+
