@@ -2057,10 +2057,10 @@ function buildRealizacijaCharts(uciliste,oddelenie,paralelka){
       const totVon=(typeof vonnastavniData!=='undefined'?(vonnastavniData[k]||0):0);
       const showAkt=odd<=5;
       const cards=[];
-      cards.push('<div style="background:var(--bg3);border-radius:8px;padding:10px 14px;text-align:center;"><div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#60A5FA;margin-bottom:4px;">Дополнителна настава</div><div style="font-family:var(--FD);font-size:26px;font-weight:500;color:#60A5FA;">'+totDop+'</div><div style="font-size:10px;color:var(--tx3);">часа</div></div>');
-      cards.push('<div style="background:var(--bg3);border-radius:8px;padding:10px 14px;text-align:center;"><div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#A78BFA;margin-bottom:4px;">Додатна настава</div><div style="font-family:var(--FD);font-size:26px;font-weight:500;color:#A78BFA;">'+totDod+'</div><div style="font-size:10px;color:var(--tx3);">часа</div></div>');
-      if(showAkt)cards.push('<div style="background:var(--bg3);border-radius:8px;padding:10px 14px;text-align:center;"><div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#34D399;margin-bottom:4px;">Активности</div><div style="font-family:var(--FD);font-size:26px;font-weight:500;color:#34D399;">'+totAktiv+'</div><div style="font-size:10px;color:var(--tx3);">бр.</div></div>');
-      cards.push('<div style="background:var(--bg3);border-radius:8px;padding:10px 14px;text-align:center;"><div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--amber);margin-bottom:4px;">Воннаставни активности</div><div style="font-family:var(--FD);font-size:26px;font-weight:500;color:var(--amber);">'+totVon+'</div><div style="font-size:10px;color:var(--tx3);">бр.</div></div>');
+      cards.push('<div style="background:var(--bg3);border-radius:8px;padding:10px 14px;text-align:center;"><div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#60A5FA;margin-bottom:4px;">Дополнителна настава</div><div style="font-family:var(--FD);font-size:26px;font-weight:500;color:#60A5FA;">'+totDop+'</div></div>');
+      cards.push('<div style="background:var(--bg3);border-radius:8px;padding:10px 14px;text-align:center;"><div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#A78BFA;margin-bottom:4px;">Додатна настава</div><div style="font-family:var(--FD);font-size:26px;font-weight:500;color:#A78BFA;">'+totDod+'</div></div>');
+      if(showAkt)cards.push('<div style="background:var(--bg3);border-radius:8px;padding:10px 14px;text-align:center;"><div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#34D399;margin-bottom:4px;">Активности</div><div style="font-family:var(--FD);font-size:26px;font-weight:500;color:#34D399;">'+totAktiv+'</div></div>');
+      cards.push('<div style="background:var(--bg3);border-radius:8px;padding:10px 14px;text-align:center;"><div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--amber);margin-bottom:4px;">Воннаставни активности</div><div style="font-family:var(--FD);font-size:26px;font-weight:500;color:var(--amber);">'+totVon+'</div></div>');
       return'<div style="display:grid;grid-template-columns:repeat('+cards.length+',1fr);gap:10px;">'+cards.join('')+'</div>';
     })();
 
@@ -2308,6 +2308,12 @@ function renderR(){
   const uchName=UCH_DATA[curUch]?UCH_DATA[curUch].name:'—';
   const oddLabel=ODD_LBL[curOdd]||'—';
   const en=getEN();
+  // Опции за филтри — само оние што постојат во тековното одделение
+  const presentEtn=[...new Set(sts.map(s=>s.etnik||'Останато').filter(Boolean))];
+  const etnOptsR=ETN_ORDER.filter(e=>presentEtn.includes(e));
+  // додади ги и оние што не се во ETN_ORDER но постојат
+  presentEtn.forEach(e=>{if(!etnOptsR.includes(e))etnOptsR.push(e);});
+  const molOptsR=[...new Set(sts.map(s=>s.mol).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'mk'));
   const periodLabel=PERIOD_LABELS[activePeriod]||activePeriod;
   const activeSts=sts.filter(s=>!s.ispishan);
   const n=activeSts.length;
@@ -2497,17 +2503,14 @@ function renderR(){
       <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--tx3);margin-bottom:4px;">Етничка припадност</div>
       <select id="gf-etn" onchange="applyGlobalFilter()" style="font-family:var(--F);font-size:12px;border:1px solid var(--bdr);border-radius:7px;padding:5px 9px;color:var(--tx);background:var(--bg3);outline:none;cursor:pointer;width:100%;">
         <option value="__svi__">Сите</option>
-        ${ETN_ORDER.map(e=>'<option value="'+e+'">'+e+'</option>').join('')}
+        ${etnOptsR.map(e=>'<option value="'+e+'">'+e+'</option>').join('')}
       </select>
     </div>
     <div>
       <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--tx3);margin-bottom:4px;">Место на живеење</div>
       <select id="gf-mol" onchange="applyGlobalFilter()" style="font-family:var(--F);font-size:12px;border:1px solid var(--bdr);border-radius:7px;padding:5px 9px;color:var(--tx);background:var(--bg3);outline:none;cursor:pointer;width:100%;">
         <option value="__svi__">Сите</option>
-        <option>Неготино</option><option>с. Криволак</option><option>с. Пепелиште</option>
-        <option>с. Војшанци</option><option>с. Црвени Брегови</option><option>с. Дуброво</option>
-        <option>с. Тимјаник</option><option>с. Тремник</option><option>с. Курија</option>
-        <option>Кавадарци</option><option>Останато</option>
+        ${molOptsR.map(m=>'<option value="'+m+'">'+m+'</option>').join('')}
       </select>
     </div>
   </div>
