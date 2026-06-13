@@ -3237,16 +3237,62 @@ function realKey(){return`${curUch}|${keyOddFor(curPar,curOdd)}|${curPar}`;}
 function renderReal(){
   const el=document.getElementById('realwrap');
   if(!curUch||!curOdd||!curPar){el.innerHTML='<div class="empty-s">Изберете училиште, одделение и паралелка.</div>';return;}
-  const subjs=allSubjs(curOdd,curPar);
   const en=getEN();
-  const fond=FOND[curOdd]||{};
-  const saved=getRealData()[realKey()]||{};
-
   function dName(s){
     if(s==='Слободен изборен предмет 1')return en.s1;
     if(s==='Слободен изборен предмет 2')return en.s2;
     if(s==='Изборен предмет')return en.i9||'Изборен предмет';
     return (s.includes(' - ')&&!/Модул/i.test(s))?s.split(' - ')[1]:s;
+  }
+  const combo=isCombined(curPar)?COMBINED_CLASSES[curPar]:null;
+  const grades=combo?combo.slice().sort((a,b)=>a-b):[parseInt(curOdd)];
+
+  // Гради табела за дадено одделение. За комбинирани, predmet се чува со суфикс „@odd".
+  function buildTable(g){
+    const subjs=allSubjs(g,curPar);
+    const fond=FOND[g]||{};
+    const saved=getRealData()[realKey()]||{};
+    const sk=(s)=>combo?(s+'@'+g):s; // ключ за чување
+    const showAkt=g<=5;
+    const rows=subjs.map(s=>{
+      const plan=fond[s]||0;
+      const r=saved[sk(s)]||{};
+      const real=r.real||0,nereal=r.nereal||0,dop=r.dop||0,dod=r.dod||0,aktiv=r.aktiv||0;
+      return`<tr>
+        <td style="font-family:var(--FC);font-weight:600;">${dName(s)}</td>
+        <td style="text-align:center;font-family:var(--FD);font-size:15px;font-weight:500;color:var(--acc);">${plan||'—'}</td>
+        <td style="text-align:center;"><input type="number" min="0" value="${real}" data-subj="${sk(s)}" data-g="${g}" data-f="real" onchange="updateRealRow(this)" onwheel="this.blur()" style="font-family:var(--FD);font-size:14px;font-weight:500;width:70px;text-align:center;border:1px solid var(--bdr);border-radius:6px;padding:5px;background:var(--bg3);color:var(--tx);outline:none;"></td>
+        <td style="text-align:center;"><input type="number" min="0" value="${nereal}" data-subj="${sk(s)}" data-g="${g}" data-f="nereal" onchange="updateRealRow(this)" onwheel="this.blur()" style="font-family:var(--FD);font-size:14px;font-weight:500;width:70px;text-align:center;border:1px solid var(--bdr);border-radius:6px;padding:5px;background:var(--bg3);color:var(--tx);outline:none;"></td>
+        <td style="text-align:center;"><input type="number" min="0" value="${dop}" data-subj="${sk(s)}" data-g="${g}" data-f="dop" onchange="updateRealRow(this)" onwheel="this.blur()" style="font-family:var(--FD);font-size:14px;font-weight:500;width:70px;text-align:center;border:1px solid var(--bdr);border-radius:6px;padding:5px;background:var(--bg3);color:var(--tx);outline:none;"></td>
+        <td style="text-align:center;"><input type="number" min="0" value="${dod}" data-subj="${sk(s)}" data-g="${g}" data-f="dod" onchange="updateRealRow(this)" onwheel="this.blur()" style="font-family:var(--FD);font-size:14px;font-weight:500;width:70px;text-align:center;border:1px solid var(--bdr);border-radius:6px;padding:5px;background:var(--bg3);color:var(--tx);outline:none;"></td>
+        ${showAkt?`<td style="text-align:center;"><input type="number" min="0" value="${aktiv}" data-subj="${sk(s)}" data-g="${g}" data-f="aktiv" onchange="updateRealRow(this)" onwheel="this.blur()" style="font-family:var(--FD);font-size:14px;font-weight:500;width:70px;text-align:center;border:1px solid var(--bdr);border-radius:6px;padding:5px;background:var(--bg3);color:var(--tx);outline:none;"></td>`:''}
+      </tr>`;
+    }).join('');
+    const sumF=subjs.reduce((a,s)=>a+(fond[s]||0),0);
+    return`
+    ${combo?`<div style="margin:18px 0 8px;font-size:13px;font-weight:700;color:var(--acc);">${ODD_LBL[g]||g+' одд.'}</div>`:''}
+    <div style="overflow-x:auto;">
+    <table class="rtbl" style="table-layout:fixed;min-width:700px;">
+    <thead><tr>
+      <th style="width:200px;">Наставен предмет</th>
+      <th style="width:80px;text-align:center;">Планирани часови</th>
+      <th style="width:100px;text-align:center;">Реализирани часови</th>
+      <th style="width:110px;text-align:center;">Нереализирани часови</th>
+      <th style="width:110px;text-align:center;">Дополнителна настава</th>
+      <th style="width:95px;text-align:center;">Додатна настава</th>
+      ${showAkt?'<th style="width:90px;text-align:center;">Активности</th>':''}
+    </tr></thead>
+    <tbody>${rows}</tbody>
+    <tfoot><tr style="background:var(--bg3);">
+      <td style="font-weight:700;font-family:var(--F);padding:8px 9px;font-size:12px;">Вкупно</td>
+      <td style="text-align:center;font-family:var(--FD);font-size:14px;font-weight:600;color:var(--acc);">${sumF||'—'}</td>
+      <td id="tot-real-${g}" style="text-align:center;font-family:var(--FD);font-size:14px;font-weight:600;color:var(--teal);">${subjs.reduce((a,s)=>a+((saved[sk(s)]?.real)||0),0)}</td>
+      <td id="tot-nereal-${g}" style="text-align:center;font-family:var(--FD);font-size:14px;font-weight:600;color:var(--rose);">${subjs.reduce((a,s)=>a+((saved[sk(s)]?.nereal)||0),0)}</td>
+      <td id="tot-dop-${g}" style="text-align:center;font-family:var(--FD);font-size:14px;font-weight:600;color:var(--teal);">${subjs.reduce((a,s)=>a+((saved[sk(s)]?.dop)||0),0)}</td>
+      <td id="tot-dod-${g}" style="text-align:center;font-family:var(--FD);font-size:14px;font-weight:600;color:var(--teal);">${subjs.reduce((a,s)=>a+((saved[sk(s)]?.dod)||0),0)}</td>
+      ${showAkt?`<td id="tot-aktiv-${g}" style="text-align:center;font-family:var(--FD);font-size:14px;font-weight:600;color:var(--acc);">${subjs.reduce((a,s)=>a+((saved[sk(s)]?.aktiv)||0),0)}</td>`:''}
+    </tr></tfoot>
+    </table></div>`;
   }
 
   el.innerHTML=`
@@ -3257,52 +3303,7 @@ function renderReal(){
     </div>
     <button class="btn btn-acc btn-sm" onclick="saveReal()">Зачувај</button>
   </div>
-
-  <div style="overflow-x:auto;">
-  <table class="rtbl" style="table-layout:fixed;min-width:700px;">
-    <thead><tr>
-      <th style="width:200px;">Наставен предмет</th>
-      <th style="width:80px;text-align:center;">Планирани часови</th>
-      <th style="width:100px;text-align:center;">Реализирани часови</th>
-      <th style="width:110px;text-align:center;">Нереализирани часови</th>
-      <th style="width:110px;text-align:center;">Дополнителна настава</th>
-      <th style="width:95px;text-align:center;">Додатна настава</th>
-      ${curOdd<=5?'<th style="width:90px;text-align:center;">Активности</th>':''}
-    </tr></thead>
-    <tbody>
-    ${subjs.map(s=>{
-      const plan=fond[s]||0;
-      const r=saved[s]||{};
-      const real=r.real||0;
-      const nereal=r.nereal||0;
-      const dop=r.dop||0;
-      const dod=r.dod||0;
-      const aktiv=r.aktiv||0;
-      const diff=plan-real-nereal;
-      const diffColor=diff===0?'var(--teal)':(diff>0?'var(--amber)':'var(--rose)');
-      return`<tr>
-        <td style="font-family:var(--FC);font-weight:600;">${dName(s)}</td>
-        <td style="text-align:center;font-family:var(--FD);font-size:15px;font-weight:500;color:var(--acc);">${plan||'—'}</td>
-        <td style="text-align:center;"><input type="number" min="0" value="${real}" data-subj="${s}" data-f="real" onchange="updateRealRow(this)" style="font-family:var(--FD);font-size:14px;font-weight:500;width:70px;text-align:center;border:1px solid var(--bdr);border-radius:6px;padding:5px;background:var(--bg3);color:var(--tx);outline:none;"></td>
-        <td style="text-align:center;"><input type="number" min="0" value="${nereal}" data-subj="${s}" data-f="nereal" onchange="updateRealRow(this)" style="font-family:var(--FD);font-size:14px;font-weight:500;width:70px;text-align:center;border:1px solid var(--bdr);border-radius:6px;padding:5px;background:var(--bg3);color:var(--tx);outline:none;"></td>
-        <td style="text-align:center;"><input type="number" min="0" value="${dop}" data-subj="${s}" data-f="dop" onchange="updateRealRow(this)" style="font-family:var(--FD);font-size:14px;font-weight:500;width:70px;text-align:center;border:1px solid var(--bdr);border-radius:6px;padding:5px;background:var(--bg3);color:var(--tx);outline:none;"></td>
-        <td style="text-align:center;"><input type="number" min="0" value="${dod}" data-subj="${s}" data-f="dod" onchange="updateRealRow(this)" style="font-family:var(--FD);font-size:14px;font-weight:500;width:70px;text-align:center;border:1px solid var(--bdr);border-radius:6px;padding:5px;background:var(--bg3);color:var(--tx);outline:none;"></td>
-        ${curOdd<=5?`<td style="text-align:center;"><input type="number" min="0" value="${aktiv}" data-subj="${s}" data-f="aktiv" onchange="updateRealRow(this)" style="font-family:var(--FD);font-size:14px;font-weight:500;width:70px;text-align:center;border:1px solid var(--bdr);border-radius:6px;padding:5px;background:var(--bg3);color:var(--tx);outline:none;"></td>`:''}
-      </tr>`;
-    }).join('')}
-    </tbody>
-    <tfoot>
-      <tr style="background:var(--bg3);">
-        <td style="font-weight:700;font-family:var(--F);padding:8px 9px;font-size:12px;">Вкупно</td>
-        <td style="text-align:center;font-family:var(--FD);font-size:14px;font-weight:600;color:var(--acc);">${subjs.reduce((a,s)=>a+(fond[s]||0),0)||'—'}</td>
-        <td id="tot-real" style="text-align:center;font-family:var(--FD);font-size:14px;font-weight:600;color:var(--teal);">${subjs.reduce((a,s)=>a+((saved[s]?.real)||0),0)}</td>
-        <td id="tot-nereal" style="text-align:center;font-family:var(--FD);font-size:14px;font-weight:600;color:var(--rose);">${subjs.reduce((a,s)=>a+((saved[s]?.nereal)||0),0)}</td>
-        <td id="tot-dop" style="text-align:center;font-family:var(--FD);font-size:14px;font-weight:600;color:var(--teal);">${subjs.reduce((a,s)=>a+((saved[s]?.dop)||0),0)}</td>
-        <td id="tot-dod" style="text-align:center;font-family:var(--FD);font-size:14px;font-weight:600;color:var(--teal);">${subjs.reduce((a,s)=>a+((saved[s]?.dod)||0),0)}</td>
-        ${curOdd<=5?`<td id="tot-aktiv" style="text-align:center;font-family:var(--FD);font-size:14px;font-weight:600;color:var(--acc);">${subjs.reduce((a,s)=>a+((saved[s]?.aktiv)||0),0)}</td>`:''}
-      </tr>
-    </tfoot>
-  </table></div>
+  ${grades.map(g=>buildTable(g)).join('')}
   <div style="font-size:11px;color:var(--tx3);margin-top:10px;">* Планираните часови се согласно годишниот фонд од Наставниот план за основно образование 2025/2026.</div>
   <div style="margin-top:18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--bg3);border:1px solid var(--bdr);border-radius:10px;padding:14px 16px;">
     <div style="flex:1;min-width:200px;">
@@ -3316,18 +3317,22 @@ function renderReal(){
 function updateRealRow(inp){
   const subj=inp.dataset.subj;
   const field=inp.dataset.f;
+  const g=inp.dataset.g;
   const val=parseInt(inp.value)||0;
   if(!realData[realKey()])realData[realKey()]={};
   if(!realData[realKey()][subj])realData[realKey()][subj]={real:0,nereal:0,dop:0,dod:0,aktiv:0};
   realData[realKey()][subj][field]=val;
-  // Update totals
-  const subjs=allSubjs(curOdd,curPar);
+  // Update totals за тоа одделение
   const saved=realData[realKey()];
-  ['real','nereal','dop','dod','aktiv'].forEach(f=>{
-    const tot=subjs.reduce((a,s)=>a+((saved[s]?.[f])||0),0);
-    const el=document.getElementById('tot-'+f);
-    if(el)el.textContent=tot;
-  });
+  if(g){
+    const combo=isCombined(curPar);
+    const subjsG=allSubjs(parseInt(g),curPar);
+    ['real','nereal','dop','dod','aktiv'].forEach(f=>{
+      const tot=subjsG.reduce((a,s)=>{const key=combo?(s+'@'+g):s;return a+((saved[key]?.[f])||0);},0);
+      const elt=document.getElementById('tot-'+f+'-'+g);
+      if(elt)elt.textContent=tot;
+    });
+  }
   persistReal(realKey(),subj,realData[realKey()][subj]);
 }
 
