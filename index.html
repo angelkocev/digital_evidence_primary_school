@@ -3316,8 +3316,12 @@ function renderAdmin(){
   // Целосен назив на паралелка со училиште за подрачните (пр. „I одделение ПУ с. Криволак")
   const ROMAN_ADM=['','I','II','III','IV','V','VI','VII','VIII','IX'];
   const classFullLabel=(c)=>{
+    // Комбинирана паралелка поделена по вистинско одделение → прикажи го одделението
+    if(COMBINED_CLASSES[c.par]){
+      const ime=c.uch==='C'?'':' '+(UCH_NAMES[c.uch]||c.uch);
+      return (ROMAN_ADM[c.odd]||c.odd)+' одд. ('+c.par+')'+ime;
+    }
     if(c.uch==='C')return c.par; // Централно — само паралелка (IV-а)
-    // Подрачни/комбинирани — паралелка + назив на училиште
     return c.par+' '+(UCH_NAMES[c.uch]||c.uch);
   };
   const uchs=[...new Set(allSts.map(s=>s._uch))].sort();
@@ -3332,8 +3336,13 @@ function renderAdmin(){
   if(fPar!=='__svi__')stsByClass=stsByClass.filter(s=>s._par===fPar);
   const byClass={};
   stsByClass.forEach(s=>{
-    const k=s._uch+'|'+s._odd+'|'+s._par;
-    if(!byClass[k])byClass[k]={uch:s._uch,odd:s._odd,par:s._par,sts:[],okAvgs:[]};
+    // За комбинирани паралелки — групирај по ВИСТИНСКО одделение на ученикот (odd_ucenik),
+    // за да можат IV/V учениците да влезат во IV–IX графиконите, а I–III во описните.
+    const realOdd=(s.odd_ucenik&&s.odd_ucenik>0)?s.odd_ucenik:s._odd;
+    const isCombo=COMBINED_CLASSES[s._par];
+    const groupOdd=isCombo?realOdd:s._odd;
+    const k=s._uch+'|'+s._par+'|'+groupOdd;
+    if(!byClass[k])byClass[k]={uch:s._uch,odd:groupOdd,par:s._par,sts:[],okAvgs:[]};
     byClass[k].sts.push(s);
     if(gradeStatus(s.gr||{})==='ok'){const a=computeAvg(s.gr);if(a!==null)byClass[k].okAvgs.push(a);}
   });
