@@ -3657,6 +3657,8 @@ function buildAdminFilters(uchs,odds,pars,mols,fUch,fOdd,fPar,fPol,fEtn,fMol,fNa
 /* ══ НАДЗОР ══ */
 function isStudentCompleteForSupervision(s){
   if(!s)return false;
+  // Испишан ученик — се смета пополнет штом раководителот го обработил (зачувал)
+  if(s.ispishan)return true;
   const hasBasic=!!(s.ime&&s.prz&&s.pol&&s.mol&&s.etnik);
   const gr=s.gr||{};
   const hasGrades=Object.values(gr).some(v=>v!==''&&v!==null&&v!==undefined);
