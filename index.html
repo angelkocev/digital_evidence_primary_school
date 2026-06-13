@@ -2563,17 +2563,18 @@ function renderRepBody(sts,oddOverride,targetElId){
       const lowestNumeric=Math.min(...grades.filter(g=>g>3));
 
       // ── Заеднички дел за СИТЕ ученици во паралелката ──
-      const allN=sts.length;
-      const allM=sts.filter(s=>s.pol==='М').length;
+      const allActive=sts.filter(s=>!s.ispishan);
+      const allN=allActive.length;
+      const allM=allActive.filter(s=>s.pol==='М').length;
       const allF=allN-allM;
-      const allOp=allStsWithIsp.reduce((a,s)=>a+(s.op||0),0);
-      const allNop=allStsWithIsp.reduce((a,s)=>a+(s.nop||0),0);
+      const allOp=sts.reduce((a,s)=>a+(s.op||0),0);
+      const allNop=sts.reduce((a,s)=>a+(s.nop||0),0);
       // Етничка припадност
-      const etnMap={};sts.forEach(s=>{const e=s.etnik||'Останато';etnMap[e]=(etnMap[e]||0)+1;});
+      const etnMap={};allActive.forEach(s=>{const e=s.etnik||'Останато';etnMap[e]=(etnMap[e]||0)+1;});
       const etnArr=Object.entries(etnMap).sort((a,b)=>b[1]-a[1]);
       const maxEtnC=Math.max(...etnArr.map(([,v])=>v),1);
       // Место на живеење
-      const molMap={};sts.forEach(s=>{if(s.mol){molMap[s.mol]=(molMap[s.mol]||0)+1;}});
+      const molMap={};allActive.forEach(s=>{if(s.mol){molMap[s.mol]=(molMap[s.mol]||0)+1;}});
       const molArr=Object.entries(molMap).sort((a,b)=>b[1]-a[1]);
       const maxMolC=Math.max(...molArr.map(([,v])=>v),1);
       function cntBar(lbl,v,maxV,col){const pct=Math.max(4,Math.round(v/maxV*100));return'<div class="brow"><span class="blbl" style="width:140px;min-width:140px;">'+lbl+'</span><div class="btrk"><div class="bfil" style="width:'+pct+'%;background:'+col+';opacity:.8;"></div></div><span class="bval" style="color:'+col+';">'+v+'</span></div>';}
