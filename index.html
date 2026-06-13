@@ -2330,7 +2330,10 @@ function renderR(){
   const subjs=allSubjs(curOdd,curPar);
   const sd={};subjs.forEach(s=>{sd[s]={sum:0,cnt:0};});
   okSts.forEach(st=>Object.entries(st.gr||{}).forEach(([k,v])=>{
-    if(sd[k]&&v!=='/'&&v!==''&&v!==null)sd[k].sum+=Number(v),sd[k].cnt++;
+    if(!sd[k]||v==='/'||v===''||v===null||v===undefined)return;
+    const __ln={'I ниво':3,'II ниво':2,'III ниво':1};
+    const __num=__ln[v]!==undefined?__ln[v]:Number(v);
+    if(!isNaN(__num)){sd[k].sum+=__num;sd[k].cnt++;}
   }));
 
   // grade dist (all students)
@@ -2559,7 +2562,10 @@ function renderRepBody(sts){
   const subjs=allSubjs(curOdd,curPar);
   const sd={};subjs.forEach(s=>{sd[s]={sum:0,cnt:0};});
   okSts.forEach(st=>Object.entries(st.gr||{}).forEach(([k,v])=>{
-    if(sd[k]&&v!=='/'&&v!==''&&v!==null)sd[k].sum+=Number(v),sd[k].cnt++;
+    if(!sd[k]||v==='/'||v===''||v===null||v===undefined)return;
+    const __ln={'I ниво':3,'II ниво':2,'III ниво':1};
+    const __num=__ln[v]!==undefined?__ln[v]:Number(v);
+    if(!isNaN(__num)){sd[k].sum+=__num;sd[k].cnt++;}
   }));
 
   const dist={'5':0,'4':0,'3':0,'2':0,'1':0,'/':0};
@@ -2596,26 +2602,28 @@ function renderRepBody(sts){
 
   const subjHTML=filtSubjs.map(s=>{
     const a=sd[s].sum/sd[s].cnt;
-    const gs2=gStyle(a);
-
-    // Барот секогаш се скалира според максимум 5.00
-    const p=bw(Math.round((a/5)*100));
-
-    return '<div style="display:grid;grid-template-columns:260px 1fr 48px;gap:8px;align-items:center;margin-bottom:12px;">'+
+    const isOpisno=curOdd<=3;
+    const gs2=isOpisno?opisnoLevelStyle(opisnoLevelFromAvg(a)):gStyle(a);
+    // Скала: описно макс 3, бројчано макс 5
+    const p=bw(Math.round((a/(isOpisno?3:5))*100));
+    const lvlLbl=isOpisno?opisnoLevelFromAvg(a):null;
+    const valDisplay=isOpisno?(lvlLbl+' ('+a.toFixed(2)+')'):a.toFixed(2);
+    return '<div style="display:grid;grid-template-columns:260px 1fr '+(isOpisno?'120px':'48px')+';gap:8px;align-items:center;margin-bottom:12px;">'+
       '<div title="'+s+'" style="font-size:12px;color:var(--tx2);line-height:1.35;white-space:normal;overflow:visible;text-overflow:unset;word-break:normal;">'+dName(s)+'</div>'+
       '<div style="height:10px;background:var(--bg3);border-radius:6px;position:relative;overflow:hidden;">'+
         '<div style="width:'+p+'%;height:100%;background:'+gs2.bar+';opacity:.85;border-radius:6px;"></div>'+
       '</div>'+
-      '<div style="font-family:var(--FD);font-size:12px;font-weight:700;color:'+gs2.c+';text-align:right;">'+a.toFixed(2)+'</div>'+
+      '<div style="font-family:var(--FD);font-size:12px;font-weight:700;color:'+gs2.c+';text-align:right;">'+valDisplay+'</div>'+
     '</div>';
   }).join('');
 
   const comboAvgHTML=comboList.map(([key,val])=>{
     const a=comboAvgVal(val)||null;
-    const pct=a?bw(Math.round((a/5)*100)):0;
+    const isOpisno=curOdd<=3;
+    const pct=a?bw(Math.round((a/(isOpisno?3:5))*100)):0;
     const fill=key.startsWith('Машко')?'#60A5FA':'#F9A8D4';
-    const aStr=a?a.toFixed(2):'—';
-    return'<div class="crow"><span class="clbl">'+key+' <span style="font-size:10px;color:var(--tx3);">('+val.cnt+')</span></span><div class="ctrk"><div class="cfil" style="width:'+pct+'%;background:'+fill+';opacity:.8;">'+(pct>20?'<span class="cval-in">'+aStr+'</span>':'')+'</div>'+(pct<=20?'<span class="cval-out" style="left:'+(pct+2)+'%;">'+aStr+'</span>':'')+'</div></div>';
+    const aStr=a?(isOpisno?(opisnoLevelFromAvg(a)+' ('+a.toFixed(2)+')'):a.toFixed(2)):'—';
+    return'<div class="crow"><span class="clbl">'+key+' <span style="font-size:10px;color:var(--tx3);">('+val.cnt+')</span></span><div class="ctrk"><div class="cfil" style="width:'+pct+'%;background:'+fill+';opacity:.8;">'+(pct>30?'<span class="cval-in">'+aStr+'</span>':'')+'</div>'+(pct<=30?'<span class="cval-out" style="left:'+(pct+2)+'%;">'+aStr+'</span>':'')+'</div></div>';
   }).join('');
 
   function makePie(op,nop){
@@ -2658,6 +2666,22 @@ function renderRepBody(sts){
   // Распределба dropdown
   const raspredOpts2='<option value="__svi__">Сите предмети</option>'+subjs.map(s=>'<option value="'+s+'">'+dName(s)+'</option>').join('');
   function buildRasp2(filterSubj){
+    const isOpisno=curOdd<=3;
+    if(isOpisno){
+      // Описно: I ниво / II ниво / III ниво / неоценети
+      const fd={'I ниво':0,'II ниво':0,'III ниво':0,'неоценети':0};
+      sts.forEach(st=>{
+        if(filterSubj==='__svi__'){
+          Object.values(st.gr||{}).forEach(v=>{if(fd[v]!==undefined)fd[v]++;else if(v==='/'||v===''||v===null)fd['неоценети']++;});
+        } else {
+          const v=st.gr?.[filterSubj];
+          if(v!==undefined){if(fd[v]!==undefined)fd[v]++;else fd['неоценети']++;}
+        }
+      });
+      const fT=Object.values(fd).reduce((a,b)=>a+b,0);
+      const cols={'I ниво':{bg:'rgba(52,211,153,.15)',c:'#34D399',f:'#34D399'},'II ниво':{bg:'rgba(96,165,250,.15)',c:'#60A5FA',f:'#60A5FA'},'III ниво':{bg:'rgba(251,191,36,.15)',c:'#FBBF24',f:'#FBBF24'},'неоценети':{bg:'rgba(148,163,184,.15)',c:'#94A3B8',f:'#94A3B8'}};
+      return ['I ниво','II ниво','III ниво','неоценети'].map(g=>{const cnt=fd[g]||0,pct=fT?Math.round(cnt/fT*100):0,d=cols[g];return'<div class="drow"><div class="gbox" style="background:'+d.bg+';color:'+d.c+';font-size:9px;width:auto;padding:0 8px;white-space:nowrap;">'+g+'</div><div class="dtrk"><div class="dfil" style="width:'+bw(pct)+'%;background:'+d.f+';opacity:.85;"></div></div><span class="dcnt">'+cnt+' · '+pct+'%</span></div>';}).join('');
+    }
     const fd={'5':0,'4':0,'3':0,'2':0,'1':0,'/':0};
     sts.forEach(st=>{
       if(filterSubj==='__svi__'){Object.values(st.gr||{}).forEach(v=>{const k=String(v);if(fd[k]!==undefined)fd[k]++;});}
@@ -2682,8 +2706,11 @@ function renderRepBody(sts){
   const maxPol=Math.max(...polData.map(p=>p.a||0),0.01);
   const maxEtn=Math.max(...etnData.map(e=>e.a||0),0.01);
   function hbar(lbl,a,maxV,fill,cnt){
-    const pct=a?bw(Math.round((a/5)*100)):0;const gs2=gStyle(a);
-    return'<div class="brow"><span class="blbl">'+lbl+' <span style="font-size:10px;color:var(--tx3);">('+cnt+')</span></span><div class="btrk"><div class="bfil" style="width:'+pct+'%;background:'+fill+';opacity:.8;"></div></div><span class="bval" style="color:'+gs2.c+';">'+(a?a.toFixed(2):'—')+'</span></div>';
+    const isOpisno=curOdd<=3;
+    const pct=a?bw(Math.round((a/(isOpisno?3:5))*100)):0;
+    const gs2=isOpisno?(a?opisnoLevelStyle(opisnoLevelFromAvg(a)):{c:'var(--tx3)'}):gStyle(a);
+    const valStr=a?(isOpisno?(opisnoLevelFromAvg(a)+' ('+a.toFixed(2)+')'):a.toFixed(2)):'—';
+    return'<div class="brow"><span class="blbl">'+lbl+' <span style="font-size:10px;color:var(--tx3);">('+cnt+')</span></span><div class="btrk"><div class="bfil" style="width:'+pct+'%;background:'+fill+';opacity:.8;"></div></div><span class="bval" style="color:'+gs2.c+';white-space:nowrap;">'+valStr+'</span></div>';
   }
 
   // Abs by pol/etn hbars
@@ -2792,7 +2819,7 @@ function renderRepBody(sts){
         <th style="width:88px;text-align:center;">Неоправдани изостаноци</th>
         <th style="width:70px;text-align:center;">Вкупно изостаноци</th>
         ${curOdd>3?'<th style="width:65px;text-align:center;">Просек</th><th style="width:115px;text-align:center;">Категорија</th>':''}
-        ${curOdd<=3?'<th style="width:100px;text-align:center;">Просечно ниво</th>':''}
+        ${curOdd<=3?'<th style="width:90px;text-align:center;">Просечен успех</th><th style="width:100px;text-align:center;">Просечно ниво</th>':''}
         <th>Забелешка</th>
       </tr></thead>
       <tbody>${sortedForBody.map(s=>{
@@ -2802,6 +2829,13 @@ function renderRepBody(sts){
         // Просечно ниво за описно оценување
         const opisnoAvgLvl=curOdd<=3?opisnoAvg(s.gr||{}):null;
         const opisnoSt=opisnoAvgLvl?opisnoLevelStyle(opisnoAvgLvl):null;
+        // Нумерички просек за описно (I=3, II=2, III=1)
+        let opisnoNum=null;
+        if(curOdd<=3){
+          const LN={'I ниво':3,'II ниво':2,'III ниво':1};
+          const vals=Object.values(s.gr||{}).map(v=>LN[v]).filter(x=>x);
+          if(vals.length)opisnoNum=vals.reduce((a,b)=>a+b,0)/vals.length;
+        }
         // Забелешка: слаби оценки или делумно оценети предмети
         let beleshka='';
         if(st==='slab'){
@@ -2819,7 +2853,7 @@ function renderRepBody(sts){
           <td style="text-align:center;font-weight:700;font-family:var(--FD);color:var(--tx);">${totAbs}</td>
           ${curOdd>3?`<td style="text-align:center;"><span class="pill" style="background:${gs4.bg};color:${gs4.c};font-size:10px;">${a?a.toFixed(2):'—'}</span></td>
           <td style="text-align:center;"><span class="kat ${ki.cls}">${ki.lbl}</span></td>`:''}
-          ${curOdd<=3?`<td style="text-align:center;">${opisnoAvgLvl?`<span style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:99px;background:${opisnoSt.bg};color:${opisnoSt.c};border:1px solid ${opisnoSt.c}44;">${opisnoAvgLvl}</span>`:'<span style="color:var(--tx3);font-size:11px;">—</span>'}</td>`:''}
+          ${curOdd<=3?`<td style="text-align:center;font-family:var(--FD);font-weight:600;color:${opisnoSt?opisnoSt.c:'var(--tx3)'};">${opisnoNum!=null?opisnoNum.toFixed(2):'—'}</td><td style="text-align:center;">${opisnoAvgLvl?`<span style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:99px;background:${opisnoSt.bg};color:${opisnoSt.c};border:1px solid ${opisnoSt.c}44;">${opisnoAvgLvl}</span>`:'<span style="color:var(--tx3);font-size:11px;">—</span>'}</td>`:''}
           <td><div style="display:flex;gap:4px;flex-wrap:wrap;">${beleshka||'<span style="font-size:11px;color:var(--tx3);">—</span>'}</div></td>
         </tr>`;
       }).join('')}</tbody>
@@ -3005,6 +3039,18 @@ function updateRaspredel(){
   });
   const fTotG=Object.values(filtDist).reduce((a,b)=>a+b,0);
   function bw2(p){return p>0?Math.max(4,p):0;}
+  // Описно оценување (I–III) — прикажи по нивоа
+  if(curOdd<=3){
+    const fd={'I ниво':0,'II ниво':0,'III ниво':0,'неоценети':0};
+    sts.forEach(st=>{
+      if(filterSubj==='__svi__'){Object.values(st.gr||{}).forEach(v=>{if(fd[v]!==undefined)fd[v]++;else if(v==='/'||v===''||v===null)fd['неоценети']++;});}
+      else{const v=st.gr?.[filterSubj];if(v!==undefined){if(fd[v]!==undefined)fd[v]++;else fd['неоценети']++;}}
+    });
+    const fT=Object.values(fd).reduce((a,b)=>a+b,0);
+    const cols={'I ниво':{bg:'rgba(52,211,153,.15)',c:'#34D399',f:'#34D399'},'II ниво':{bg:'rgba(96,165,250,.15)',c:'#60A5FA',f:'#60A5FA'},'III ниво':{bg:'rgba(251,191,36,.15)',c:'#FBBF24',f:'#FBBF24'},'неоценети':{bg:'rgba(148,163,184,.15)',c:'#94A3B8',f:'#94A3B8'}};
+    rows.innerHTML=['I ниво','II ниво','III ниво','неоценети'].map(g=>{const cnt=fd[g]||0,pct=fT?Math.round(cnt/fT*100):0,d=cols[g];return`<div class="drow"><div class="gbox" style="background:${d.bg};color:${d.c};font-size:9px;width:auto;padding:0 8px;white-space:nowrap;">${g}</div><div class="dtrk"><div class="dfil" style="width:${bw2(pct)}%;background:${d.f};opacity:.85;"></div></div><span class="dcnt">${cnt} · ${pct}%</span></div>`;}).join('');
+    return;
+  }
   rows.innerHTML=['5','4','3','2','1','/'].map(g=>{
     const cnt=filtDist[g]||0,pct=fTotG?Math.round(cnt/fTotG*100):0,d=dc[g];
     return`<div class="drow"><div class="gbox" style="background:${d.bg};color:${d.c};">${g}</div><div class="dtrk"><div class="dfil" style="width:${bw2(pct)}%;background:${d.f};opacity:.85;"></div></div><span class="dcnt">${cnt} · ${pct}%</span></div>`;
