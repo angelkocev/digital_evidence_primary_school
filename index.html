@@ -3465,7 +3465,7 @@ function renderAdmin(){
     <div class="kpi"><div class="kpi-l">Женски</div><div class="kpi-v" style="color:#F9A8D4;">${n-males}</div><div class="kpi-bot" style="background:#F9A8D4;width:${n?bw(Math.round((n-males)/n*100)):0}%;"></div></div>
     <div class="kpi"><div class="kpi-l">Просечен успех</div><div class="kpi-v" style="color:${gs.c}">${cAvg?((fOdd!=='__svi__'&&parseInt(fOdd)<=3)?opisnoLevelFromAvg(cAvg):cAvg.toFixed(2)):'—'}</div><div class="kpi-bot" style="background:${gs.bar};width:${cAvg?bw(Math.round(((cAvg-1)/4)*100)):0}%;"></div></div>
     <div class="kpi"><div class="kpi-l">Просечно ниво</div><div class="kpi-v" style="color:var(--teal);">${opisnoAvgLbl}</div><div class="kpi-bot" style="background:var(--teal);width:${opisnoAvgNum?bw(Math.round(((opisnoAvgNum-1)/2)*100)):0}%;"></div></div>
-    <div class="kpi"><div class="kpi-l">Паралелки</div><div class="kpi-v">${classList.length}</div><div class="kpi-bot" style="background:var(--teal);width:100%;"></div></div>
+    <div class="kpi"><div class="kpi-l">Паралелки</div><div class="kpi-v">${new Set(classList.map(c=>c.uch+'|'+c.par)).size}</div><div class="kpi-bot" style="background:var(--teal);width:100%;"></div></div>
   </div>
 
   ${buildDemoChartsHbar(sts)}
