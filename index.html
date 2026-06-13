@@ -871,7 +871,7 @@ async function loadFromSupabase(){
   if(e1){
     console.error('Load ucenici error:',e1);
     // Ако колоната odd_ucenik не постои, обиди се без неа
-    let q2=sb.from('ucenici').select('id,teacher_id,uciliste,oddelenie,paralelka,rn,ime,prz,pol,mol,etnik,op,nop,gr,merki,extra,pop,pop_note,created_at,updated_at');
+    let q2=sb.from('ucenici').select('id,teacher_id,uciliste,oddelenie,paralelka,rn,ime,prz,pol,mol,etnik,op,nop,gr,merki,extra,pop,pop_note,pop_status,pop_program,ispishan,datum_ispishuvanje,prichina_ispishuvanje,odd_ucenik,created_at,updated_at');
     if(!isAdmin&&!isSup)q2=q2.eq('teacher_id',currentUser.id);
     const{data:sts2,error:e2}=await q2;
     if(e2){console.error('Fallback load error:',e2);return;}
@@ -879,7 +879,7 @@ async function loadFromSupabase(){
       sts2.forEach(s=>{
         const k=`${s.uciliste}|${keyOddFor(s.paralelka,s.oddelenie)}|${s.paralelka}`;
         if(!allData[k])allData[k]=[];
-        allData[k].push({rn:s.rn,ime:s.ime,prz:s.prz,pol:s.pol,mol:s.mol,etnik:s.etnik,op:s.op,nop:s.nop,gr:s.gr||{},merki:s.merki||[],extra:s.extra||[],odd_ucenik:s.odd_ucenik||0,pop:s.pop||'',popNote:s.pop_note||'',_teacher_id:s.teacher_id,_dbid:s.id});
+        allData[k].push({rn:s.rn,ime:s.ime,prz:s.prz,pol:s.pol,mol:s.mol,etnik:s.etnik,op:s.op,nop:s.nop,gr:s.gr||{},merki:s.merki||[],extra:s.extra||[],odd_ucenik:s.odd_ucenik||0,pop:(s.pop||(s.pop_status?(s.pop_program||'ПОП'):'')),popNote:s.pop_note||(s.pop_program||''),_teacher_id:s.teacher_id,_dbid:s.id});
       });
       Object.keys(allData).forEach(k=>{allData[k].sort((a,b)=>(a.rn||999)-(b.rn||999));});
     }
@@ -897,7 +897,7 @@ async function loadFromSupabase(){
         ispishan:s.ispishan||false,
         datumIspishuvanje:s.datum_ispishuvanje||null,
         prichinaIspishuvanje:s.prichina_ispishuvanje||null,
-        pop:s.pop||'',popNote:s.pop_note||'',
+        pop:(s.pop||(s.pop_status?(s.pop_program||'ПОП'):'')),popNote:s.pop_note||(s.pop_program||''),
         _teacher_id:s.teacher_id,_dbid:s.id
       });
     });
@@ -2123,6 +2123,103 @@ function buildRealizacijaCharts(uciliste,oddelenie,paralelka){
   '</div>':'');
 }
 
+// Агрегатна реализација за повеќе паралелки (за „Преглед на ниво на училиште")
+// classKeys: низа од {uch,odd,par}
+function buildRealizacijaChartsAggregate(classKeys){
+  if(!classKeys||!classKeys.length)return'';
+  const rdAll=getRealData();
+  const en=getEN();
+  function dN(s){if(s==='Слободен изборен предмет 1')return en.s1;if(s==='Слободен изборен предмет 2')return en.s2;if(s==='Изборен предмет')return en.i9||'Изборен предмет';return (s.includes(' - ')&&!/Модул/i.test(s))?s.split(' - ')[1]:s;}
+  // Агрегирај по предмет (display name)
+  const agg={}; // dn → {plan,real,nereal,dop,dod,aktiv}
+  let totPlan=0,totReal=0,totNereal=0,totDop=0,totDod=0,totAktiv=0,totVon=0;
+  classKeys.forEach(ck=>{
+    const odd=parseInt(ck.odd)||0;
+    const par=ck.par;
+    const k=ck.uch+'|'+odd+'|'+par;
+    const rd=rdAll[k]||{};
+    const fond=FOND[odd]||{};
+    const subjs=allSubjs(odd,par);
+    subjs.forEach(s=>{
+      const plan=fond[s]||0;
+      if(!plan)return;
+      const dn=dN(s);
+      if(!agg[dn])agg[dn]={plan:0,real:0,nereal:0,dop:0,dod:0,aktiv:0};
+      agg[dn].plan+=plan;
+      agg[dn].real+=(rd[s]?.real||0);
+      agg[dn].nereal+=(rd[s]?.nereal||0);
+      agg[dn].dop+=(rd[s]?.dop||0);
+      agg[dn].dod+=(rd[s]?.dod||0);
+      agg[dn].aktiv+=(rd[s]?.aktiv||0);
+      totPlan+=plan;totReal+=(rd[s]?.real||0);totNereal+=(rd[s]?.nereal||0);
+      totDop+=(rd[s]?.dop||0);totDod+=(rd[s]?.dod||0);totAktiv+=(rd[s]?.aktiv||0);
+    });
+    // Воннаставни активности
+    totVon+=(vonnastavniData[k]||0);
+  });
+  if(!totPlan)return'';
+
+  const pctReal=totPlan?Math.round((totReal/totPlan)*100):0;
+  const pctNereal=totPlan?Math.round((totNereal/totPlan)*100):0;
+  const pctRest=Math.max(0,100-pctReal-pctNereal);
+  const hasAktiv=totAktiv>0;
+
+  const summaryHtml=
+    '<div style="margin-bottom:20px;">'+
+      '<div style="display:flex;justify-content:space-between;margin-bottom:6px;">'+
+        '<span style="font-size:12px;font-weight:600;color:var(--tx);">Вкупна реализација</span>'+
+        '<span style="font-size:13px;font-weight:700;font-family:var(--FD);color:#34D399;">'+pctReal+'%</span>'+
+      '</div>'+
+      '<div style="height:16px;background:var(--bg3);border-radius:8px;overflow:hidden;display:flex;">'+
+        (totReal?'<div style="width:'+pctReal+'%;background:#34D399;opacity:.9;"></div>':'')+
+        (totNereal?'<div style="width:'+pctNereal+'%;background:#F87171;opacity:.9;"></div>':'')+
+        (pctRest?'<div style="flex:1;background:transparent;"></div>':'')+
+      '</div>'+
+      '<div style="display:flex;gap:16px;margin-top:8px;flex-wrap:wrap;">'+
+        '<div style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:2px;background:#34D399;"></span><span style="font-size:11px;color:var(--tx2);">Реализирани: <strong style="color:#34D399;">'+totReal+'</strong></span></div>'+
+        '<div style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:2px;background:#F87171;"></span><span style="font-size:11px;color:var(--tx2);">Нереализирани: <strong style="color:#F87171;">'+totNereal+'</strong></span></div>'+
+        '<div style="margin-left:auto;font-size:11px;color:var(--tx3);">Фонд: <strong style="color:var(--acc);">'+totPlan+'</strong> часа</div>'+
+      '</div>'+
+    '</div>'+
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;">'+
+      '<div style="background:var(--bg3);border-radius:8px;padding:10px 14px;text-align:center;"><div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#60A5FA;margin-bottom:4px;">Дополнителна</div><div style="font-family:var(--FD);font-size:24px;font-weight:500;color:#60A5FA;">'+totDop+'</div></div>'+
+      '<div style="background:var(--bg3);border-radius:8px;padding:10px 14px;text-align:center;"><div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#A78BFA;margin-bottom:4px;">Додатна</div><div style="font-family:var(--FD);font-size:24px;font-weight:500;color:#A78BFA;">'+totDod+'</div></div>'+
+      (hasAktiv?'<div style="background:var(--bg3);border-radius:8px;padding:10px 14px;text-align:center;"><div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#34D399;margin-bottom:4px;">Активности</div><div style="font-family:var(--FD);font-size:24px;font-weight:500;color:#34D399;">'+totAktiv+'</div></div>':'')+
+      '<div style="background:var(--bg3);border-radius:8px;padding:10px 14px;text-align:center;"><div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--amber);margin-bottom:4px;">Воннаставни</div><div style="font-family:var(--FD);font-size:24px;font-weight:500;color:var(--amber);">'+totVon+'</div></div>'+
+    '</div>';
+
+  // По предмет
+  const aggRows=Object.keys(agg).sort((a,b)=>a.localeCompare(b,'mk')).map(dn=>{
+    const v=agg[dn];
+    const pct=v.plan?Math.round((v.real/v.plan)*100):0;
+    const w=Math.min(100,pct);
+    const icon=pct>=100?'✓':(pct>0?'◑':'○');
+    const iconCol=pct>=100?'#34D399':(pct>0?'#FBBF24':'#94A3B8');
+    return'<tr>'+
+      '<td style="font-family:var(--FC);font-size:12px;font-weight:600;">'+dn+'</td>'+
+      '<td style="text-align:center;font-family:var(--FD);color:var(--acc);">'+v.plan+'</td>'+
+      '<td style="text-align:center;font-weight:600;color:#34D399;">'+v.real+'</td>'+
+      '<td style="text-align:center;font-weight:600;color:'+(v.nereal>0?'#F87171':'var(--tx3)')+';">'+v.nereal+'</td>'+
+      '<td style="text-align:center;color:#60A5FA;">'+v.dop+'</td>'+
+      '<td style="text-align:center;color:#A78BFA;">'+v.dod+'</td>'+
+      (hasAktiv?'<td style="text-align:center;color:#34D399;">'+v.aktiv+'</td>':'')+
+      '<td style="padding:4px 8px;min-width:160px;"><div style="display:flex;align-items:center;gap:6px;"><div style="flex:1;height:8px;background:var(--bg3);border-radius:4px;position:relative;"><div style="position:absolute;left:0;top:0;height:100%;width:'+w+'%;background:'+(pct>=100?'#34D399':'#60A5FA')+';border-radius:4px;opacity:.85;"></div></div><span style="font-size:10px;font-weight:700;color:'+iconCol+';min-width:40px;text-align:right;">'+icon+' '+pct+'%</span></div></td>'+
+    '</tr>';
+  }).join('');
+
+  return'<div class="rcard"><div class="rttl">Вкупна реализација</div>'+summaryHtml+'</div>'+
+    '<div class="rcard"><div class="rttl">Реализација по предмет</div>'+
+    '<div style="overflow-x:auto;"><table class="rtbl" style="table-layout:auto;">'+
+      '<thead><tr><th>Предмет</th><th style="width:60px;text-align:center;">Фонд</th>'+
+      '<th style="width:90px;text-align:center;color:#34D399;">Реализирани</th>'+
+      '<th style="width:100px;text-align:center;color:#F87171;">Нереализирани</th>'+
+      '<th style="width:90px;text-align:center;color:#60A5FA;">Дополнителна</th>'+
+      '<th style="width:80px;text-align:center;color:#A78BFA;">Додатна</th>'+
+      (hasAktiv?'<th style="width:80px;text-align:center;color:#34D399;">Активности</th>':'')+
+      '<th style="min-width:160px;text-align:center;">% Реализација</th></tr></thead>'+
+      '<tbody>'+aggRows+'</tbody></table></div></div>';
+}
+
 
 function buildPOPStudentsTable(stsList,scope='class'){
   const list=(stsList||[]).filter(s=>s.pop==='ИОП'||s.pop==='МНП');
@@ -3326,7 +3423,7 @@ function renderAdmin(){
     <div class="kpi"><div class="kpi-l">Машки</div><div class="kpi-v" style="color:#60A5FA;">${males}</div><div class="kpi-bot" style="background:#60A5FA;width:${n?bw(Math.round(males/n*100)):0}%;"></div></div>
     <div class="kpi"><div class="kpi-l">Женски</div><div class="kpi-v" style="color:#F9A8D4;">${n-males}</div><div class="kpi-bot" style="background:#F9A8D4;width:${n?bw(Math.round((n-males)/n*100)):0}%;"></div></div>
     <div class="kpi"><div class="kpi-l">Просечен успех</div><div class="kpi-v" style="color:${gs.c}">${cAvg?((fOdd!=='__svi__'&&parseInt(fOdd)<=3)?opisnoLevelFromAvg(cAvg):cAvg.toFixed(2)):'—'}</div><div class="kpi-bot" style="background:${gs.bar};width:${cAvg?bw(Math.round(((cAvg-1)/4)*100)):0}%;"></div></div>
-    <div class="kpi"><div class="kpi-l">Просечно ниво (I–III)</div><div class="kpi-v" style="color:var(--teal);">${opisnoAvgLbl}</div><div class="kpi-bot" style="background:var(--teal);width:${opisnoAvgNum?bw(Math.round(((opisnoAvgNum-1)/2)*100)):0}%;"></div></div>
+    <div class="kpi"><div class="kpi-l">Просечно ниво</div><div class="kpi-v" style="color:var(--teal);">${opisnoAvgLbl}</div><div class="kpi-bot" style="background:var(--teal);width:${opisnoAvgNum?bw(Math.round(((opisnoAvgNum-1)/2)*100)):0}%;"></div></div>
     <div class="kpi"><div class="kpi-l">Паралелки</div><div class="kpi-v">${classList.length}</div><div class="kpi-bot" style="background:var(--teal);width:100%;"></div></div>
   </div>
 
@@ -3591,6 +3688,8 @@ function renderAdmin(){
     }).join('');
   })()}
 
+  ${buildRealizacijaChartsAggregate(classList.map(c=>({uch:c.uch,odd:c.odd,par:c.par})))}
+
   ${buildPOPStudentsTable(sts,'admin')}
 
   ${(()=>{
@@ -3821,9 +3920,9 @@ async function renderSupervision(){
 
     el.innerHTML=`
       <div class="kpis" style="grid-template-columns:repeat(4,1fr);">
-        <div class="kpi"><div class="kpi-l">Раководители</div><div class="kpi-v">${totalTeachers}</div><div class="kpi-bot" style="background:var(--acc);width:100%;"></div></div>
-        <div class="kpi"><div class="kpi-l">Комплетни</div><div class="kpi-v" style="color:var(--teal);">${completeTeachers}</div><div class="kpi-bot" style="background:var(--teal);width:${totalTeachers?Math.round(completeTeachers/totalTeachers*100):0}%;"></div></div>
-        <div class="kpi"><div class="kpi-l">Некомплетни</div><div class="kpi-v" style="color:var(--amber);">${incompleteTeachers}</div><div class="kpi-bot" style="background:var(--amber);width:${totalTeachers?Math.round(incompleteTeachers/totalTeachers*100):0}%;"></div></div>
+        <div class="kpi"><div class="kpi-l">Одделенски раководител</div><div class="kpi-v">${totalTeachers}</div><div class="kpi-bot" style="background:var(--acc);width:100%;"></div></div>
+        <div class="kpi"><div class="kpi-l">Комплетни податоци</div><div class="kpi-v" style="color:var(--teal);">${completeTeachers}</div><div class="kpi-bot" style="background:var(--teal);width:${totalTeachers?Math.round(completeTeachers/totalTeachers*100):0}%;"></div></div>
+        <div class="kpi"><div class="kpi-l">Некомплетни податоци</div><div class="kpi-v" style="color:var(--amber);">${incompleteTeachers}</div><div class="kpi-bot" style="background:var(--amber);width:${totalTeachers?Math.round(incompleteTeachers/totalTeachers*100):0}%;"></div></div>
         <div class="kpi"><div class="kpi-l">Просечна пополнетост</div><div class="kpi-v" style="color:var(--acc);">${avgCompletion}%</div><div class="kpi-bot" style="background:var(--acc);width:${avgCompletion}%;"></div></div>
       </div>
 
