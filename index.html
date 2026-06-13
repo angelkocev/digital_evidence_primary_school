@@ -2578,21 +2578,50 @@ function renderRepBody(sts,oddOverride,targetElId){
       const molArr=Object.entries(molMap).sort((a,b)=>b[1]-a[1]);
       const maxMolC=Math.max(...molArr.map(([,v])=>v),1);
       function cntBar(lbl,v,maxV,col){const pct=Math.max(4,Math.round(v/maxV*100));return'<div class="brow"><span class="blbl" style="width:140px;min-width:140px;">'+lbl+'</span><div class="btrk"><div class="bfil" style="width:'+pct+'%;background:'+col+';opacity:.8;"></div></div><span class="bval" style="color:'+col+';">'+v+'</span></div>';}
+      // ── SVG helpers: donut, pie ──
+      const PIE_COLORS=['#60A5FA','#34D399','#A78BFA','#FBBF24','#F472B6','#F87171','#22D3EE','#A3E635','#FB923C','#94A3B8'];
+      function polar(cx,cy,r,ang){const a=(ang-90)*Math.PI/180;return[cx+r*Math.cos(a),cy+r*Math.sin(a)];}
+      function arcPath(cx,cy,r,a0,a1){const[x0,y0]=polar(cx,cy,r,a0);const[x1,y1]=polar(cx,cy,r,a1);const large=(a1-a0)>180?1:0;return`M ${cx} ${cy} L ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1} Z`;}
+      function donutSeg(cx,cy,r,rin,a0,a1,col){const[x0,y0]=polar(cx,cy,r,a0);const[x1,y1]=polar(cx,cy,r,a1);const[xi1,yi1]=polar(cx,cy,rin,a1);const[xi0,yi0]=polar(cx,cy,rin,a0);const large=(a1-a0)>180?1:0;return`<path d="M ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1} L ${xi1} ${yi1} A ${rin} ${rin} 0 ${large} 0 ${xi0} ${yi0} Z" fill="${col}"/>`;}
+      function donutChart(segs,centerTop,centerBot){
+        // segs: [{v,col,lbl}]
+        const tot=segs.reduce((a,s)=>a+s.v,0)||1;
+        let ang=0,paths='';
+        segs.forEach(s=>{if(s.v<=0)return;const a1=ang+(s.v/tot)*360;paths+=donutSeg(80,80,70,46,ang,a1===ang?ang+0.01:a1,s.col);ang=a1;});
+        const legend=segs.map(s=>'<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;"><span style="width:11px;height:11px;border-radius:3px;background:'+s.col+';flex-shrink:0;"></span><span style="font-size:12px;color:var(--tx2);">'+s.lbl+': <strong style="color:'+s.col+';">'+s.v+'</strong> ('+(tot?Math.round(s.v/tot*100):0)+'%)</span></div>').join('');
+        return'<div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-top:8px;">'+
+          '<svg width="160" height="160" viewBox="0 0 160 160" style="flex-shrink:0;">'+paths+
+            '<text x="80" y="74" text-anchor="middle" font-family="var(--FD)" font-size="26" font-weight="600" fill="var(--tx)">'+centerTop+'</text>'+
+            '<text x="80" y="94" text-anchor="middle" font-size="10" fill="var(--tx3)">'+centerBot+'</text>'+
+          '</svg>'+
+          '<div style="flex:1;min-width:120px;">'+legend+'</div>'+
+        '</div>';
+      }
+      function pieChart(segs){
+        const tot=segs.reduce((a,s)=>a+s.v,0)||1;
+        let ang=0,paths='';
+        segs.forEach(s=>{if(s.v<=0)return;const a1=ang+(s.v/tot)*360;paths+='<path d="'+arcPath(80,80,70,ang,a1===ang?ang+0.01:a1)+'" fill="'+s.col+'"/>';ang=a1;});
+        const legend=segs.map(s=>'<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;"><span style="width:11px;height:11px;border-radius:3px;background:'+s.col+';flex-shrink:0;"></span><span style="font-size:12px;color:var(--tx2);">'+s.lbl+': <strong style="color:'+s.col+';">'+s.v+'</strong> ('+(tot?Math.round(s.v/tot*100):0)+'%)</span></div>').join('');
+        return'<div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-top:8px;">'+
+          '<svg width="160" height="160" viewBox="0 0 160 160" style="flex-shrink:0;">'+paths+'</svg>'+
+          '<div style="flex:1;min-width:120px;">'+legend+'</div>'+
+        '</div>';
+      }
+      const molSegs=molArr.map(([m,v],i)=>({v,col:PIE_COLORS[i%PIE_COLORS.length],lbl:m}));
+
       const sharedHtml=
-        '<div class="kpis" style="grid-template-columns:repeat(3,1fr);margin-bottom:1.25rem;">'+
-          '<div class="kpi"><div class="kpi-l">Вкупно ученици</div><div class="kpi-v">'+allN+'</div><div class="kpi-bot" style="background:var(--acc);width:100%;"></div></div>'+
-          '<div class="kpi"><div class="kpi-l">Вкупно машки</div><div class="kpi-v" style="color:#60A5FA;">'+allM+'</div><div class="kpi-bot" style="background:#60A5FA;width:'+(allN?Math.round(allM/allN*100):0)+'%;"></div></div>'+
-          '<div class="kpi"><div class="kpi-l">Вкупно женски</div><div class="kpi-v" style="color:#F9A8D4;">'+allF+'</div><div class="kpi-bot" style="background:#F9A8D4;width:'+(allN?Math.round(allF/allN*100):0)+'%;"></div></div>'+
+        '<div class="rep-duo" style="margin-bottom:14px;">'+
+          '<div class="rcard" style="margin-bottom:0;"><div class="rttl">Вкупен број на ученици</div>'+
+            donutChart([{v:allM,col:'#60A5FA',lbl:'Машки'},{v:allF,col:'#F9A8D4',lbl:'Женски'}],allN,'ученици')+
+          '</div>'+
+          '<div class="rcard" style="margin-bottom:0;"><div class="rttl">Вкупно ученици по место на живеење</div>'+
+            (molSegs.length?pieChart(molSegs):'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>')+
+          '</div>'+
         '</div>'+
-        '<div class="rep-trio" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:1.5rem;">'+
+        '<div class="rep-duo" style="margin-bottom:1.5rem;">'+
           '<div class="rcard" style="margin-bottom:0;"><div class="rttl">Вкупно ученици по етничка припадност</div>'+(etnArr.length?etnArr.map(([e,v])=>cntBar(e,v,maxEtnC,'#A78BFA')).join(''):'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>')+'</div>'+
-          '<div class="rcard" style="margin-bottom:0;"><div class="rttl">Вкупно ученици по место на живеење</div>'+(molArr.length?molArr.map(([m,v])=>cntBar(m,v,maxMolC,'#34D399')).join(''):'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>')+'</div>'+
           '<div class="rcard" style="margin-bottom:0;"><div class="rttl">Вкупно изостаноци</div>'+
-            '<div style="display:flex;flex-direction:column;gap:10px;margin-top:6px;">'+
-              '<div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:12px;color:var(--tx2);">Оправдани</span><span style="font-family:var(--FD);font-size:22px;font-weight:600;color:var(--teal);">'+allOp+'</span></div>'+
-              '<div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:12px;color:var(--tx2);">Неоправдани</span><span style="font-family:var(--FD);font-size:22px;font-weight:600;color:var(--rose);">'+allNop+'</span></div>'+
-              '<div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--bdr);padding-top:8px;"><span style="font-size:12px;font-weight:600;color:var(--tx);">Вкупно</span><span style="font-family:var(--FD);font-size:22px;font-weight:700;color:var(--acc);">'+(allOp+allNop)+'</span></div>'+
-            '</div>'+
+            donutChart([{v:allOp,col:'#34D399',lbl:'Оправдани'},{v:allNop,col:'#F87171',lbl:'Неоправдани'}],(allOp+allNop),'изостаноци')+
           '</div>'+
         '</div>';
 
