@@ -1846,13 +1846,6 @@ function renderL(){
               const lbl=allDone?'Внесено':(!allGradesFilled?'Оценките не се пополнети':'Белешката не е внесена');
               return'<span title="'+lbl+'" style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:'+col+'22;color:'+col+';border:1px solid '+col+'55;font-size:13px;font-weight:700;flex-shrink:0;">'+icon+'</span>';
             })()}
-            ${(()=>{
-              if(!isOpisnoGr(s.gr||{}))return'';
-              const lvl=opisnoAvg(s.gr||{});
-              if(!lvl)return'';
-              const st=opisnoLevelStyle(lvl);
-              return'<span title="Просечно ниво: '+lvl+'" style="font-size:9px;font-weight:800;padding:2px 7px;border-radius:99px;background:'+st.bg+';color:'+st.c+';border:1px solid '+st.c+'44;white-space:nowrap;">'+lvl+'</span>';
-            })()}
             <button class="ib edit" onclick="openModal(${s._i})" title="Уреди">✎</button>
             ${currentUser?.is_admin?`<button class="ib del" onclick="delSt(${s._i})" title="Избриши">✕</button>`:''}
           </div>
