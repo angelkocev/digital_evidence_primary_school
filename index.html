@@ -1001,7 +1001,8 @@ async function persistElective(k,en){
 async function persistReal(k,subj,vals){
   if(!currentUser)return;
   const[uch,odd,par]=k.split('|');
-  await sb.from('realizacija').upsert({teacher_id:currentUser.id,uciliste:uch,oddelenie:parseInt(odd),paralelka:par,predmet:subj,real:vals.real||0,nereal:vals.nereal||0,dop:vals.dop||0,dod:vals.dod||0,aktiv:vals.aktiv||0,school_year:activeSchoolYear,period:activePeriod},{onConflict:'teacher_id,uciliste,oddelenie,paralelka,predmet,school_year,period'});
+  const{error}=await sb.from('realizacija').upsert({teacher_id:currentUser.id,uciliste:uch,oddelenie:parseInt(odd),paralelka:par,predmet:subj,real:vals.real||0,nereal:vals.nereal||0,dop:vals.dop||0,dod:vals.dod||0,aktiv:vals.aktiv||0,school_year:activeSchoolYear,period:activePeriod},{onConflict:'teacher_id,uciliste,oddelenie,paralelka,predmet,school_year,period'});
+  if(error){console.error('persistReal error:',error);showMsg&&typeof showMsg==='function'?null:null;alert('Грешка при зачувување реализација: '+error.message);return;}
   showSaveInd();
 }
 
@@ -3183,6 +3184,13 @@ function renderAdmin(){
   const n=sts.length;
 
   const UCH_NAMES={C:'Централно училиште',K:'ПУ с. Криволак',P:'ПУ с. Пепелиште',V:'ПУ с. Војшанци',CR:'ПУ с. Црвени Брегови'};
+  // Целосен назив на паралелка со училиште за подрачните (пр. „I одделение ПУ с. Криволак")
+  const ROMAN_ADM=['','I','II','III','IV','V','VI','VII','VIII','IX'];
+  const classFullLabel=(c)=>{
+    if(c.uch==='C')return c.par; // Централно — само паралелка (IV-а)
+    // Подрачни/комбинирани — паралелка + назив на училиште
+    return c.par+' '+(UCH_NAMES[c.uch]||c.uch);
+  };
   const uchs=[...new Set(allSts.map(s=>s._uch))].sort();
   const odds=[...new Set(allSts.filter(s=>fUch==='__svi__'||s._uch===fUch).map(s=>s._odd))].sort((a,b)=>a-b);
   const pars=[...new Set(allSts.filter(s=>(fUch==='__svi__'||s._uch===fUch)&&(fOdd==='__svi__'||s._odd===parseInt(fOdd))).map(s=>s._par))].sort();
@@ -3403,7 +3411,7 @@ function renderAdmin(){
       </tr></thead>
       <tbody>${[...classList].sort(schoolSort).map(c=>{
         const op=c.sts.reduce((a,s)=>a+(s.op||0),0),nop=c.sts.reduce((a,s)=>a+(s.nop||0),0),tot=op+nop;
-        return'<tr><td style="font-family:var(--FC);font-weight:600;">'+c.par+'</td><td style="text-align:center;font-family:var(--FD);">'+c.sts.length+'</td><td style="text-align:center;font-weight:600;color:var(--teal);">'+op+'</td><td style="text-align:center;font-weight:600;color:'+(nop>0?'var(--rose)':'var(--tx3)')+';">'+nop+'</td><td style="text-align:center;font-weight:700;font-family:var(--FD);">'+tot+'</td><td style="text-align:center;color:var(--tx3);">'+(tot/c.sts.length).toFixed(1)+'</td></tr>';
+        return'<tr><td style="font-family:var(--FC);font-weight:600;">'+classFullLabel(c)+'</td><td style="text-align:center;font-family:var(--FD);">'+c.sts.length+'</td><td style="text-align:center;font-weight:600;color:var(--teal);">'+op+'</td><td style="text-align:center;font-weight:600;color:'+(nop>0?'var(--rose)':'var(--tx3)')+';">'+nop+'</td><td style="text-align:center;font-weight:700;font-family:var(--FD);">'+tot+'</td><td style="text-align:center;color:var(--tx3);">'+(tot/c.sts.length).toFixed(1)+'</td></tr>';
       }).join('')}
       <tr style="background:var(--bg3);font-weight:700;"><td>Вкупно</td><td style="text-align:center;">${stsByClass.length}</td><td style="text-align:center;color:var(--teal);">${stsByClass.reduce((a,s)=>a+(s.op||0),0)}</td><td style="text-align:center;color:var(--rose);">${stsByClass.reduce((a,s)=>a+(s.nop||0),0)}</td><td style="text-align:center;">${stsByClass.reduce((a,s)=>a+(s.op||0)+(s.nop||0),0)}</td><td style="text-align:center;color:var(--tx3);">${stsByClass.length?(stsByClass.reduce((a,s)=>a+(s.op||0)+(s.nop||0),0)/stsByClass.length).toFixed(1):'—'}</td></tr>
       </tbody>
@@ -3426,7 +3434,7 @@ function renderAdmin(){
       </tr></thead>
       <tbody>${[...classListNumeric].sort(schoolSort).map(c=>{
         const cnt=(fn)=>c.sts.filter(fn).length;
-        return'<tr><td style="font-family:var(--FC);font-weight:600;">'+c.par+'</td>'+
+        return'<tr><td style="font-family:var(--FC);font-weight:600;">'+classFullLabel(c)+'</td>'+
           '<td style="text-align:center;font-family:var(--FD);">'+c.sts.length+'</td>'+
           '<td style="text-align:center;color:#34D399;font-weight:600;">'+cnt(s=>{const a=computeAvg(s.gr||{});return a!==null&&a>=4.5;})+'</td>'+
           '<td style="text-align:center;color:#60A5FA;font-weight:600;">'+cnt(s=>{const a=computeAvg(s.gr||{});return a!==null&&a>=3.5&&a<4.5;})+'</td>'+
@@ -3453,7 +3461,7 @@ function renderAdmin(){
       </tr></thead>
       <tbody>${[...classListOpisno].sort(schoolSort).map(c=>{
         const st=opisnoStats(c);
-        return'<tr><td style="font-family:var(--FC);font-weight:600;">'+c.par+'</td>'+
+        return'<tr><td style="font-family:var(--FC);font-weight:600;">'+classFullLabel(c)+'</td>'+
           '<td style="text-align:center;font-family:var(--FD);">'+c.sts.length+'</td>'+
           '<td style="text-align:center;color:#34D399;font-weight:600;">'+st.p1+'</td>'+
           '<td style="text-align:center;color:#FBBF24;font-weight:600;">'+st.p2+'</td>'+
@@ -3682,6 +3690,8 @@ async function renderSupervision(){
 
     const teachers=profiles.filter(p=>p.uciliste&&p.oddelenie&&p.paralelka);
 
+    const SCHOOL_NAMES_SUP={C:'Централно училиште',K:'ПУ с. Криволак',P:'ПУ с. Пепелиште',V:'ПУ с. Војшанци',CR:'ПУ с. Црвени Брегови'};
+    const SCHOOL_ORDER_SUP={C:0,K:1,P:2,V:3,CR:4};
     const rows=teachers.map(p=>{
       const key=p.uciliste&&p.oddelenie&&p.paralelka ? `${p.uciliste}|${p.oddelenie}|${p.paralelka}` : '';
       const sts=key?(allData[key]||[]):[];
@@ -3690,14 +3700,17 @@ async function renderSupervision(){
       const pct=total?Math.round((completed/total)*100):0;
       const status=total===0?'Нема ученици':(pct===100?'Комплетно':'Некомплетно');
       const statusColor=total===0?'#94A3B8':(pct===100?'var(--teal)':'var(--amber)');
-      const schoolName=(UCH_DATA[p.uciliste]?.name)||p.uciliste||'—';
+      const schoolName=SCHOOL_NAMES_SUP[p.uciliste]||(UCH_DATA[p.uciliste]?.name)||p.uciliste||'—';
       const oddLbl=ODD_LBL[p.oddelenie]||p.oddelenie||'—';
       return {p,key,sts,total,completed,pct,status,statusColor,schoolName,oddLbl};
     }).sort((a,b)=>{
-      const schoolCmp=(a.schoolName||'').localeCompare((b.schoolName||''),'mk');
-      if(schoolCmp!==0)return schoolCmp;
+      // 1) По училиште (Централно, Криволак, Пепелиште, Војшанци, Црвени)
+      const so=(SCHOOL_ORDER_SUP[a.p.uciliste]??99)-(SCHOOL_ORDER_SUP[b.p.uciliste]??99);
+      if(so!==0)return so;
+      // 2) По одделение (најниско → највисоко)
       const oddCmp=(parseInt(a.p.oddelenie)||0)-(parseInt(b.p.oddelenie)||0);
       if(oddCmp!==0)return oddCmp;
+      // 3) По паралелка
       return String(a.p.paralelka||'').localeCompare(String(b.p.paralelka||''),'mk');
     });
 
@@ -3743,7 +3756,10 @@ async function renderSupervision(){
         pct,
         color
       };
-    }).sort((a,b)=>a.school.localeCompare(b.school,'mk'));
+    }).sort((a,b)=>{
+      const ORD={'Централно училиште':0,'ПУ с. Криволак':1,'ПУ с. Пепелиште':2,'ПУ с. Војшанци':3,'ПУ с. Црвени Брегови':4};
+      return (ORD[a.school]??99)-(ORD[b.school]??99);
+    });
 
     const nastavaMap={
       oddelenska:{label:'Одделенска настава (I - V одделение)',completed:0,total:0},
