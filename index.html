@@ -3242,6 +3242,12 @@ function renderAdmin(){
   const allA=okSts.map(s=>computeAvg(s.gr)).filter(x=>x!==null);
   const cAvg=allA.length?allA.reduce((a,b)=>a+b,0)/allA.length:null;
   const gs=gStyle(cAvg);
+  // Просечно ниво за ученици од I–III (описно оценување)
+  const LVL_NUM={'I ниво':3,'II ниво':2,'III ниво':1};
+  const opisnoSts=sts.filter(s=>s._odd>=1&&s._odd<=3&&gradeStatus(s.gr||{})==="ok");
+  const opisnoNums=opisnoSts.map(s=>LVL_NUM[opisnoAvg(s.gr||{})]).filter(x=>x);
+  const opisnoAvgNum=opisnoNums.length?opisnoNums.reduce((a,b)=>a+b,0)/opisnoNums.length:null;
+  const opisnoAvgLbl=opisnoAvgNum!=null?opisnoLevelFromAvg(opisnoAvgNum):"—";
 
   // Педагошки мерки
   const mc={};allStsWithIsp.forEach(s=>(s.merki||[]).forEach(m=>{mc[m]=(mc[m]||0)+1;}));
@@ -3315,11 +3321,12 @@ function renderAdmin(){
 
   el.innerHTML=buildAdminFilters(uchs,odds,pars,mols,fUch,fOdd,fPar,fPol,fEtn,fMol,fNastava,fUcPeriod,UCH_NAMES)+`
 
-  <div class="kpis" style="grid-template-columns:repeat(5,1fr);">
+  <div class="kpis" style="grid-template-columns:repeat(6,1fr);">
     <div class="kpi"><div class="kpi-l">Ученици</div><div class="kpi-v">${n}</div><div class="kpi-bot" style="background:var(--acc);width:100%;"></div></div>
     <div class="kpi"><div class="kpi-l">Машки</div><div class="kpi-v" style="color:#60A5FA;">${males}</div><div class="kpi-bot" style="background:#60A5FA;width:${n?bw(Math.round(males/n*100)):0}%;"></div></div>
     <div class="kpi"><div class="kpi-l">Женски</div><div class="kpi-v" style="color:#F9A8D4;">${n-males}</div><div class="kpi-bot" style="background:#F9A8D4;width:${n?bw(Math.round((n-males)/n*100)):0}%;"></div></div>
     <div class="kpi"><div class="kpi-l">Просечен успех</div><div class="kpi-v" style="color:${gs.c}">${cAvg?((fOdd!=='__svi__'&&parseInt(fOdd)<=3)?opisnoLevelFromAvg(cAvg):cAvg.toFixed(2)):'—'}</div><div class="kpi-bot" style="background:${gs.bar};width:${cAvg?bw(Math.round(((cAvg-1)/4)*100)):0}%;"></div></div>
+    <div class="kpi"><div class="kpi-l">Просечно ниво (I–III)</div><div class="kpi-v" style="color:var(--teal);">${opisnoAvgLbl}</div><div class="kpi-bot" style="background:var(--teal);width:${opisnoAvgNum?bw(Math.round(((opisnoAvgNum-1)/2)*100)):0}%;"></div></div>
     <div class="kpi"><div class="kpi-l">Паралелки</div><div class="kpi-v">${classList.length}</div><div class="kpi-bot" style="background:var(--teal);width:100%;"></div></div>
   </div>
 
@@ -3366,7 +3373,7 @@ function renderAdmin(){
       const a=c.okAvgs.length?c.okAvgs.reduce((x,y)=>x+y,0)/c.okAvgs.length:null;
       const pct=a?bw(Math.round((a/maxClassAvg)*100)):0;
       const gs2=gStyle(a);
-      return'<div class="brow"><span class="blbl" style="width:80px;">'+c.par+' <span style="font-size:10px;color:var(--tx3);">('+c.sts.length+')</span></span><div class="btrk"><div class="bfil" style="width:'+pct+'%;background:'+gs2.bar+';opacity:.85;"></div></div><span class="bval" style="color:'+gs2.c+';">'+(a?a.toFixed(2):'—')+'</span></div>';
+      return'<div class="brow"><span class="blbl" style="width:auto;min-width:130px;max-width:230px;">'+classFullLabel(c)+' <span style="font-size:10px;color:var(--tx3);">('+c.sts.length+')</span></span><div class="btrk"><div class="bfil" style="width:'+pct+'%;background:'+gs2.bar+';opacity:.85;"></div></div><span class="bval" style="color:'+gs2.c+';">'+(a?a.toFixed(2):'—')+'</span></div>';
     }).join('')||'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>'}
   </div>`;})()}
 
