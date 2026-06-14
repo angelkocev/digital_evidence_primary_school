@@ -3997,21 +3997,35 @@ function renderAdmin(){
       {key:'Успешна реализација',lbl:'Распределба на ученици со успешна реализација на одделение',col:'#34D399'},
     ];
     return cats.map(cfg=>{
-      // Изброј по одделение (вистинско за комбинирани)
+      const filtered=sts.filter(s=>(s.extra||[]).includes(cfg.key));
+      // ── По одделение ──
       const byOdd={};
-      sts.filter(s=>(s.extra||[]).includes(cfg.key)).forEach(s=>{
+      filtered.forEach(s=>{
         const o=(s.odd_ucenik&&s.odd_ucenik>0)?s.odd_ucenik:s._odd;
         byOdd[o]=(byOdd[o]||0)+1;
       });
       const odds=Object.keys(byOdd).map(Number).sort((a,b)=>a-b);
       if(!odds.length)return'';
       const maxV=Math.max(...odds.map(o=>byOdd[o]),1);
-      const rows=odds.map(o=>{
+      const oddRows=odds.map(o=>{
         const v=byOdd[o];const pct=Math.max(4,Math.round(v/maxV*100));
         return'<div class="brow"><span class="blbl" style="width:120px;min-width:120px;">'+(ODD_LBL[o]||o+' одд.')+'</span><div class="btrk"><div class="bfil" style="width:'+pct+'%;background:'+cfg.col+';opacity:.85;"></div></div><span class="bval" style="color:'+cfg.col+';">'+v+'</span></div>';
       }).join('');
       const tot=odds.reduce((a,o)=>a+byOdd[o],0);
-      return'<div class="rcard"><div class="rttl">'+cfg.lbl+' <span style="font-family:var(--FD);font-size:13px;margin-left:6px;color:'+cfg.col+';">'+tot+'</span></div>'+rows+'</div>';
+      // ── По училиште ──
+      const UCH_ORD=['C','K','P','V','CR'];
+      const byUch={};
+      filtered.forEach(s=>{byUch[s._uch]=(byUch[s._uch]||0)+1;});
+      const uchKeys=UCH_ORD.filter(u=>byUch[u]);
+      const maxU=Math.max(...uchKeys.map(u=>byUch[u]),1);
+      const uchRows=uchKeys.map(u=>{
+        const v=byUch[u];const pct=Math.max(4,Math.round(v/maxU*100));
+        return'<div class="brow"><span class="blbl" style="width:160px;min-width:160px;">'+(UCH_NAMES[u]||u)+'</span><div class="btrk"><div class="bfil" style="width:'+pct+'%;background:'+cfg.col+';opacity:.85;"></div></div><span class="bval" style="color:'+cfg.col+';">'+v+'</span></div>';
+      }).join('');
+      return'<div class="rep-duo">'+
+        '<div class="rcard" style="margin-bottom:0;"><div class="rttl">'+cfg.lbl+' <span style="font-family:var(--FD);font-size:13px;margin-left:6px;color:'+cfg.col+';">'+tot+'</span></div>'+oddRows+'</div>'+
+        '<div class="rcard" style="margin-bottom:0;"><div class="rttl">'+cfg.lbl.replace('Распределба на ','Распределба по училиште на ')+' <span style="font-family:var(--FD);font-size:13px;margin-left:6px;color:'+cfg.col+';">'+tot+'</span></div>'+(uchRows||'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>')+'</div>'+
+      '</div>';
     }).join('');
   })()}
 
