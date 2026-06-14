@@ -3533,6 +3533,23 @@ function renderAdmin(){
   const UCH_NAMES={C:'Централно училиште',K:'ПУ с. Криволак',P:'ПУ с. Пепелиште',V:'ПУ с. Војшанци',CR:'ПУ с. Црвени Брегови'};
   // Целосен назив на паралелка со училиште за подрачните (пр. „I одделение ПУ с. Криволак")
   const ROMAN_ADM=['','I','II','III','IV','V','VI','VII','VIII','IX'];
+  // Donut chart helper (повеќесегментен) за renderAdmin
+  const ADM_PIE_COLORS=['#60A5FA','#34D399','#A78BFA','#FBBF24','#F472B6','#F87171','#22D3EE','#A3E635'];
+  function admDonut(segs,centerTop,centerBot){
+    const tot=segs.reduce((a,s)=>a+s.v,0)||1;
+    function polar(cx,cy,r,ang){const a=(ang-90)*Math.PI/180;return[cx+r*Math.cos(a),cy+r*Math.sin(a)];}
+    function seg(cx,cy,r,rin,a0,a1,col){const[x0,y0]=polar(cx,cy,r,a0);const[x1,y1]=polar(cx,cy,r,a1);const[xi1,yi1]=polar(cx,cy,rin,a1);const[xi0,yi0]=polar(cx,cy,rin,a0);const large=(a1-a0)>180?1:0;return`<path d="M ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1} L ${xi1} ${yi1} A ${rin} ${rin} 0 ${large} 0 ${xi0} ${yi0} Z" fill="${col}"/>`;}
+    let paths='',ang=0;
+    segs.forEach(s=>{if(s.v<=0)return;const a1=ang+(s.v/tot)*360;paths+=seg(80,80,70,46,ang,a1===ang?ang+0.01:a1,s.col);ang=a1;});
+    const legend=segs.map(s=>'<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;"><span style="width:11px;height:11px;border-radius:3px;background:'+s.col+';flex-shrink:0;"></span><span style="font-size:12px;color:var(--tx2);">'+s.lbl+': <strong style="color:'+s.col+';">'+s.v+'</strong> ('+(tot?Math.round(s.v/tot*100):0)+'%)</span></div>').join('');
+    return'<div style="display:flex;align-items:center;justify-content:center;gap:18px;flex-wrap:wrap;margin-top:8px;">'+
+      '<svg width="160" height="160" viewBox="0 0 160 160" style="flex-shrink:0;">'+paths+
+        '<text x="80" y="74" text-anchor="middle" font-family="var(--FD)" font-size="24" font-weight="600" fill="var(--tx)">'+centerTop+'</text>'+
+        (centerBot?'<text x="80" y="93" text-anchor="middle" font-size="9" fill="var(--tx3)">'+centerBot+'</text>':'')+
+      '</svg>'+
+      '<div style="flex:1;min-width:130px;">'+legend+'</div>'+
+    '</div>';
+  }
   const classFullLabel=(c)=>{
     // Комбинирана паралелка поделена по вистинско одделение → прикажи го одделението
     if(COMBINED_CLASSES[c.par]){
@@ -3908,11 +3925,25 @@ function renderAdmin(){
         <th style="width:72px;text-align:center;">Неоправдани</th>
         <th style="width:58px;text-align:center;">Вкупно</th>
         <th style="width:108px;text-align:center;">Категорија</th>
-        <th>Предмети со слаба оценка</th>
+        <th>Наставни предмети</th>
       </tr></thead>
       <tbody>${povtoruvanje.map((s,i)=>{
         const ki=katInfo(s.gr||{});
-        const slabi=allSubjs(s._odd||curOdd).filter(subj=>Number((s.gr||{})[subj])===1);
+        const subjsAll=allSubjs(s._odd||curOdd,s._par);
+        const gr=s.gr||{};
+        const slabi=subjsAll.filter(subj=>Number(gr[subj])===1);
+        // Неоценети предмети (само ако е делумно оценет, не целосно неоценет)
+        const gradedCount=subjsAll.filter(subj=>{const v=gr[subj];return v!==undefined&&v!==null&&v!=='';}).length;
+        const isPartial=gradedCount>0&&gradedCount<subjsAll.length;
+        const neoceneti=isPartial?subjsAll.filter(subj=>{const v=gr[subj];return v===undefined||v===null||v==='';}):[];
+        // Категорија — додади ознаки за слаби и делумно оценет
+        let katTags='<span class="kat '+ki.cls+'">'+ki.lbl+'</span>';
+        if(slabi.length>0)katTags+='<span style="display:inline-block;margin-top:3px;font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;background:rgba(248,113,113,.15);color:#F87171;">Слаби оценки</span>';
+        if(isPartial)katTags+='<span style="display:inline-block;margin-top:3px;font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;background:rgba(251,191,36,.15);color:#FBBF24;">Делумно оценет</span>';
+        // Наставни предмети: слаби (црвено) + неоценети (жолто)
+        const subjChips=
+          slabi.map(subj=>'<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;background:rgba(248,113,113,.15);color:#F87171;">'+subj+'</span>').join('')+
+          neoceneti.map(subj=>'<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;background:rgba(251,191,36,.15);color:#FBBF24;">'+subj+'</span>').join('');
         return `<tr>
           <td style="text-align:center;color:var(--tx3);">${i+1}</td>
           <td style="font-family:var(--FC);font-weight:600;">${s.ime||''} ${s.prz||''}</td>
@@ -3922,8 +3953,8 @@ function renderAdmin(){
           <td style="text-align:center;font-weight:600;color:var(--teal);">${s.op||0}</td>
           <td style="text-align:center;font-weight:600;color:${(s.nop||0)>0?'var(--rose)':'var(--tx3)'};">${s.nop||0}</td>
           <td style="text-align:center;font-weight:700;font-family:var(--FD);">${(s.op||0)+(s.nop||0)}</td>
-          <td style="text-align:center;"><span class="kat ${ki.cls}">${ki.lbl}</span></td>
-          <td><div style="display:flex;gap:4px;flex-wrap:wrap;">${slabi.length?slabi.map(subj=>'<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;background:rgba(248,113,113,.15);color:#F87171;">'+subj+'</span>').join(''):'<span style="font-size:11px;color:var(--tx3);">—</span>'}</div></td>
+          <td style="text-align:center;">${katTags}</td>
+          <td><div style="display:flex;gap:4px;flex-wrap:wrap;">${subjChips||'<span style="font-size:11px;color:var(--tx3);">—</span>'}</div></td>
         </tr>`;
       }).join('')}</tbody>
     </table>
@@ -4012,19 +4043,15 @@ function renderAdmin(){
         return'<div class="brow"><span class="blbl" style="width:120px;min-width:120px;">'+(ODD_LBL[o]||o+' одд.')+'</span><div class="btrk"><div class="bfil" style="width:'+pct+'%;background:'+cfg.col+';opacity:.85;"></div></div><span class="bval" style="color:'+cfg.col+';">'+v+'</span></div>';
       }).join('');
       const tot=odds.reduce((a,o)=>a+byOdd[o],0);
-      // ── По училиште ──
+      // ── По училиште (Donut) ──
       const UCH_ORD=['C','K','P','V','CR'];
       const byUch={};
       filtered.forEach(s=>{byUch[s._uch]=(byUch[s._uch]||0)+1;});
       const uchKeys=UCH_ORD.filter(u=>byUch[u]);
-      const maxU=Math.max(...uchKeys.map(u=>byUch[u]),1);
-      const uchRows=uchKeys.map(u=>{
-        const v=byUch[u];const pct=Math.max(4,Math.round(v/maxU*100));
-        return'<div class="brow"><span class="blbl" style="width:160px;min-width:160px;">'+(UCH_NAMES[u]||u)+'</span><div class="btrk"><div class="bfil" style="width:'+pct+'%;background:'+cfg.col+';opacity:.85;"></div></div><span class="bval" style="color:'+cfg.col+';">'+v+'</span></div>';
-      }).join('');
+      const uchSegs=uchKeys.map((u,i)=>({v:byUch[u],col:ADM_PIE_COLORS[i%ADM_PIE_COLORS.length],lbl:UCH_NAMES[u]||u}));
       return'<div class="rep-duo">'+
         '<div class="rcard" style="margin-bottom:0;"><div class="rttl">'+cfg.lbl+' <span style="font-family:var(--FD);font-size:13px;margin-left:6px;color:'+cfg.col+';">'+tot+'</span></div>'+oddRows+'</div>'+
-        '<div class="rcard" style="margin-bottom:0;"><div class="rttl">'+cfg.lbl.replace('Распределба на ','Распределба по училиште на ')+' <span style="font-family:var(--FD);font-size:13px;margin-left:6px;color:'+cfg.col+';">'+tot+'</span></div>'+(uchRows||'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>')+'</div>'+
+        '<div class="rcard" style="margin-bottom:0;"><div class="rttl">'+cfg.lbl.replace('Распределба на ','Распределба по училиште на ')+' <span style="font-family:var(--FD);font-size:13px;margin-left:6px;color:'+cfg.col+';">'+tot+'</span></div>'+(uchSegs.length?admDonut(uchSegs,tot,'ученици'):'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>')+'</div>'+
       '</div>';
     }).join('');
   })()}
