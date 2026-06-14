@@ -694,6 +694,33 @@ async function onLogin(user){
     currentUser.is_admin=profile?.is_admin||false;
     currentUser.role=profile?.role||(currentUser.is_admin?'admin':'teacher');
 
+    // Преземи улога од employees табелата според работна позиција / помошник директор
+    // (ако корисникот не е веќе админ)
+    if(!currentUser.is_admin){
+      try{
+        const uEmail=(user.email||'').toLowerCase();
+        let empRole=null;
+        if(uEmail){
+          const{data:emps}=await sb.from('employees').select('job_position,is_assistant_principal,professional_email,personal_email,active_status');
+          if(emps&&emps.length){
+            const emp=emps.find(e=>
+              (e.professional_email&&e.professional_email.toLowerCase()===uEmail)||
+              (e.personal_email&&e.personal_email.toLowerCase()===uEmail)
+            );
+            if(emp){
+              const pos=(emp.job_position||'').toLowerCase();
+              // Помошник директор се препознава по знакот is_assistant_principal (без оглед на позицијата)
+              if(emp.is_assistant_principal===true)empRole='assistant_director';
+              else if(/директор/.test(pos))empRole='director';
+              else if(/психолог/.test(pos))empRole='psychologist';
+              else if(/педагог/.test(pos))empRole='pedagogue';
+            }
+          }
+        }
+        if(empRole)currentUser.role=empRole;
+      }catch(e){console.warn('employee role lookup skipped:',e);}
+    }
+
     // Вчитај ги предметите и паралелките од базата ПРЕД градење на менијата
     await loadSubjectsFromDB();
     await loadClassesFromDB();
@@ -732,10 +759,12 @@ async function onLogin(user){
         const selPar=document.getElementById('sel-par');
         if(selPar)selPar.value=curPar;
       }
-    } else if(currentUser.role==='supervisor'){
-      // Надзорник — гледа Admin панел и Надзор, но само за преглед
+    } else if(isSupervisor()){
+      // Надзорни улоги (директор, пом. директор, психолог, педагог, надзор) — само преглед
+      const ROLE_LABELS={supervisor:'Надзор',director:'Директор',assistant_director:'Помошник директор',psychologist:'Психолог',pedagogue:'Педагог'};
+      const roleLbl=ROLE_LABELS[currentUser.role]||'Надзор';
       const badge=document.querySelector('.user-badge span');
-      if(badge)badge.textContent=''+displayName+' (Надзор)';
+      if(badge)badge.textContent=''+displayName+' ('+roleLbl+')';
       // Скриј филтрите Училиште/Одделение/Паралелка
       const selDiv=document.getElementById('class-selectors');
       if(selDiv)selDiv.style.display='none';
@@ -743,19 +772,13 @@ async function onLogin(user){
       if(nb)nb.style.display='block';
       const nbSup=document.getElementById('nb-supervision');
       if(nbSup)nbSup.style.display='block';
-      // Скриј Список, Реализација, Извештај за паралелка
-      ['p-lst','p-real','p-rep'].forEach(id=>{
-        const el=document.getElementById(id);
-        // Keep panels but hide nav buttons for them
-      });
       const addBtn=document.getElementById('add-btn-wrap');
       if(addBtn)addBtn.style.display='none';
-      // Скриј навигациски копчиња за непотребни панели
+      // Скриј навигациски копчиња за непотребни панели (Список, Реализација, Извештај)
       document.querySelectorAll('.nb').forEach(btn=>{
         if(btn.id==='nb-admin'||btn.id==='nb-supervision')return;
         btn.style.display='none';
       });
-      // Автоматски отвори Admin панел
     } else {
       // Скриј „Додај ученик" за наставници
       const addBtn=document.getElementById('add-btn-wrap');
@@ -780,9 +803,9 @@ async function onLogin(user){
     await loadFromSupabase();
     renderL();upBadge();
     if(currentUser.is_admin){renderSupervision();}
-    if(currentUser.role==='supervisor'){
+    if(isSupervisor()){
       renderSupervision();
-      // Автоматски отвори го Admin панелот за надзорниците
+      // Автоматски отвори го Admin панелот за надзорните улоги
       const adminBtn=document.getElementById('nb-admin');
       if(adminBtn)adminBtn.click();
     }
@@ -862,7 +885,7 @@ async function loadFromSupabase(){
   if(!currentUser)return;
   allData={};electiveNames={};realData={};
   const isAdmin=currentUser.is_admin||false;
-  const isSup=currentUser.role==='supervisor';
+  const isSup=isSupervisor();
   let q=sb.from('ucenici').select('*')
     .eq('school_year',activeSchoolYear)
     .eq('period',activePeriod);
@@ -931,7 +954,7 @@ async function loadFromSupabase(){
 let realData={};
 function getRealData(){return realData;}
 function setRealData(d){realData=d;}
-function isSupervisor(){return currentUser?.role==='supervisor';}
+function isSupervisor(){return ['supervisor','director','assistant_director','psychologist','pedagogue'].includes(currentUser?.role);}
 function canEdit(){return currentUser?.is_admin||false;}
 function canView(){return currentUser?.is_admin||currentUser?.role==='supervisor';}
 
@@ -3473,7 +3496,7 @@ function renderAdmin(){
   const el=document.getElementById('adminwrap');
   if(!currentUser?.is_admin&&!isSupervisor()){el.innerHTML='<div class="empty-s">Немате пристап.</div>';return;}
 
-  const supervisorBanner=isSupervisor()?'<div style="background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);border-radius:9px;padding:8px 14px;margin-bottom:14px;font-size:12px;color:#FBBF24;display:flex;align-items:center;gap:8px;">👁 Режим на надзор — само преглед, без можност за уредување</div>':'';
+  const supervisorBanner=isSupervisor()?'<div style="background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);border-radius:9px;padding:8px 14px;margin-bottom:14px;font-size:12px;color:#FBBF24;display:flex;align-items:center;gap:8px;">👁 Режим на преглед — само читање, без можност за уредување</div>':'';
 
   const allSts=Object.entries(allData).flatMap(([k,arr])=>arr.map(s=>{
     const[uch,odd,par]=k.split('|');return{...s,_uch:uch,_odd:parseInt(odd),_par:par};
