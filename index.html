@@ -2490,7 +2490,22 @@ function renderR(){
     <button class="btn btn-sm" onclick="doPrint()">Печати / PDF</button>
   </div>
 
-  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:center;background:var(--bg2);border:1px solid var(--bdr);border-radius:10px;padding:10px 14px;margin-bottom:1.5rem;">
+  <div style="display:grid;grid-template-columns:${isCombined(curPar)?'1fr 1fr 1fr 1fr 1fr':'1fr 1fr 1fr'};gap:8px;align-items:center;background:var(--bg2);border:1px solid var(--bdr);border-radius:10px;padding:10px 14px;margin-bottom:1.5rem;">
+    ${isCombined(curPar)?`<div>
+      <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--tx3);margin-bottom:4px;">Одделение</div>
+      <select id="gf-odd" onchange="applyGlobalFilter()" style="font-family:var(--F);font-size:12px;border:1px solid var(--bdr);border-radius:7px;padding:5px 9px;color:var(--tx);background:var(--bg3);outline:none;cursor:pointer;width:100%;">
+        <option value="__svi__">Сите</option>
+        ${(COMBINED_CLASSES[curPar]||[]).slice().sort((a,b)=>a-b).map(g=>'<option value="'+g+'">'+(ODD_LBL[g]||g+' одд.')+'</option>').join('')}
+      </select>
+    </div>
+    <div>
+      <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--tx3);margin-bottom:4px;">Вид на оценување</div>
+      <select id="gf-ocen" onchange="applyGlobalFilter()" style="font-family:var(--F);font-size:12px;border:1px solid var(--bdr);border-radius:7px;padding:5px 9px;color:var(--tx);background:var(--bg3);outline:none;cursor:pointer;width:100%;">
+        <option value="__svi__">Сите</option>
+        <option value="opisno">Описно (I–III)</option>
+        <option value="numeric">Бројчано (IV–IX)</option>
+      </select>
+    </div>`:''}
     <div>
       <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--tx3);margin-bottom:4px;">Пол</div>
       <select id="gf-pol" onchange="applyGlobalFilter()" style="font-family:var(--F);font-size:12px;border:1px solid var(--bdr);border-radius:7px;padding:5px 9px;color:var(--tx);background:var(--bg3);outline:none;cursor:pointer;width:100%;">
@@ -2526,11 +2541,19 @@ function getFilteredSts(allSts){
   const molF=document.getElementById('gf-mol');
   if(!polF)return allSts;
   const pv=polF.value,ev=etnF.value,mv=molF.value;
+  const oddF=document.getElementById('gf-odd');
+  const ocenF=document.getElementById('gf-ocen');
+  const ov=oddF?oddF.value:'__svi__';
+  const cv=ocenF?ocenF.value:'__svi__';
+  const getOdd=(s)=>(s.odd_ucenik&&s.odd_ucenik>0)?s.odd_ucenik:curOdd;
   return allSts.filter(s=>{
     const pOk=pv==='__svi__'||s.pol===pv;
     const eOk=ev==='__svi__'||(s.etnik||'Останато')===ev;
     const mOk=mv==='__svi__'||s.mol===mv;
-    return pOk&&eOk&&mOk;
+    const realOdd=getOdd(s);
+    const oOk=ov==='__svi__'||realOdd===parseInt(ov);
+    const cOk=cv==='__svi__'||(cv==='opisno'?realOdd<=3:realOdd>3);
+    return pOk&&eOk&&mOk&&oOk&&cOk;
   });
 }
 
@@ -2559,6 +2582,8 @@ function renderRepBody(sts,oddOverride,targetElId){
       const getOdd=(s)=>(s.odd_ucenik&&s.odd_ucenik>0)?s.odd_ucenik:curOdd;
       const opisnoSts=sts.filter(s=>getOdd(s)<=3);
       const numericSts=sts.filter(s=>getOdd(s)>3);
+      // Ако филтрите оставиле само еден вид — не дели, прикажи нормално
+      if(opisnoSts.length&&numericSts.length){
       const lowestOpisno=Math.min(...grades.filter(g=>g<=3));
       const lowestNumeric=Math.min(...grades.filter(g=>g>3));
 
@@ -2657,6 +2682,10 @@ function renderRepBody(sts,oddOverride,targetElId){
       renderRepBodyInto('rep-body-opisno',opisnoSts,lowestOpisno);
       renderRepBodyInto('rep-body-numeric',numericSts,lowestNumeric);
       return;
+      }
+      // Само еден вид останал по филтер — продолжи нормално со соодветно одделение
+      if(opisnoSts.length&&!numericSts.length){return renderRepBody(sts,Math.min(...grades.filter(g=>g<=3)),targetElId);}
+      if(numericSts.length&&!opisnoSts.length){return renderRepBody(sts,Math.min(...grades.filter(g=>g>3)),targetElId);}
     }
   }
 
