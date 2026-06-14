@@ -3542,7 +3542,7 @@ function renderAdmin(){
     function seg(cx,cy,r,rin,a0,a1,col){const[x0,y0]=polar(cx,cy,r,a0);const[x1,y1]=polar(cx,cy,r,a1);const[xi1,yi1]=polar(cx,cy,rin,a1);const[xi0,yi0]=polar(cx,cy,rin,a0);const large=(a1-a0)>180?1:0;return`<path d="M ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1} L ${xi1} ${yi1} A ${rin} ${rin} 0 ${large} 0 ${xi0} ${yi0} Z" fill="${col}"/>`;}
     let paths='',ang=0;
     segs.forEach(s=>{if(s.v<=0)return;const a1=ang+(s.v/tot)*360;paths+=seg(80,80,70,46,ang,a1===ang?ang+0.01:a1,s.col);ang=a1;});
-    const legend=segs.map(s=>'<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;"><span style="width:11px;height:11px;border-radius:3px;background:'+s.col+';flex-shrink:0;"></span><span style="font-size:12px;color:var(--tx2);">'+s.lbl+': <strong style="color:'+s.col+';">'+s.v+'</strong> ('+(tot?(s.v/tot*100).toFixed(2):'0.00')+'%)</span></div>').join('');
+    const legend=segs.map(s=>'<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;"><span style="width:11px;height:11px;border-radius:3px;background:'+s.col+';flex-shrink:0;"></span><span style="font-size:12px;color:var(--tx2);">'+s.lbl+': <strong style="color:'+s.col+';">'+s.v+'</strong> <span style="font-size:10px;color:var(--tx3);">('+(tot?(s.v/tot*100).toFixed(2):'0.00')+'%)</span></span></div>').join('');
     return'<div style="display:flex;align-items:center;justify-content:center;gap:18px;flex-wrap:wrap;margin-top:8px;">'+
       '<svg width="160" height="160" viewBox="0 0 160 160" style="flex-shrink:0;">'+paths+
         '<text x="80" y="74" text-anchor="middle" font-family="var(--FD)" font-size="24" font-weight="600" fill="var(--tx)">'+centerTop+'</text>'+
@@ -3715,8 +3715,8 @@ function renderAdmin(){
     const opPct=totG?(op/totG*100).toFixed(2):'0.00';
     const nopPct=totG?(nop/totG*100).toFixed(2):'0.00';
     return'<div style="margin-bottom:10px;"><div style="font-size:12px;font-weight:600;color:var(--tx2);margin-bottom:5px;">'+lbl+' <span style="font-size:10px;font-weight:400;color:var(--tx3);">(вкупно: '+(op+nop)+')</span></div>'+
-      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;"><span style="font-size:10px;color:var(--tx3);width:72px;flex-shrink:0;">Оправдани</span><div style="flex:1;height:10px;background:var(--bg3);border-radius:4px;position:relative;"><div style="position:absolute;left:0;top:0;height:100%;width:'+pOp+'%;background:var(--teal);opacity:.85;border-radius:4px;"></div></div><span style="font-size:11px;font-weight:600;color:var(--teal);min-width:80px;text-align:right;">'+op+' ('+opPct+'%)</span></div>'+
-      '<div style="display:flex;align-items:center;gap:8px;"><span style="font-size:10px;color:var(--tx3);width:72px;flex-shrink:0;">Неоправдани</span><div style="flex:1;height:10px;background:var(--bg3);border-radius:4px;position:relative;"><div style="position:absolute;left:0;top:0;height:100%;width:'+pNop+'%;background:var(--rose);opacity:.85;border-radius:4px;"></div></div><span style="font-size:11px;font-weight:600;color:var(--rose);min-width:80px;text-align:right;">'+nop+' ('+nopPct+'%)</span></div></div>';
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;"><span style="font-size:10px;color:var(--tx3);width:72px;flex-shrink:0;">Оправдани</span><div style="flex:1;height:10px;background:var(--bg3);border-radius:4px;position:relative;"><div style="position:absolute;left:0;top:0;height:100%;width:'+pOp+'%;background:var(--teal);opacity:.85;border-radius:4px;"></div></div><span style="font-size:11px;font-weight:600;color:var(--teal);min-width:80px;text-align:right;">'+op+' <span style="font-size:9px;font-weight:500;color:var(--tx3);">('+opPct+'%)</span></span></div>'+
+      '<div style="display:flex;align-items:center;gap:8px;"><span style="font-size:10px;color:var(--tx3);width:72px;flex-shrink:0;">Неоправдани</span><div style="flex:1;height:10px;background:var(--bg3);border-radius:4px;position:relative;"><div style="position:absolute;left:0;top:0;height:100%;width:'+pNop+'%;background:var(--rose);opacity:.85;border-radius:4px;"></div></div><span style="font-size:11px;font-weight:600;color:var(--rose);min-width:80px;text-align:right;">'+nop+' <span style="font-size:9px;font-weight:500;color:var(--tx3);">('+nopPct+'%)</span></span></div></div>';
   }
 
   // Листа на ученици коишто повторуваат
@@ -3804,8 +3804,8 @@ function renderAdmin(){
           '<text x="80" y="94" text-anchor="middle" font-size="10" fill="var(--tx3)">изостаноци</text>'+
         '</svg>'+
         '<div style="min-width:160px;">'+
-          '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;"><span style="width:11px;height:11px;border-radius:3px;background:#34D399;"></span><span style="font-size:13px;color:var(--tx2);">Оправдани: <strong style="color:#34D399;">'+op+'</strong> ('+(tot?(op/tot*100).toFixed(2):'0.00')+'%)</span></div>'+
-          '<div style="display:flex;align-items:center;gap:6px;"><span style="width:11px;height:11px;border-radius:3px;background:#F87171;"></span><span style="font-size:13px;color:var(--tx2);">Неоправдани: <strong style="color:#F87171;">'+nop+'</strong> ('+(tot?(nop/tot*100).toFixed(2):'0.00')+'%)</span></div>'+
+          '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;"><span style="width:11px;height:11px;border-radius:3px;background:#34D399;"></span><span style="font-size:13px;color:var(--tx2);">Оправдани: <strong style="color:#34D399;">'+op+'</strong> <span style="font-size:10px;color:var(--tx3);">('+(tot?(op/tot*100).toFixed(2):'0.00')+'%)</span></span></div>'+
+          '<div style="display:flex;align-items:center;gap:6px;"><span style="width:11px;height:11px;border-radius:3px;background:#F87171;"></span><span style="font-size:13px;color:var(--tx2);">Неоправдани: <strong style="color:#F87171;">'+nop+'</strong> <span style="font-size:10px;color:var(--tx3);">('+(tot?(nop/tot*100).toFixed(2):'0.00')+'%)</span></span></div>'+
         '</div>'+
       '</div>';
     })()}
@@ -3838,9 +3838,20 @@ function renderAdmin(){
   <div class="rcard">
     <div class="rttl" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
       <span>Изостаноци по паралелка</span>
-      <span style="display:flex;gap:6px;">
-        <button class="sortbtn" onclick="sortAdminTable('tbl-izo-par',0,'str',this)" style="font-family:var(--F);font-size:10px;font-weight:600;border:1px solid var(--bdr);border-radius:6px;padding:3px 8px;background:var(--bg3);color:var(--tx2);cursor:pointer;">Паралелка <span class="sarr">⇅</span></button>
-        <button class="sortbtn" onclick="sortAdminTable('tbl-izo-par',4,'num',this)" style="font-family:var(--F);font-size:10px;font-weight:600;border:1px solid var(--bdr);border-radius:6px;padding:3px 8px;background:var(--bg3);color:var(--tx2);cursor:pointer;">Вкупно <span class="sarr">⇅</span></button>
+      <span style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:500;color:var(--tx3);text-transform:none;letter-spacing:0;">Сортирај по:
+        <select onchange="sortAdminTableSel('tbl-izo-par',this)" style="font-family:var(--F);font-size:11px;border:1px solid var(--bdr);border-radius:6px;padding:3px 8px;background:var(--bg3);color:var(--tx);cursor:pointer;">
+          <option value="">—</option>
+          <option value="0:str:asc">Паралелка (А–Ш)</option>
+          <option value="0:str:desc">Паралелка (Ш–А)</option>
+          <option value="1:num:desc">Ученици (највеќе)</option>
+          <option value="1:num:asc">Ученици (најмалку)</option>
+          <option value="2:num:desc">Оправдани (највеќе)</option>
+          <option value="2:num:asc">Оправдани (најмалку)</option>
+          <option value="3:num:desc">Неоправдани (највеќе)</option>
+          <option value="3:num:asc">Неоправдани (најмалку)</option>
+          <option value="4:num:desc">Вкупно (највеќе)</option>
+          <option value="4:num:asc">Вкупно (најмалку)</option>
+        </select>
       </span>
     </div>
     <table class="rtbl" id="tbl-izo-par" style="table-layout:fixed;">
@@ -3864,9 +3875,28 @@ function renderAdmin(){
   ${(()=>{if(!(classListNumeric.length))return'';return `<div class="rcard">
     <div class="rttl" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
       <span>Статус на оценување по паралелка (IV–IX)</span>
-      <span style="display:flex;gap:6px;flex-wrap:wrap;">
-        <button class="sortbtn" onclick="sortAdminTable('tbl-stat-num',0,'str',this)" style="font-family:var(--F);font-size:10px;font-weight:600;border:1px solid var(--bdr);border-radius:6px;padding:3px 8px;background:var(--bg3);color:var(--tx2);cursor:pointer;">Паралелка <span class="sarr">⇅</span></button>
-        <button class="sortbtn" onclick="sortAdminTable('tbl-stat-num',1,'num',this)" style="font-family:var(--F);font-size:10px;font-weight:600;border:1px solid var(--bdr);border-radius:6px;padding:3px 8px;background:var(--bg3);color:var(--tx2);cursor:pointer;">Вкупно <span class="sarr">⇅</span></button>
+      <span style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:500;color:var(--tx3);text-transform:none;letter-spacing:0;">Сортирај по:
+        <select onchange="sortAdminTableSel('tbl-stat-num',this)" style="font-family:var(--F);font-size:11px;border:1px solid var(--bdr);border-radius:6px;padding:3px 8px;background:var(--bg3);color:var(--tx);cursor:pointer;">
+          <option value="">—</option>
+          <option value="0:str:asc">Паралелка (А–Ш)</option>
+          <option value="0:str:desc">Паралелка (Ш–А)</option>
+          <option value="1:num:desc">Вкупно (највеќе)</option>
+          <option value="1:num:asc">Вкупно (најмалку)</option>
+          <option value="2:num:desc">Одличен (највеќе)</option>
+          <option value="2:num:asc">Одличен (најмалку)</option>
+          <option value="3:num:desc">Многу добар (највеќе)</option>
+          <option value="3:num:asc">Многу добар (најмалку)</option>
+          <option value="4:num:desc">Добар (највеќе)</option>
+          <option value="4:num:asc">Добар (најмалку)</option>
+          <option value="5:num:desc">Доволен (највеќе)</option>
+          <option value="5:num:asc">Доволен (најмалку)</option>
+          <option value="6:num:desc">Слаби оценки (највеќе)</option>
+          <option value="6:num:asc">Слаби оценки (најмалку)</option>
+          <option value="7:num:desc">Делумно оценети (највеќе)</option>
+          <option value="7:num:asc">Делумно оценети (најмалку)</option>
+          <option value="8:num:desc">Целосно неоценети (највеќе)</option>
+          <option value="8:num:asc">Целосно неоценети (најмалку)</option>
+        </select>
       </span>
     </div>
     <table class="rtbl" id="tbl-stat-num" style="table-layout:fixed;">
@@ -3899,9 +3929,24 @@ function renderAdmin(){
   ${(()=>{if(!(classListOpisno.length))return'';return `<div class="rcard">
     <div class="rttl" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
       <span>Статус на оценување по паралелка (I–III)</span>
-      <span style="display:flex;gap:6px;flex-wrap:wrap;">
-        <button class="sortbtn" onclick="sortAdminTable('tbl-stat-op',0,'str',this)" style="font-family:var(--F);font-size:10px;font-weight:600;border:1px solid var(--bdr);border-radius:6px;padding:3px 8px;background:var(--bg3);color:var(--tx2);cursor:pointer;">Паралелка <span class="sarr">⇅</span></button>
-        <button class="sortbtn" onclick="sortAdminTable('tbl-stat-op',1,'num',this)" style="font-family:var(--F);font-size:10px;font-weight:600;border:1px solid var(--bdr);border-radius:6px;padding:3px 8px;background:var(--bg3);color:var(--tx2);cursor:pointer;">Вкупно <span class="sarr">⇅</span></button>
+      <span style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:500;color:var(--tx3);text-transform:none;letter-spacing:0;">Сортирај по:
+        <select onchange="sortAdminTableSel('tbl-stat-op',this)" style="font-family:var(--F);font-size:11px;border:1px solid var(--bdr);border-radius:6px;padding:3px 8px;background:var(--bg3);color:var(--tx);cursor:pointer;">
+          <option value="">—</option>
+          <option value="0:str:asc">Паралелка (А–Ш)</option>
+          <option value="0:str:desc">Паралелка (Ш–А)</option>
+          <option value="1:num:desc">Вкупно (највеќе)</option>
+          <option value="1:num:asc">Вкупно (најмалку)</option>
+          <option value="2:num:desc">I ниво (највеќе)</option>
+          <option value="2:num:asc">I ниво (најмалку)</option>
+          <option value="3:num:desc">II ниво (највеќе)</option>
+          <option value="3:num:asc">II ниво (најмалку)</option>
+          <option value="4:num:desc">III ниво (највеќе)</option>
+          <option value="4:num:asc">III ниво (најмалку)</option>
+          <option value="5:num:desc">Делумно оценети (највеќе)</option>
+          <option value="5:num:asc">Делумно оценети (најмалку)</option>
+          <option value="6:num:desc">Целосно неоценети (највеќе)</option>
+          <option value="6:num:asc">Целосно неоценети (најмалку)</option>
+        </select>
       </span>
     </div>
     <table class="rtbl" id="tbl-stat-op" style="table-layout:fixed;">
@@ -3942,7 +3987,7 @@ function renderAdmin(){
       ${extraKeys.filter(k=>ec[k]).length?extraKeys.filter(k=>ec[k]).slice().sort((a,b)=>ec[b]-ec[a]).map(k=>{
         const pct=bw(Math.round((ec[k]/n)*100));const col=extraColors[k]||'#4F8EF7';
         const pctLbl=(ec[k]/n*100).toFixed(2);
-        return'<div class="brow"><span class="blbl">'+k+'</span><div class="btrk"><div class="bfil" style="width:'+pct+'%;background:'+col+';opacity:.8;"></div></div><span class="bval" style="color:'+col+';white-space:nowrap;">'+ec[k]+' ('+pctLbl+'%)</span></div>';
+        return'<div class="brow"><span class="blbl">'+k+'</span><div class="btrk"><div class="bfil" style="width:'+pct+'%;background:'+col+';opacity:.8;"></div></div><span class="bval" style="color:'+col+';white-space:nowrap;">'+ec[k]+' <span style="font-size:10px;font-weight:500;color:var(--tx3);">('+pctLbl+'%)</span></span></div>';
       }).join(''):'<div style="font-size:13px;color:var(--tx3);">Нема ученици.</div>'}
     </div>
   </div>
@@ -4131,7 +4176,8 @@ function renderAdmin(){
      const byOdd={};isp.forEach(s=>{const o=(s.odd_ucenik&&s.odd_ucenik>0)?s.odd_ucenik:s._odd;byOdd[o]=(byOdd[o]||0)+1;});
      const oddKeys=Object.keys(byOdd).map(Number).sort((a,b)=>a-b);
      const maxOdd=Math.max(...oddKeys.map(o=>byOdd[o]),1);
-     const oddHbar=oddKeys.map(o=>{const v=byOdd[o];const pct=Math.max(4,Math.round(v/maxOdd*100));return'<div class="brow"><span class="blbl" style="width:120px;min-width:120px;">'+(ODD_LBL[o]||o+' одд.')+'</span><div class="btrk"><div class="bfil" style="width:'+pct+'%;background:#F87171;opacity:.85;"></div></div><span class="bval" style="color:#F87171;">'+v+'</span></div>';}).join('');
+     const ispTot=isp.length;
+     const oddHbar=oddKeys.map(o=>{const v=byOdd[o];const pct=Math.max(4,Math.round(v/maxOdd*100));const pl=ispTot?(v/ispTot*100).toFixed(2):'0.00';return'<div class="brow"><span class="blbl" style="width:120px;min-width:120px;">'+(ODD_LBL[o]||o+' одд.')+'</span><div class="btrk"><div class="bfil" style="width:'+pct+'%;background:#F87171;opacity:.85;"></div></div><span class="bval" style="color:#F87171;white-space:nowrap;">'+v+' <span style="font-size:9px;font-weight:500;color:var(--tx3);">('+pl+'%)</span></span></div>';}).join('');
      // По училиште (Vertical Bar)
      const byUch={};isp.forEach(s=>{byUch[s._uch]=(byUch[s._uch]||0)+1;});
      const uchKeys=UCH_ORD.filter(u=>byUch[u]);
@@ -4139,11 +4185,17 @@ function renderAdmin(){
      function vbar(items){
        if(!items.length)return'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>';
        const mx=Math.max(...items.map(i=>i.v),1);const nn=items.length;
-       const cw=Math.max(46,Math.min(90,Math.floor(420/nn)));const gap=14,topPad=26,chartH=150,W=nn*cw+(nn-1)*gap+10,H=topPad+chartH+34;
+       const cw=Math.max(70,Math.min(120,Math.floor(560/nn)));const gap=16,topPad=26,chartH=150,W=nn*cw+(nn-1)*gap+10,H=topPad+chartH+50;
+       function wrapLbl(lbl,x,y){
+         const words=lbl.split(' ');const lines=[];let cur='';
+         words.forEach(w=>{if((cur+' '+w).trim().length>16){if(cur)lines.push(cur);cur=w;}else cur=(cur+' '+w).trim();});
+         if(cur)lines.push(cur);
+         return lines.slice(0,2).map((ln,i)=>'<tspan x="'+x+'" dy="'+(i===0?0:11)+'">'+ln+'</tspan>').join('');
+       }
        let bars='';items.forEach((it,i)=>{const x=5+i*(cw+gap);const bh=Math.max(2,Math.round(it.v/mx*chartH));const y=topPad+chartH-bh;const col=PIE[i%PIE.length];
          bars+='<rect x="'+x+'" y="'+y+'" width="'+cw+'" height="'+bh+'" rx="5" fill="'+col+'" opacity="0.85"/>'+
            '<text x="'+(x+cw/2)+'" y="'+(y-6)+'" text-anchor="middle" font-family="var(--FD)" font-size="13" font-weight="600" fill="'+col+'">'+it.v+'</text>'+
-           '<text x="'+(x+cw/2)+'" y="'+(topPad+chartH+18)+'" text-anchor="middle" font-size="10" fill="var(--tx2)">'+(it.lbl.length>12?it.lbl.slice(0,11)+'…':it.lbl)+'</text>';});
+           '<text x="'+(x+cw/2)+'" y="'+(topPad+chartH+16)+'" text-anchor="middle" font-size="9" fill="var(--tx2)">'+wrapLbl(it.lbl,(x+cw/2),(topPad+chartH+16))+'</text>';});
        return'<div style="overflow-x:auto;margin-top:8px;text-align:center;"><svg width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'" style="max-width:100%;display:inline-block;">'+'<line x1="0" y1="'+(topPad+chartH)+'" x2="'+W+'" y2="'+(topPad+chartH)+'" stroke="var(--bdr)" stroke-width="1"/>'+bars+'</svg></div>';
      }
      const uchVbar=vbar(uchKeys.map(u=>({lbl:(UCH_NAMES[u]||u),v:byUch[u]})));
@@ -4154,7 +4206,7 @@ function renderAdmin(){
      const byReason={};isp.forEach(s=>{const r=s.prichinaIspishuvanje||'Друго';byReason[r]=(byReason[r]||0)+1;});
      const reasonArr=Object.entries(byReason).sort((a,b)=>b[1]-a[1]);
      const maxR=Math.max(...reasonArr.map(([,v])=>v),1);
-     const reasonHbar=reasonArr.map(([r,v])=>{const pct=Math.max(4,Math.round(v/maxR*100));return'<div class="brow"><span class="blbl" style="width:180px;min-width:180px;">'+r+'</span><div class="btrk"><div class="bfil" style="width:'+pct+'%;background:#A78BFA;opacity:.85;"></div></div><span class="bval" style="color:#A78BFA;">'+v+'</span></div>';}).join('');
+     const reasonHbar=reasonArr.map(([r,v])=>{const pct=Math.max(4,Math.round(v/maxR*100));const pl=ispTot?(v/ispTot*100).toFixed(2):'0.00';return'<div class="brow"><span class="blbl" style="width:180px;min-width:180px;">'+r+'</span><div class="btrk"><div class="bfil" style="width:'+pct+'%;background:#A78BFA;opacity:.85;"></div></div><span class="bval" style="color:#A78BFA;white-space:nowrap;">'+v+' <span style="font-size:9px;font-weight:500;color:var(--tx3);">('+pl+'%)</span></span></div>';}).join('');
      return'<div class="rep-duo" style="margin-top:1.5rem;">'+
          '<div class="rcard" style="margin-bottom:0;"><div class="rttl">Испишани ученици по одделение</div>'+(oddHbar||'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>')+'</div>'+
          '<div class="rcard" style="margin-bottom:0;"><div class="rttl">Испишани ученици по училиште</div>'+uchVbar+'</div>'+
@@ -4168,32 +4220,25 @@ function renderAdmin(){
   `;
 }
 
-// Сортирање на табела во „Преглед на ниво" по колона (toggle asc/desc)
-window.adminSortState=window.adminSortState||{};
-function sortAdminTable(tableId,colIdx,type,btn){
+// Сортирање на табела во „Преглед на ниво" преку паѓачко мени (вредност „colIdx:type:dir")
+function sortAdminTableSel(tableId,sel){
   const tbl=document.getElementById(tableId);
-  if(!tbl)return;
+  if(!tbl||!sel.value)return;
   const tbody=tbl.querySelector('tbody');
   if(!tbody)return;
-  // Издвои ги редовите (исклучи „Вкупно" редот ако постои)
+  const[colIdx,type,dir]=sel.value.split(':');
+  const ci=parseInt(colIdx);
   let rows=[...tbody.querySelectorAll('tr')];
   const totalRow=rows.find(r=>/Вкупно/.test(r.cells[0]?.textContent||''));
   rows=rows.filter(r=>r!==totalRow);
-  const key=tableId+':'+colIdx;
-  const dir=window.adminSortState[key]==='asc'?'desc':'asc';
-  window.adminSortState[key]=dir;
   rows.sort((a,b)=>{
-    let va=a.cells[colIdx]?.textContent.trim()||'';
-    let vb=b.cells[colIdx]?.textContent.trim()||'';
+    let va=a.cells[ci]?.textContent.trim()||'';
+    let vb=b.cells[ci]?.textContent.trim()||'';
     if(type==='num'){va=parseFloat(va.replace(/[^\d.\-]/g,''))||0;vb=parseFloat(vb.replace(/[^\d.\-]/g,''))||0;return dir==='asc'?va-vb:vb-va;}
     return dir==='asc'?va.localeCompare(vb,'mk'):vb.localeCompare(va,'mk');
   });
   rows.forEach(r=>tbody.appendChild(r));
   if(totalRow)tbody.appendChild(totalRow);
-  // Освежи ги стрелките на копчињата во истата картичка
-  const card=tbl.closest('.rcard');
-  if(card)card.querySelectorAll('.sortbtn').forEach(b=>{const arrow=b.querySelector('.sarr');if(arrow)arrow.textContent='⇅';});
-  if(btn){const arrow=btn.querySelector('.sarr');if(arrow)arrow.textContent=dir==='asc'?'↑':'↓';}
 }
 function buildAdminFilters(uchs,odds,pars,mols,fUch,fOdd,fPar,fPol,fEtn,fMol,fNastava,fUcPeriod,UCH_NAMES){
   const selStyle='font-family:var(--F);font-size:12px;border:1px solid var(--bdr);border-radius:7px;padding:5px 9px;color:var(--tx);background:var(--bg3);outline:none;cursor:pointer;width:100%;';
