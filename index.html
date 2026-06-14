@@ -3495,6 +3495,20 @@ function renderAdmin(){
   const pars=[...new Set(allSts.filter(s=>(fUch==='__svi__'||s._uch===fUch)&&(fOdd==='__svi__'||s._odd===parseInt(fOdd))).map(s=>s._par))].sort();
   const mols=[...new Set(allSts.map(s=>s.mol||'').filter(Boolean))].sort();
 
+  // Ако е филтрирана комбинирана паралелка — прикажи ист извештај како во „Извештај за паралелка"
+  if(fPar!=='__svi__'&&isCombined(fPar)&&fUch!=='__svi__'){
+    el.innerHTML=supervisorBanner+buildAdminFilters(uchs,odds,pars,mols,fUch,fOdd,fPar,fPol,fEtn,fMol,fNastava,fUcPeriod,UCH_NAMES)+'<div id="admin-combined-report"></div>';
+    const combSts=allSts.filter(s=>s._uch===fUch&&s._par===fPar);
+    // Привремено постави cur* за renderRepBody (кој користи глобални)
+    const _u=curUch,_o=curOdd,_p=curPar;
+    curUch=fUch;curPar=fPar;
+    const grds=COMBINED_CLASSES[fPar]||[];
+    curOdd=Math.min(...grds);
+    renderRepBody(combSts,null,'admin-combined-report');
+    curUch=_u;curOdd=_o;curPar=_p;
+    return;
+  }
+
   // Per-class data (uses only uch/odd/par filters)
   let stsByClass=allSts;
   if(fUch!=='__svi__')stsByClass=stsByClass.filter(s=>s._uch===fUch);
@@ -3629,8 +3643,8 @@ function renderAdmin(){
     <div class="kpi"><div class="kpi-l">Ученици</div><div class="kpi-v">${n}</div><div class="kpi-bot" style="background:var(--acc);width:100%;"></div></div>
     <div class="kpi"><div class="kpi-l">Машки</div><div class="kpi-v" style="color:#60A5FA;">${males}</div><div class="kpi-bot" style="background:#60A5FA;width:${n?bw(Math.round(males/n*100)):0}%;"></div></div>
     <div class="kpi"><div class="kpi-l">Женски</div><div class="kpi-v" style="color:#F9A8D4;">${n-males}</div><div class="kpi-bot" style="background:#F9A8D4;width:${n?bw(Math.round((n-males)/n*100)):0}%;"></div></div>
-    <div class="kpi"><div class="kpi-l">Просечен успех</div><div class="kpi-v" style="color:${gs.c}">${cAvg?((fOdd!=='__svi__'&&parseInt(fOdd)<=3)?opisnoLevelFromAvg(cAvg):cAvg.toFixed(2)):'—'}</div><div class="kpi-bot" style="background:${gs.bar};width:${cAvg?bw(Math.round(((cAvg-1)/4)*100)):0}%;"></div></div>
-    <div class="kpi"><div class="kpi-l">Просечно ниво</div><div class="kpi-v" style="color:var(--teal);">${opisnoAvgLbl}</div><div class="kpi-bot" style="background:var(--teal);width:${opisnoAvgNum?bw(Math.round(((opisnoAvgNum-1)/2)*100)):0}%;"></div></div>
+    <div class="kpi"><div class="kpi-l">Просечен успех</div><div class="kpi-v" style="color:${gs.c}">${(fOdd!=='__svi__'&&parseInt(fOdd)<=3)?'—':(cAvg?cAvg.toFixed(2):'—')}</div><div class="kpi-bot" style="background:${gs.bar};width:${(fOdd!=='__svi__'&&parseInt(fOdd)<=3)?0:(cAvg?bw(Math.round(((cAvg-1)/4)*100)):0)}%;"></div></div>
+    <div class="kpi"><div class="kpi-l">Просечно ниво</div><div class="kpi-v" style="color:var(--teal);">${(fOdd!=='__svi__'&&parseInt(fOdd)>3)?'—':opisnoAvgLbl}</div><div class="kpi-bot" style="background:var(--teal);width:${(fOdd!=='__svi__'&&parseInt(fOdd)>3)?0:(opisnoAvgNum?bw(Math.round(((opisnoAvgNum-1)/2)*100)):0)}%;"></div></div>
     <div class="kpi"><div class="kpi-l">Паралелки</div><div class="kpi-v">${new Set(classList.map(c=>c.uch+'|'+c.par)).size}</div><div class="kpi-bot" style="background:var(--teal);width:100%;"></div></div>
   </div>
 
