@@ -2885,12 +2885,12 @@ function renderRepBody(sts,oddOverride,targetElId){
     const g=sts.filter(s=>s.pol===p.pk);
     const op=g.reduce((a,s)=>a+(s.op||0),0),nop=g.reduce((a,s)=>a+(s.nop||0),0);
     return{lbl:p.lbl,f:p.f,op,nop,cnt:g.length};
-  }).filter(p=>p.cnt>0&&(p.op+p.nop)>0);
+  }).filter(p=>p.cnt>0&&(p.op+p.nop)>0).sort((a,b)=>b.nop-a.nop);
   const etnAbs=ETN_ORDER2.map(e=>{
     const g=sts.filter(s=>(s.etnik||'Останато')===e);
     const op=g.reduce((a,s)=>a+(s.op||0),0),nop=g.reduce((a,s)=>a+(s.nop||0),0);
     return{lbl:e,op,nop,cnt:g.length};
-  }).filter(e=>e.cnt>0&&(e.op+e.nop)>0);
+  }).filter(e=>e.cnt>0&&(e.op+e.nop)>0).sort((a,b)=>b.nop-a.nop);
   const maxPolAbs=Math.max(...polAbs.map(p=>p.op+p.nop),1);
   const maxEtnAbs=Math.max(...etnAbs.map(e=>e.op+e.nop),1);
   function absHbar(lbl,op,nop,maxV){
@@ -2956,7 +2956,7 @@ function renderRepBody(sts,oddOverride,targetElId){
               <span style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--teal);">Оправдани</span>
             </div>
             <div style="font-family:var(--FD);font-size:26px;font-weight:500;color:var(--teal);">${totOp}</div>
-            <div style="font-size:11px;color:var(--tx3);margin-top:2px;">${totOp+totNop>0?Math.round(totOp/(totOp+totNop)*100):0}%</div>
+            <div style="font-size:11px;color:var(--tx3);margin-top:2px;">${totOp+totNop>0?(totOp/(totOp+totNop)*100).toFixed(2):'0.00'}%</div>
           </div>
           <div style="text-align:center;">
             <div style="display:flex;align-items:center;gap:6px;justify-content:center;margin-bottom:4px;">
@@ -2964,7 +2964,7 @@ function renderRepBody(sts,oddOverride,targetElId){
               <span style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--rose);">Неоправдани</span>
             </div>
             <div style="font-family:var(--FD);font-size:26px;font-weight:500;color:var(--rose);">${totNop}</div>
-            <div style="font-size:11px;color:var(--tx3);margin-top:2px;">${totOp+totNop>0?Math.round(totNop/(totOp+totNop)*100):0}%</div>
+            <div style="font-size:11px;color:var(--tx3);margin-top:2px;">${totOp+totNop>0?(totNop/(totOp+totNop)*100).toFixed(2):'0.00'}%</div>
           </div>
         </div>
       </div>
@@ -3183,6 +3183,25 @@ function renderRepBody(sts,oddOverride,targetElId){
          <td style="text-align:center;font-weight:700;font-family:var(--FD);">${(s.op||0)+(s.nop||0)}</td>
        </tr>`).join('')+'</tbody></table></div></div>';
    })()}
+
+  ${(()=>{
+    // Конечен успех на паралелката
+    const cats=[
+      {key:'Успешна реализација',lbl:'Успешно реализирана учебна година',col:'#34D399'},
+      {key:'Одделенски испит',lbl:'Упатени на одделенски испит',col:'#60A5FA'},
+      {key:'Поправен испит',lbl:'Упатени на поправен испит',col:'#FBBF24'},
+      {key:'Повторување на одделение',lbl:'Повторуваат учебна година',col:'#F87171'},
+    ];
+    const counts=cats.map(c=>({...c,v:sts.filter(s=>(s.extra||[]).includes(c.key)).length}));
+    const totC=sts.length;
+    const maxC=Math.max(...counts.map(c=>c.v),1);
+    const rows=counts.map(c=>{
+      const pct=Math.max(c.v>0?4:0,Math.round(c.v/maxC*100));
+      const pl=totC?(c.v/totC*100).toFixed(2):'0.00';
+      return'<div class="brow"><span class="blbl" style="width:230px;min-width:230px;">'+c.lbl+'</span><div class="btrk"><div class="bfil" style="width:'+pct+'%;background:'+c.col+';opacity:.85;"></div></div><span class="bval" style="color:'+c.col+';white-space:nowrap;">'+c.v+' <span style="font-size:9px;font-weight:500;color:var(--tx3);">('+pl+'%)</span></span></div>';
+    }).join('');
+    return'<div class="rcard"><div class="rttl">Конечен успех на паралелката</div>'+rows+'</div>';
+  })()}
 
   ${buildRealizacijaCharts(curUch,EFFODD,curPar)}`;
 }
