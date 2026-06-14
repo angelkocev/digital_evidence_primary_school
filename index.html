@@ -3686,8 +3686,14 @@ function renderAdmin(){
   }
 
   // Листа на ученици коишто повторуваат
+  // Сортирање: одделение → паралелка → реден број
+  const byOddPar=(a,b)=>{
+    const od=(a._odd||0)-(b._odd||0);if(od!==0)return od;
+    const pc=String(a._par||'').localeCompare(String(b._par||''),'mk');if(pc!==0)return pc;
+    return (a.rn||999)-(b.rn||999);
+  };
   const povtoruvanje=sts.filter(s=>(s.extra||[]).includes('Повторување на одделение'))
-    .sort((a,b)=>(a.rn||999)-(b.rn||999));
+    .sort(byOddPar);
 
   el.innerHTML=buildAdminFilters(uchs,odds,pars,mols,fUch,fOdd,fPar,fPol,fEtn,fMol,fNastava,fUcPeriod,UCH_NAMES)+`
 
@@ -3750,6 +3756,27 @@ function renderAdmin(){
 
 
   <!-- Изостаноци: по пол | по етникум -->
+  <div class="rcard">
+    <div class="rttl">Вкупно изостаноци</div>
+    ${(()=>{
+      const op=totOp,nop=totNop,tot=op+nop;
+      function polar(cx,cy,r,ang){const a=(ang-90)*Math.PI/180;return[cx+r*Math.cos(a),cy+r*Math.sin(a)];}
+      function donutSeg(cx,cy,r,rin,a0,a1,col){const[x0,y0]=polar(cx,cy,r,a0);const[x1,y1]=polar(cx,cy,r,a1);const[xi1,yi1]=polar(cx,cy,rin,a1);const[xi0,yi0]=polar(cx,cy,rin,a0);const large=(a1-a0)>180?1:0;return`<path d="M ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1} L ${xi1} ${yi1} A ${rin} ${rin} 0 ${large} 0 ${xi0} ${yi0} Z" fill="${col}"/>`;}
+      let paths='',ang=0;
+      [{v:op,col:'#34D399'},{v:nop,col:'#F87171'}].forEach(s=>{if(s.v<=0)return;const a1=ang+(s.v/(tot||1))*360;paths+=donutSeg(80,80,70,46,ang,a1===ang?ang+0.01:a1,s.col);ang=a1;});
+      return'<div style="display:flex;align-items:center;justify-content:center;gap:24px;flex-wrap:wrap;margin-top:8px;">'+
+        '<svg width="160" height="160" viewBox="0 0 160 160" style="flex-shrink:0;">'+paths+
+          '<text x="80" y="74" text-anchor="middle" font-family="var(--FD)" font-size="26" font-weight="600" fill="var(--tx)">'+tot+'</text>'+
+          '<text x="80" y="94" text-anchor="middle" font-size="10" fill="var(--tx3)">изостаноци</text>'+
+        '</svg>'+
+        '<div style="min-width:160px;">'+
+          '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;"><span style="width:11px;height:11px;border-radius:3px;background:#34D399;"></span><span style="font-size:13px;color:var(--tx2);">Оправдани: <strong style="color:#34D399;">'+op+'</strong> ('+(tot?Math.round(op/tot*100):0)+'%)</span></div>'+
+          '<div style="display:flex;align-items:center;gap:6px;"><span style="width:11px;height:11px;border-radius:3px;background:#F87171;"></span><span style="font-size:13px;color:var(--tx2);">Неоправдани: <strong style="color:#F87171;">'+nop+'</strong> ('+(tot?Math.round(nop/tot*100):0)+'%)</span></div>'+
+        '</div>'+
+      '</div>';
+    })()}
+  </div>
+
   <div class="rep-duo">
     <div class="rcard" style="margin-bottom:0;">
       <div class="rttl">Изостаноци по пол</div>
@@ -3912,7 +3939,7 @@ function renderAdmin(){
        extraTh:'<th>Предмети со слаба оценка</th>'},
     ];
     return extraLists.map(cfg=>{
-      const list=sts.filter(s=>(s.extra||[]).includes(cfg.key)).sort((a,b)=>(a.rn||999)-(b.rn||999));
+      const list=sts.filter(s=>(s.extra||[]).includes(cfg.key)).sort(byOddPar);
       if(!list.length)return'';
       const isOdd=cfg.key==='Одделенски испит';
       return`<div class="rcard" style="border-color:${cfg.border};background:${cfg.bg};">
