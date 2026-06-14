@@ -3224,9 +3224,10 @@ function updateRaspredel(){
   }).join('');
 }
 
-function buildUspehChart(stsList){
+function buildUspehChart(stsList,forceMode){
   stsList=stsList.filter(s=>!s.ispishan);
-  const cats=(curOdd<=3?[
+  const useOpisno=forceMode?(forceMode==='opisno'):(curOdd<=3);
+  const cats=(useOpisno?[
     {lbl:'I ниво',  c:'#34D399',f:'rgba(52,211,153,.15)', fn:s=>gradeStatus(s.gr||{})==='ok'&&opisnoAvg(s.gr||{})==='I ниво'},
     {lbl:'II ниво', c:'#FBBF24',f:'rgba(251,191,36,.15)', fn:s=>gradeStatus(s.gr||{})==='ok'&&opisnoAvg(s.gr||{})==='II ниво'},
     {lbl:'III ниво',c:'#F87171',f:'rgba(248,113,113,.15)',fn:s=>gradeStatus(s.gr||{})==='ok'&&opisnoAvg(s.gr||{})==='III ниво'},
@@ -3752,11 +3753,11 @@ function renderAdmin(){
   <div class="rep-duo">
     <div class="rcard" style="margin-bottom:0;">
       <div class="rttl">Успех — IV–IX одделение (бројчано)</div>
-      ${buildUspehChart(sts.filter(s=>s._odd>3))}
+      ${buildUspehChart(sts.filter(s=>{const o=(s.odd_ucenik&&s.odd_ucenik>0)?s.odd_ucenik:s._odd;return o>3;}),'numeric')}
     </div>
     <div class="rcard" style="margin-bottom:0;">
       <div class="rttl">Успех I–III одделение (описно)</div>
-      ${buildOpisnoUspehChart(sts.filter(s=>s._odd>=1&&s._odd<=3))}
+      ${buildOpisnoUspehChart(sts.filter(s=>{const o=(s.odd_ucenik&&s.odd_ucenik>0)?s.odd_ucenik:s._odd;return o>=1&&o<=3;}))}
     </div>
   </div>
 
@@ -3932,14 +3933,12 @@ function renderAdmin(){
         const subjsAll=allSubjs(s._odd||curOdd,s._par);
         const gr=s.gr||{};
         const slabi=subjsAll.filter(subj=>Number(gr[subj])===1);
-        // Неоценети предмети (само ако е делумно оценет, не целосно неоценет)
-        const gradedCount=subjsAll.filter(subj=>{const v=gr[subj];return v!==undefined&&v!==null&&v!=='';}).length;
-        const isPartial=gradedCount>0&&gradedCount<subjsAll.length;
-        const neoceneti=isPartial?subjsAll.filter(subj=>{const v=gr[subj];return v===undefined||v===null||v==='';}):[];
-        // Категорија — додади ознаки за слаби и делумно оценет
+        // Неоценети предмети — само ако ученикот НЕ е целосно неоценет
+        const st=gradeStatus(gr);
+        const neoceneti=(st==='celoso'||st==='no-data')?[]:subjsAll.filter(subj=>{const v=gr[subj];return v===undefined||v===null||v==='';});
+        // Категорија — единствена ознака од katInfo; ако има и слаби и неоценети, додади дополнителна ознака
         let katTags='<span class="kat '+ki.cls+'">'+ki.lbl+'</span>';
-        if(slabi.length>0)katTags+='<span style="display:inline-block;margin-top:3px;font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;background:rgba(248,113,113,.15);color:#F87171;">Слаби оценки</span>';
-        if(isPartial)katTags+='<span style="display:inline-block;margin-top:3px;font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;background:rgba(251,191,36,.15);color:#FBBF24;">Делумно оценет</span>';
+        if(st==='slab'&&neoceneti.length>0)katTags+='<span style="display:inline-block;margin-top:3px;font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;background:rgba(251,191,36,.15);color:#FBBF24;">'+neoceneti.length+' неоценети</span>';
         // Наставни предмети: слаби (црвено) + неоценети (жолто)
         const subjChips=
           slabi.map(subj=>'<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;background:rgba(248,113,113,.15);color:#F87171;">'+subj+'</span>').join('')+
