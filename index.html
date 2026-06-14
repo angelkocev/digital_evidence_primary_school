@@ -3551,6 +3551,19 @@ function renderAdmin(){
       '<div style="flex:1;min-width:130px;">'+legend+'</div>'+
     '</div>';
   }
+  // Pie chart helper (со проценти на 1 децимал)
+  function admPie(segs){
+    const tot=segs.reduce((a,s)=>a+s.v,0)||1;
+    function polar(cx,cy,r,ang){const a=(ang-90)*Math.PI/180;return[cx+r*Math.cos(a),cy+r*Math.sin(a)];}
+    function arc(cx,cy,r,a0,a1){const[x0,y0]=polar(cx,cy,r,a0);const[x1,y1]=polar(cx,cy,r,a1);const large=(a1-a0)>180?1:0;return`M ${cx} ${cy} L ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1} Z`;}
+    let paths='',ang=0;
+    segs.forEach(s=>{if(s.v<=0)return;const a1=ang+(s.v/tot)*360;paths+='<path d="'+arc(80,80,70,ang,a1===ang?ang+0.01:a1)+'" fill="'+s.col+'"/>';ang=a1;});
+    const legend=segs.map(s=>'<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;"><span style="width:11px;height:11px;border-radius:3px;background:'+s.col+';flex-shrink:0;"></span><span style="font-size:12px;color:var(--tx2);">'+s.lbl+': <strong style="color:'+s.col+';">'+s.v+'</strong> ('+(tot?(s.v/tot*100).toFixed(1):'0.0')+'%)</span></div>').join('');
+    return'<div style="display:flex;align-items:center;justify-content:center;gap:18px;flex-wrap:wrap;margin-top:8px;">'+
+      '<svg width="160" height="160" viewBox="0 0 160 160" style="flex-shrink:0;">'+paths+'</svg>'+
+      '<div style="flex:1;min-width:130px;">'+legend+'</div>'+
+    '</div>';
+  }
   const classFullLabel=(c)=>{
     // Комбинирана паралелка поделена по вистинско одделение → прикажи го одделението
     if(COMBINED_CLASSES[c.par]){
@@ -3654,7 +3667,7 @@ function renderAdmin(){
     const vals=okSts.filter(s=>s.pol===p.pk).map(s=>computeAvg(s.gr)).filter(x=>x!==null);
     const a=vals.length?vals.reduce((x,y)=>x+y,0)/vals.length:null;
     return{lbl:p.lbl,f:p.f,a,cnt:vals.length};
-  }).filter(p=>p.cnt>0);
+  }).filter(p=>p.cnt>0).sort((a,b)=>(b.a||0)-(a.a||0));
   const maxPolAvg=Math.max(...polAvgData.map(p=>p.a||0),0.01);
 
   // Просечен успех по етничка припадност
@@ -3662,7 +3675,7 @@ function renderAdmin(){
     const vals=okSts.filter(s=>(s.etnik||'Останато')===e).map(s=>computeAvg(s.gr)).filter(x=>x!==null);
     const a=vals.length?vals.reduce((x,y)=>x+y,0)/vals.length:null;
     return{lbl:e,f:'#4F8EF7',a,cnt:vals.length};
-  }).filter(e=>e.cnt>0);
+  }).filter(e=>e.cnt>0).sort((a,b)=>(b.a||0)-(a.a||0));
   const maxEtnAvg=Math.max(...etnAvgData.map(e=>e.a||0),0.01);
 
   // Просечен успех по пол и етникум
@@ -3688,7 +3701,7 @@ function renderAdmin(){
   const etnAbsData=ETN_ORDER.map(e=>{
     const g=sts.filter(s=>(s.etnik||'Останато')===e);
     return{lbl:e,op:g.reduce((a,s)=>a+(s.op||0),0),nop:g.reduce((a,s)=>a+(s.nop||0),0),cnt:g.length};
-  }).filter(e=>e.cnt>0&&(e.op+e.nop)>0);
+  }).filter(e=>e.cnt>0&&(e.op+e.nop)>0).sort((a,b)=>(b.op+b.nop)-(a.op+a.nop));
   const maxPolAbs=Math.max(...polAbsData.map(p=>p.op+p.nop),1);
   const maxEtnAbs=Math.max(...etnAbsData.map(e=>e.op+e.nop),1);
 
@@ -3788,8 +3801,8 @@ function renderAdmin(){
           '<text x="80" y="94" text-anchor="middle" font-size="10" fill="var(--tx3)">изостаноци</text>'+
         '</svg>'+
         '<div style="min-width:160px;">'+
-          '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;"><span style="width:11px;height:11px;border-radius:3px;background:#34D399;"></span><span style="font-size:13px;color:var(--tx2);">Оправдани: <strong style="color:#34D399;">'+op+'</strong> ('+(tot?Math.round(op/tot*100):0)+'%)</span></div>'+
-          '<div style="display:flex;align-items:center;gap:6px;"><span style="width:11px;height:11px;border-radius:3px;background:#F87171;"></span><span style="font-size:13px;color:var(--tx2);">Неоправдани: <strong style="color:#F87171;">'+nop+'</strong> ('+(tot?Math.round(nop/tot*100):0)+'%)</span></div>'+
+          '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;"><span style="width:11px;height:11px;border-radius:3px;background:#34D399;"></span><span style="font-size:13px;color:var(--tx2);">Оправдани: <strong style="color:#34D399;">'+op+'</strong> ('+(tot?(op/tot*100).toFixed(2):'0.00')+'%)</span></div>'+
+          '<div style="display:flex;align-items:center;gap:6px;"><span style="width:11px;height:11px;border-radius:3px;background:#F87171;"></span><span style="font-size:13px;color:var(--tx2);">Неоправдани: <strong style="color:#F87171;">'+nop+'</strong> ('+(tot?(nop/tot*100).toFixed(2):'0.00')+'%)</span></div>'+
         '</div>'+
       '</div>';
     })()}
@@ -3798,7 +3811,7 @@ function renderAdmin(){
   <div class="rep-duo">
     <div class="rcard" style="margin-bottom:0;">
       <div class="rttl">Изостаноци по пол</div>
-      ${polAbsData.length?polAbsData.map(p=>absHbar(p.lbl,p.op,p.nop,maxPolAbs)).join(''):'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>'}
+      ${polAbsData.length?polAbsData.map(p=>'<div style="margin-bottom:14px;"><div style="font-size:12px;font-weight:700;color:'+p.f+';margin-bottom:2px;">'+p.lbl+' <span style="font-size:10px;color:var(--tx3);font-weight:500;">('+p.cnt+' ученици)</span></div>'+admDonut([{v:p.op,col:'#34D399',lbl:'Оправдани'},{v:p.nop,col:'#F87171',lbl:'Неоправдани'}],(p.op+p.nop),'изостаноци')+'</div>').join(''):'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>'}
     </div>
     <div class="rcard" style="margin-bottom:0;">
       <div class="rttl">Изостаноци по етничка припадност</div>
@@ -3813,8 +3826,7 @@ function renderAdmin(){
       <div style="display:flex;align-items:center;gap:5px;font-size:10px;font-weight:700;text-transform:uppercase;color:var(--rose);"><span style="width:10px;height:10px;border-radius:2px;background:var(--rose);display:inline-block;"></span>Неоправдани</div>
     </div>
     ${(()=>{
-      function absSortKeyA(key){const polPart=key.startsWith('Машко')?0:1;const etnik=key.split(' · ')[1]||'';const ei=ETN_ORDER.indexOf(etnik);return(ei>=0?ei:99)*2+polPart;}
-      const sorted=[...comboList].sort((a,b)=>absSortKeyA(a[0])-absSortKeyA(b[0])).filter(([,v])=>v.ops+v.nops>0);
+      const sorted=[...comboList].filter(([,v])=>v.ops+v.nops>0).sort((a,b)=>(b[1].ops+b[1].nops)-(a[1].ops+a[1].nops));
       const mxA=Math.max(...sorted.map(([,v])=>v.ops+v.nops),1);
       return sorted.map(([key,val])=>absHbar(key,val.ops,val.nops,mxA)).join('')||'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>';
     })()}
@@ -3993,9 +4005,16 @@ function renderAdmin(){
             const totAbs=(s.op||0)+(s.nop||0);
             let extraCols='';
             if(isOdd){
+              const st=gradeStatus(gr);
+              const isFullyUngraded=(st==='celoso'||st==='no-data');
               const neoc=allSubjs(s._odd||0).filter(subj=>gr[subj]==='/'||gr[subj]===undefined||gr[subj]===''||gr[subj]===null);
-              extraCols='<td style="text-align:center;font-family:var(--FD);font-size:14px;font-weight:600;color:#60A5FA;">'+neoc.length+'</td>'+
-                '<td><div style="display:flex;gap:4px;flex-wrap:wrap;">'+(neoc.length?neoc.map(subj=>'<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;background:rgba(96,165,250,.15);color:#60A5FA;">'+subj+'</span>').join(''):'<span style="font-size:11px;color:var(--tx3);">—</span>')+'</div></td>';
+              if(isFullyUngraded){
+                extraCols='<td style="text-align:center;font-family:var(--FD);font-size:14px;font-weight:600;color:#60A5FA;">сите</td>'+
+                  '<td><span style="font-size:11px;color:var(--tx3);font-style:italic;">Сите наставни предмети</span></td>';
+              } else {
+                extraCols='<td style="text-align:center;font-family:var(--FD);font-size:14px;font-weight:600;color:#60A5FA;">'+neoc.length+'</td>'+
+                  '<td><div style="display:flex;gap:4px;flex-wrap:wrap;">'+(neoc.length?neoc.map(subj=>'<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;background:rgba(96,165,250,.15);color:#60A5FA;">'+subj+'</span>').join(''):'<span style="font-size:11px;color:var(--tx3);">—</span>')+'</div></td>';
+              }
             } else {
               const slabi=allSubjs(s._odd||0).filter(subj=>Number(gr[subj])===1);
               extraCols='<td><div style="display:flex;gap:4px;flex-wrap:wrap;">'+(slabi.length?slabi.map(subj=>'<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;background:rgba(248,113,113,.15);color:#F87171;">'+subj+'</span>').join(''):'<span style="font-size:11px;color:var(--tx3);">—</span>')+'</div></td>';
@@ -4050,7 +4069,7 @@ function renderAdmin(){
       const uchSegs=uchKeys.map((u,i)=>({v:byUch[u],col:ADM_PIE_COLORS[i%ADM_PIE_COLORS.length],lbl:UCH_NAMES[u]||u}));
       return'<div class="rep-duo">'+
         '<div class="rcard" style="margin-bottom:0;"><div class="rttl">'+cfg.lbl+' <span style="font-family:var(--FD);font-size:13px;margin-left:6px;color:'+cfg.col+';">'+tot+'</span></div>'+oddRows+'</div>'+
-        '<div class="rcard" style="margin-bottom:0;"><div class="rttl">'+cfg.lbl.replace('Распределба на ','Распределба по училиште на ')+' <span style="font-family:var(--FD);font-size:13px;margin-left:6px;color:'+cfg.col+';">'+tot+'</span></div>'+(uchSegs.length?admDonut(uchSegs,tot,'ученици'):'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>')+'</div>'+
+        '<div class="rcard" style="margin-bottom:0;"><div class="rttl">'+cfg.lbl.replace('Распределба на ','Распределба по училиште на ')+' <span style="font-family:var(--FD);font-size:13px;margin-left:6px;color:'+cfg.col+';">'+tot+'</span></div>'+(uchSegs.length?admPie(uchSegs):'<div style="font-size:13px;color:var(--tx3);">Нема податоци.</div>')+'</div>'+
       '</div>';
     }).join('');
   })()}
