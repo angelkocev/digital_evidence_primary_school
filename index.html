@@ -4045,6 +4045,29 @@ function renderAdmin(){
     </div>
   </div>
 
+  ${(()=>{
+    const withMerki=sts.filter(s=>(s.merki||[]).length>0).sort(byOddPar);
+    if(!withMerki.length)return'';
+    return'<div class="rcard"><div class="rttl">Извештај за педагошки мерки — по ученик <span style="font-family:var(--FD);font-size:13px;margin-left:6px;color:var(--amber);">'+withMerki.length+'</span></div>'+
+      '<table class="rtbl" style="table-layout:auto;"><thead><tr>'+
+        '<th style="width:30px;">Бр.</th>'+
+        '<th style="width:155px;">Ученик</th>'+
+        '<th style="width:100px;">Паралелка</th>'+
+        '<th style="width:34px;">Пол</th>'+
+        '<th>Изречени педагошки мерки</th>'+
+        '<th style="width:60px;text-align:center;">Вкупно</th>'+
+      '</tr></thead><tbody>'+
+      withMerki.map((s,i)=>'<tr>'+
+        '<td style="font-family:var(--FD);font-weight:500;color:var(--tx3);text-align:center;">'+(i+1)+'</td>'+
+        '<td style="font-family:var(--FC);font-weight:600;">'+(s.ime||'')+' '+(s.prz||'')+'</td>'+
+        '<td style="color:var(--tx2);">'+(ODD_LBL[s._odd]||s._odd||'')+' · '+(s._par||'')+'</td>'+
+        '<td><span class="tag '+(s.pol==='М'?'mt':'ft')+'">'+(s.pol||'—')+'</span></td>'+
+        '<td><div style="display:flex;gap:5px;flex-wrap:wrap;">'+s.merki.map(m=>'<span class="mbadge">'+m+'</span>').join('')+'</div></td>'+
+        '<td style="text-align:center;font-family:var(--FD);font-size:15px;font-weight:500;color:var(--amber);">'+s.merki.length+'</td>'+
+      '</tr>').join('')+
+      '</tbody></table></div>';
+  })()}
+
   ${(()=>{if(!povtoruvanje.length)return'';return `<div class="rcard" style="border-color:rgba(248,113,113,.25);background:rgba(248,113,113,.05);">
     <div class="rttl" style="color:#F87171;">Ученици кои повторуваат одделение <span style="font-family:var(--FD);font-size:13px;margin-left:6px;">${povtoruvanje.length}</span></div>
     <table class="rtbl" style="table-layout:auto;">
@@ -4273,6 +4296,63 @@ function renderAdmin(){
   `;
 }
 
+// CSV извоз на сумиран извештај по избрано ниво
+function exportAdminCSV(level){
+  // Земи ги истите филтрирани ученици како во renderAdmin
+  let sts=Object.entries(allData).flatMap(([k,arr])=>arr.map(s=>{
+    const[uch,odd,par]=k.split('|');return{...s,_uch:uch,_odd:parseInt(odd),_par:par};
+  }));
+  const fUch=document.getElementById('af-uch')?.value||'__svi__';
+  const fOdd=document.getElementById('af-odd')?.value||'__svi__';
+  const fPar=document.getElementById('af-par')?.value||'__svi__';
+  const fPol=document.getElementById('af-pol')?.value||'__svi__';
+  const fEtn=document.getElementById('af-etn')?.value||'__svi__';
+  const fMol=document.getElementById('af-mol')?.value||'__svi__';
+  const fNastava=document.getElementById('af-nastava')?.value||'__svi__';
+  if(fUch!=='__svi__')sts=sts.filter(s=>s._uch===fUch);
+  if(fOdd!=='__svi__')sts=sts.filter(s=>s._odd===parseInt(fOdd));
+  if(fPar!=='__svi__')sts=sts.filter(s=>s._par===fPar);
+  if(fPol!=='__svi__')sts=sts.filter(s=>s.pol===fPol);
+  if(fEtn!=='__svi__')sts=sts.filter(s=>(s.etnik||'Останато')===fEtn);
+  if(fMol!=='__svi__')sts=sts.filter(s=>s.mol===fMol);
+  if(fNastava==='oddelenska')sts=sts.filter(s=>s._odd<=5);
+  if(fNastava==='predmetna')sts=sts.filter(s=>s._odd>=6);
+  const active=sts.filter(s=>!s.ispishan);
+
+  const UCH_FULL={C:'Централно училиште',K:'ПУ с. Криволак',P:'ПУ с. Пепелиште',V:'ПУ с. Војшанци',CR:'ПУ с. Црвени Брегови'};
+  // Групирање
+  const groups={};
+  active.forEach(s=>{
+    const realOdd=(s.odd_ucenik&&s.odd_ucenik>0)?s.odd_ucenik:s._odd;
+    let key,label;
+    if(level==='par'){key=s._uch+'|'+s._par;label=(UCH_FULL[s._uch]||s._uch)+' · '+s._par;}
+    else if(level==='odd'){key='odd-'+realOdd;label=(ODD_LBL[realOdd]||realOdd+' одд.');}
+    else{key=realOdd<=5?'odd-nastava':'pred-nastava';label=realOdd<=5?'Одделенска настава (I–V)':'Предметна настава (VI–IX)';}
+    if(!groups[key])groups[key]={label,n:0,m:0,f:0,op:0,nop:0,avgs:[],uspesno:0,oddIspit:0,popraven:0,povtor:0,merki:0};
+    const g=groups[key];g.n++;if(s.pol==='М')g.m++;else g.f++;
+    g.op+=s.op||0;g.nop+=s.nop||0;
+    const a=computeAvg(s.gr||{});if(gradeStatus(s.gr||{})==='ok'&&a!==null)g.avgs.push(a);
+    (s.extra||[]).forEach(e=>{if(e==='Успешна реализација')g.uspesno++;else if(e==='Одделенски испит')g.oddIspit++;else if(e==='Поправен испит')g.popraven++;else if(e==='Повторување на одделение')g.povtor++;});
+    g.merki+=(s.merki||[]).length;
+  });
+  // CSV
+  const headers=['Група','Вкупно ученици','Машки','Женски','Просечен успех','Оправдани изостаноци','Неоправдани изостаноци','Вкупно изостаноци','Успешна реализација','Одделенски испит','Поправен испит','Повторување','Педагошки мерки'];
+  const rows=[headers];
+  Object.values(groups).forEach(g=>{
+    const avg=g.avgs.length?(g.avgs.reduce((a,b)=>a+b,0)/g.avgs.length).toFixed(2):'';
+    rows.push([g.label,g.n,g.m,g.f,avg,g.op,g.nop,g.op+g.nop,g.uspesno,g.oddIspit,g.popraven,g.povtor,g.merki]);
+  });
+  // CSV стринг (со BOM за кирилица во Excel)
+  const csv='\ufeff'+rows.map(r=>r.map(c=>{const v=String(c);return /[",;\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}).join(',')).join('\r\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  const lvlName=level==='par'?'paralelka':(level==='odd'?'oddelenie':'vid-nastava');
+  a.href=url;a.download='izveshtaj-'+lvlName+'-'+new Date().toISOString().slice(0,10)+'.csv';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 // Сортирање на табела во „Преглед на ниво" преку паѓачко мени (вредност „colIdx:type:dir")
 function sortAdminTableSel(tableId,sel){
   const tbl=document.getElementById(tableId);
@@ -4320,7 +4400,15 @@ function buildAdminFilters(uchs,odds,pars,mols,fUch,fOdd,fPar,fPol,fEtn,fMol,fNa
       <div style="font-size:9px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--acc);margin-bottom:5px;">Преглед на ниво на училиште · 2025/2026</div>
       <div style="font-family:var(--FD);font-size:19px;font-weight:500;color:var(--tx);">Сумиран извештај</div>
     </div>
-    <button class="btn btn-sm" onclick="doPrint()">Печати / PDF</button>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <select id="csv-level" style="font-family:var(--F);font-size:12px;border:1px solid var(--bdr);border-radius:7px;padding:6px 9px;color:var(--tx);background:var(--bg3);cursor:pointer;">
+        <option value="par">CSV: по паралелка</option>
+        <option value="odd">CSV: по одделение</option>
+        <option value="nastava">CSV: по вид на настава</option>
+      </select>
+      <button class="btn btn-sm" onclick="exportAdminCSV(document.getElementById('csv-level').value)">⬇ Преземи CSV</button>
+      <button class="btn btn-sm" onclick="doPrint()">Печати / PDF</button>
+    </div>
   </div>
   <div style="background:var(--bg2);border:1px solid var(--bdr);border-radius:10px 10px 0 0;padding:10px 14px 8px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
     <div><div style="${labelStyle}">Училиште</div><select id="af-uch" onchange="renderAdmin()" style="${selStyle}"><option value="__svi__">Сите училишта</option>${uchs.map(u=>`<option value="${u}" ${fUch===u?'selected':''}>${UCH_NAMES[u]||u}</option>`).join('')}</select></div>
