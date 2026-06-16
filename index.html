@@ -41,6 +41,7 @@ input#fop::-webkit-outer-spin-button,input#fop::-webkit-inner-spin-button,
 input#fnp::-webkit-outer-spin-button,input#fnp::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
 input[data-f]::-webkit-outer-spin-button,input[data-f]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
 input#vonnastavni-inp::-webkit-outer-spin-button,input#vonnastavni-inp::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+input.akt-inp::-webkit-outer-spin-button,input.akt-inp::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
 input[data-f]{-moz-appearance:textfield;}
 body{font-family:var(--F);color:var(--tx);background:var(--bg);font-size:14px;padding:1rem 1.5rem 3rem;}
 .app{max-width:980px;margin:0 auto;}
@@ -2132,7 +2133,7 @@ function buildRealizacijaCharts(uciliste,oddelenie,paralelka){
     (()=>{
       const k=uciliste+'|'+odd+'|'+paralelka;
       const totVon=(typeof vonnastavniData!=='undefined'?(vonnastavniData[k]||0):0);
-      const showAkt=odd<=5;
+      const showAkt=false; // „Активности" KPI картичката е отстранета
       const cards=[];
       cards.push('<div style="background:var(--bg3);border-radius:8px;padding:10px 14px;text-align:center;"><div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#60A5FA;margin-bottom:4px;">Дополнителна настава</div><div style="font-family:var(--FD);font-size:26px;font-weight:500;color:#60A5FA;">'+totDop+'</div></div>');
       cards.push('<div style="background:var(--bg3);border-radius:8px;padding:10px 14px;text-align:center;"><div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#A78BFA;margin-bottom:4px;">Додатна настава</div><div style="font-family:var(--FD);font-size:26px;font-weight:500;color:#A78BFA;">'+totDod+'</div></div>');
@@ -2155,7 +2156,7 @@ function buildRealizacijaCharts(uciliste,oddelenie,paralelka){
     const icon=pct>=100?'✓':(pct>0?'◑':'○');
     const iconCol=pct>=100?'#34D399':(pct>0?'#FBBF24':'#94A3B8');
     const showExtra=(totDop+totDod>0)||curOdd<=3;
-    const showAkt=(curOdd<=5);
+    const showAkt=false; // колоната „Активности" е отстранета
     return'<tr>'+
       '<td style="font-family:var(--FC);font-size:12px;font-weight:600;">'+dN(s)+'</td>'+
       '<td style="text-align:center;font-family:var(--FD);color:var(--acc);">'+plan+'</td>'+
@@ -2187,7 +2188,7 @@ function buildRealizacijaCharts(uciliste,oddelenie,paralelka){
         '<th style="width:100px;text-align:center;color:#34D399;">Реализирани часови</th>'+
         '<th style="width:110px;text-align:center;color:#F87171;">Нереализирани часови</th>'+
         ((totDop+totDod>0)||curOdd<=3?'<th style="width:100px;text-align:center;color:#60A5FA;">Дополнителна настава</th><th style="width:85px;text-align:center;color:#A78BFA;">Додатна настава</th>':'')+
-        (curOdd<=5?'<th style="width:80px;text-align:center;color:#34D399;">Активности</th>':'')+
+        (false?'<th style="width:80px;text-align:center;color:#34D399;">Активности</th>':'')+
         '<th style="min-width:160px;text-align:center;">% Реализација</th>'+
       '</tr></thead>'+
       '<tbody>'+scorecardRows+'</tbody>'+
@@ -3534,7 +3535,7 @@ function renderReal(){
     ${AKTIVNOSTI_FIELDS.map(([key,lbl])=>`
     <div style="display:flex;align-items:center;gap:12px;background:var(--bg3);border:1px solid var(--bdr);border-radius:10px;padding:12px 14px;">
       <div style="flex:1;font-size:13px;font-weight:600;color:var(--tx);">${lbl}</div>
-      <input type="number" min="0" value="${getAktivnost(key)}" onchange="saveAktivnost('${key}',this.value)" onwheel="this.blur()" style="font-family:var(--FD);font-size:16px;font-weight:600;width:80px;text-align:center;border:1px solid var(--bdr);border-radius:8px;padding:7px;background:var(--bg2);color:var(--acc);outline:none;-moz-appearance:textfield;appearance:textfield;">
+      <input type="number" min="0" class="akt-inp" value="${getAktivnost(key)}" onchange="saveAktivnost('${key}',this.value)" onwheel="this.blur()" style="font-family:var(--FD);font-size:16px;font-weight:600;width:80px;text-align:center;border:1px solid var(--bdr);border-radius:8px;padding:7px;background:var(--bg2);color:var(--acc);outline:none;-moz-appearance:textfield;appearance:textfield;">
     </div>`).join('')}
   </div>`;
 }
