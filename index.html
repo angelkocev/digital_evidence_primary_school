@@ -1022,18 +1022,16 @@ async function persistElective(k,en){
 }
 
 async function persistReal(k,subj,vals){
-  if(!currentUser){console.warn('persistReal: нема currentUser');return;}
+  if(!currentUser)return;
   const[uch,odd,par]=k.split('|');
   const row={teacher_id:currentUser.id,uciliste:uch,oddelenie:parseInt(odd),paralelka:par,predmet:subj,real:vals.real||0,nereal:vals.nereal||0,dop:vals.dop||0,dod:vals.dod||0,aktiv:vals.aktiv||0,school_year:activeSchoolYear,period:activePeriod};
-  console.log('persistReal → испраќам:',JSON.stringify(row));
-  const{data,error}=await sb.from('realizacija').upsert(row,{onConflict:'teacher_id,uciliste,oddelenie,paralelka,predmet,school_year,period'}).select();
+  const{error}=await sb.from('realizacija').upsert(row,{onConflict:'teacher_id,uciliste,oddelenie,paralelka,predmet,school_year,period'});
   if(error){
-    console.error('❌ persistReal ГРЕШКА:',error.code,error.message,error.details,error.hint);
+    console.error('persistReal error:',error);
     const ind=document.getElementById('save-ind');
-    if(ind){ind.textContent='⚠ Грешка: '+(error.message||'').slice(0,40);ind.style.color='#F87171';ind.classList.add('show');setTimeout(()=>{ind.style.color='';ind.textContent='✓ Зачувано';},4000);}
+    if(ind){ind.textContent='⚠ Грешка при зачувување';ind.style.color='#F87171';ind.classList.add('show');setTimeout(()=>{ind.style.color='';ind.textContent='✓ Зачувано';},3000);}
     return;
   }
-  console.log('✅ persistReal успешно зачувано:',data);
   showSaveInd();
 }
 
@@ -1045,14 +1043,57 @@ async function saveVonnastavni(val){
   vonnastavniData[realKey()]=v;
   if(!currentUser)return;
   const[uch,odd,par]=realKey().split('|');
-  await sb.from('vonnastavni_aktivnosti').upsert({teacher_id:currentUser.id,uciliste:uch,oddelenie:parseInt(odd),paralelka:par,broj:v,school_year:activeSchoolYear,period:activePeriod},{onConflict:'teacher_id,uciliste,oddelenie,paralelka,school_year,period'});
+  const row={teacher_id:currentUser.id,uciliste:uch,oddelenie:parseInt(odd),paralelka:par,broj:v,school_year:activeSchoolYear,period:activePeriod};
+  AKTIVNOSTI_FIELDS.forEach(([k])=>{row[k]=(aktivnostiData[realKey()]||{})[k]||0;});
+  await sb.from('vonnastavni_aktivnosti').upsert(row,{onConflict:'teacher_id,uciliste,oddelenie,paralelka,school_year,period'});
   showSaveInd();
 }
 async function loadVonnastavni(){
   try{
     const{data}=await sb.from('vonnastavni_aktivnosti').select('*');
-    if(data){data.forEach(r=>{vonnastavniData[`${r.uciliste}|${keyOddFor(r.paralelka,r.oddelenie)}|${r.paralelka}`]=r.broj||0;});}
+    if(data){data.forEach(r=>{
+      const k=`${r.uciliste}|${keyOddFor(r.paralelka,r.oddelenie)}|${r.paralelka}`;
+      vonnastavniData[k]=r.broj||0;
+      const obj={};
+      AKTIVNOSTI_FIELDS.forEach(([key])=>{if(r[key]!=null)obj[key]=r[key];});
+      if(Object.keys(obj).length)aktivnostiData[k]=obj;
+    });}
   }catch(e){console.warn('loadVonnastavni',e);}
+}
+
+// ── ДОПОЛНИТЕЛНИ АКТИВНОСТИ (секоја во посебна колона во базата) ──
+const AKTIVNOSTI_FIELDS=[
+  ['roditelski_sredbi','Родителски средби'],
+  ['oddelenski_soveti','Одделенски совети'],
+  ['zdravstvena_zastita','Здравствена заштита'],
+  ['slobodni_aktivnosti','Слободни ученички активности'],
+  ['opstestveno_korisna','Општествено-корисна работа'],
+  ['aktivnosti_zaednica','Активности во заедницата'],
+  ['ekskurzii_poseti','Училишни екскурзии и посети'],
+  ['ucenicki_natprevari','Ученички натпревари'],
+  ['kulturni_priredbi','Културни настани - приредби'],
+  ['proekti_rabotilnici','Учество во проекти или работилници'],
+  ['sportski_klubovi','Училишни спортски клубови'],
+  ['drugi_klubovi','Други училишни клубови'],
+  ['drugi_aktivnosti','Други активности'],
+];
+let aktivnostiData={};
+function getAktivnost(key){return (aktivnostiData[realKey()]||{})[key]||0;}
+async function saveAktivnost(key,val){
+  const v=parseInt(val)||0;
+  if(!aktivnostiData[realKey()])aktivnostiData[realKey()]={};
+  aktivnostiData[realKey()][key]=v;
+  if(!currentUser)return;
+  const[uch,odd,par]=realKey().split('|');
+  const row={
+    teacher_id:currentUser.id,uciliste:uch,oddelenie:parseInt(odd),paralelka:par,
+    broj:vonnastavniData[realKey()]||0,
+    school_year:activeSchoolYear,period:activePeriod
+  };
+  // Секоја активност како посебна колона
+  AKTIVNOSTI_FIELDS.forEach(([k])=>{row[k]=(aktivnostiData[realKey()]||{})[k]||0;});
+  await sb.from('vonnastavni_aktivnosti').upsert(row,{onConflict:'teacher_id,uciliste,oddelenie,paralelka,school_year,period'});
+  showSaveInd();
 }
 const UCH_DATA_FALLBACK={
   C:{name:'Централно училиште',odds:{
@@ -3429,7 +3470,7 @@ function renderReal(){
     const fond=FOND[g]||{};
     const saved=getRealData()[realKey()]||{};
     const sk=(s)=>combo?(s+'@'+g):s; // ключ за чување
-    const showAkt=g<=5;
+    const showAkt=false; // колоната „Активности" по предмет е отстранета (бескорисна)
     const rows=subjs.map(s=>{
       const plan=fond[s]||0;
       const r=saved[sk(s)]||{};
@@ -3487,6 +3528,14 @@ function renderReal(){
       <div style="font-size:11px;color:var(--tx3);margin-top:2px;">Број на реализирани воннаставни активности во одделението</div>
     </div>
     <input type="number" min="0" id="vonnastavni-inp" value="${getVonnastavni()}" onchange="saveVonnastavni(this.value)" onwheel="this.blur()" style="font-family:var(--FD);font-size:16px;font-weight:600;width:90px;text-align:center;border:1px solid var(--bdr);border-radius:8px;padding:8px;background:var(--bg2);color:var(--acc);outline:none;-moz-appearance:textfield;appearance:textfield;">
+  </div>
+  <div style="margin-top:14px;font-size:9px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--acc);margin-bottom:8px;">Дополнителни активности</div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;">
+    ${AKTIVNOSTI_FIELDS.map(([key,lbl])=>`
+    <div style="display:flex;align-items:center;gap:12px;background:var(--bg3);border:1px solid var(--bdr);border-radius:10px;padding:12px 14px;">
+      <div style="flex:1;font-size:13px;font-weight:600;color:var(--tx);">${lbl}</div>
+      <input type="number" min="0" value="${getAktivnost(key)}" onchange="saveAktivnost('${key}',this.value)" onwheel="this.blur()" style="font-family:var(--FD);font-size:16px;font-weight:600;width:80px;text-align:center;border:1px solid var(--bdr);border-radius:8px;padding:7px;background:var(--bg2);color:var(--acc);outline:none;-moz-appearance:textfield;appearance:textfield;">
+    </div>`).join('')}
   </div>`;
 }
 
