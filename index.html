@@ -6,6 +6,7 @@
 <title>Евиденција на паралелка 2025/2026</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=Playfair+Display:wght@500;600&family=Noto+Serif:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 html{-webkit-text-size-adjust:100%;}
@@ -2565,7 +2566,10 @@ function renderR(){
       <div style="font-family:var(--FD);font-size:19px;font-weight:500;color:var(--tx);">${uchName} · ${oddLabel} · Паралелка ${curPar}</div>
       <div style="font-size:11px;color:var(--tx3);margin-top:4px;">${new Date().toLocaleDateString('mk-MK',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</div>
     </div>
-    <button class="btn btn-sm" onclick="doPrint()">Печати / PDF</button>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-sm" onclick="exportReportExcel()">⬇ Excel</button>
+      <button class="btn btn-sm" onclick="doPrint()">Печати / PDF</button>
+    </div>
   </div>
 
   <div style="display:grid;grid-template-columns:${isCombined(curPar)?'1fr 1fr 1fr 1fr 1fr':'1fr 1fr 1fr'};gap:8px;align-items:center;background:var(--bg2);border:1px solid var(--bdr);border-radius:10px;padding:10px 14px;margin-bottom:1.5rem;">
@@ -4355,7 +4359,126 @@ function renderAdmin(){
 }
 
 // CSV извоз на сумиран извештај по избрано ниво
+// ═══ EXCEL ИЗВЕШТАЈ (формат: Ученици, Наставни предмети, Активности) ═══
+const ETN_XLSX=['Македонци','Роми','Турци','Албанци','Срби','Власи','Евреи','Бошњаци','Останато'];
+function buildExcelReport(stsRaw,scopeLabel,oddForSubjects,parForSubjects,uchForReal){
+  if(typeof XLSX==='undefined'){alert('Excel библиотеката сè уште се вчитува. Обидете се повторно за момент.');return;}
+  const sts=stsRaw.filter(s=>!s.ispishan);
+  const allWithIsp=stsRaw;
+  const YEAR=activeSchoolYear||'2025/2026';
+  const wb=XLSX.utils.book_new();
+  const presentEtn=ETN_XLSX.filter(e=>sts.some(s=>(s.etnik||'Останато')===e));
+  const etnCols=presentEtn.length?presentEtn.concat(['Вкупно']):['Вкупно'];
+
+  // ── ЛИСТ 1: Ученици ──
+  const succRows=[
+    ['Одличен',s=>{const a=computeAvg(s.gr);return gradeStatus(s.gr||{})==='ok'&&a!==null&&a>=4.5;}],
+    ['Многу добар',s=>{const a=computeAvg(s.gr);return gradeStatus(s.gr||{})==='ok'&&a!==null&&a>=3.5&&a<4.5;}],
+    ['Добар',s=>{const a=computeAvg(s.gr);return gradeStatus(s.gr||{})==='ok'&&a!==null&&a>=2.5&&a<3.5;}],
+    ['Доволен',s=>{const a=computeAvg(s.gr);return gradeStatus(s.gr||{})==='ok'&&a!==null&&a<2.5;}],
+    ['Со слаби оценки',s=>gradeStatus(s.gr||{})==='slab'],
+    ['Неоценети',s=>{const st=gradeStatus(s.gr||{});return st==='celoso'||st==='no-data';}],
+  ];
+  const aoa1=[];
+  aoa1.push(['УСПЕХ НА УЧЕНИЦИ ПО ЕТНИЧКА ПРИПАДНОСТ ВО ТЕКОТ НА УЧЕБНАТА '+YEAR+' ГОДИНА']);
+  const r2=['УСПЕХ НА УЧЕНИЦИТЕ'];etnCols.forEach(e=>{r2.push(e,'','');});
+  aoa1.push(r2);
+  const r3=[''];etnCols.forEach(()=>{r3.push('Машки','Женски','Вкупно');});
+  aoa1.push(r3);
+  const cntEtnPol=(etn,pol,fn)=>sts.filter(s=>(etn==='Вкупно'||(s.etnik||'Останато')===etn)&&s.pol===pol&&fn(s)).length;
+  succRows.forEach(([lbl,fn])=>{
+    const row=[lbl];
+    etnCols.forEach(e=>{const m=cntEtnPol(e,'М',fn),f=cntEtnPol(e,'Ж',fn);row.push(m,f,m+f);});
+    aoa1.push(row);
+  });
+  // Вкупно ред
+  const totRow=['Вкупно'];
+  etnCols.forEach(e=>{const m=sts.filter(s=>(e==='Вкупно'||(s.etnik||'Останато')===e)&&s.pol==='М').length;const f=sts.filter(s=>(e==='Вкупно'||(s.etnik||'Останато')===e)&&s.pol==='Ж').length;totRow.push(m,f,m+f);});
+  aoa1.push(totRow);
+  // Испишани/новозапишани
+  aoa1.push(['ИСПИШАНИ УЧЕНИЦИ ВО ТЕКОТ НА УЧЕБНАТА '+YEAR+' ГОДИНА']);
+  aoa1.push(['Испишани ученици',allWithIsp.filter(s=>s.ispishan).length]);
+  // Изостаноци
+  aoa1.push(['ИЗОСТАНОЦИ НА УЧЕНИЦИТЕ ВО ТЕКОТ НА УЧЕБНАТА '+YEAR+' ГОДИНА']);
+  const totOp=allWithIsp.reduce((a,s)=>a+(s.op||0),0),totNop=allWithIsp.reduce((a,s)=>a+(s.nop||0),0);
+  aoa1.push(['Оправдани изостаноци',totOp]);
+  aoa1.push(['Неоправдани изостаноци',totNop]);
+  aoa1.push(['Вкупно изостаноци',totOp+totNop]);
+  // Педагошки мерки
+  aoa1.push(['ПЕДАГОШКИ МЕРКИ И ПОВЕДЕНИЕ НА УЧЕНИЦИТЕ ВО ТЕКОТ НА УЧЕБНАТА '+YEAR+' ГОДИНА']);
+  const MERKI_X=['Усна опомена','Писмена опомена','Укор'];
+  MERKI_X.forEach(m=>{aoa1.push([m,sts.filter(s=>(s.merki||[]).includes(m)).length]);});
+  const ws1=XLSX.utils.aoa_to_sheet(aoa1);
+  ws1['!cols']=[{wch:24}].concat(etnCols.flatMap(()=>[{wch:8},{wch:8},{wch:8}]));
+  XLSX.utils.book_append_sheet(wb,ws1,'Ученици');
+
+  // ── ЛИСТ 2: Наставни предмети ──
+  const aoa2=[];
+  aoa2.push(['РЕАЛИЗАЦИЈА НА НАСТАВНИ ПРЕДМЕТИ И ОЦЕНКИ НА УЧЕНИЦИ ВО ТЕКОТ НА УЧЕБНАТА '+YEAR+' ГОДИНА']);
+  const subjHdr=['ПРЕДМЕТ','5','4','3','2','1','Неоценети','Просечен успех','Реализирани часови','Нереализирани часови','Дополнителна настава','Додатна настава'];
+  aoa2.push(subjHdr);
+  const subjList=oddForSubjects?allSubjs(oddForSubjects,parForSubjects):[];
+  const rd=(uchForReal&&oddForSubjects&&parForSubjects)?(getRealData()[uchForReal+'|'+keyOddFor(parForSubjects,oddForSubjects)+'|'+parForSubjects]||{}):{};
+  const fond=FOND[oddForSubjects]||{};
+  subjList.forEach(subj=>{
+    const counts={5:0,4:0,3:0,2:0,1:0,neoc:0};let sum=0,cnt=0;
+    sts.forEach(s=>{const v=(s.gr||{})[subj];if(v===undefined)return;if(v==='/'||v===''||v===null){counts.neoc++;}else{const n=Number(v);if(n>=1&&n<=5){counts[n]++;sum+=n;cnt++;}}});
+    const avg=cnt?(sum/cnt).toFixed(2):'';
+    const r=rd[subj]||{};
+    aoa2.push([subj,counts[5],counts[4],counts[3],counts[2],counts[1],counts.neoc,avg,r.real||0,r.nereal||0,r.dop||0,r.dod||0]);
+  });
+  const ws2=XLSX.utils.aoa_to_sheet(aoa2);
+  ws2['!cols']=[{wch:42}].concat(Array(11).fill({wch:11}));
+  XLSX.utils.book_append_sheet(wb,ws2,'Наставни предмети');
+
+  // ── ЛИСТ 3: Активности ──
+  const aoa3=[['АКТИВНОСТИ ВО ТЕКОТ НА УЧЕБНАТА '+YEAR+' ГОДИНА'],['Активност','Број на часови']];
+  const akKey=(uchForReal&&oddForSubjects&&parForSubjects)?(uchForReal+'|'+keyOddFor(parForSubjects,oddForSubjects)+'|'+parForSubjects):null;
+  aoa3.push(['Воннаставни активности',akKey?(vonnastavniData[akKey]||0):0]);
+  AKTIVNOSTI_FIELDS.forEach(([key,lbl])=>{aoa3.push([lbl,akKey?((aktivnostiData[akKey]||{})[key]||0):0]);});
+  const ws3=XLSX.utils.aoa_to_sheet(aoa3);
+  ws3['!cols']=[{wch:40},{wch:16}];
+  XLSX.utils.book_append_sheet(wb,ws3,'Активности');
+
+  const fname='Izveshtaj-'+(scopeLabel||'paralelka').replace(/[^\wА-Ша-ш-]/g,'_')+'-'+new Date().toISOString().slice(0,10)+'.xlsx';
+  XLSX.writeFile(wb,fname);
+}
+
+function exportReportExcel(){
+  const sts=getSts();
+  if(!sts.length){alert('Нема ученици за извештај.');return;}
+  const label=(curUch||'')+'-'+(curPar||'');
+  buildExcelReport(sts,label,curOdd,curPar,curUch);
+}
+
+function exportAdminExcel(){
+  let sts=Object.entries(allData).flatMap(([k,arr])=>arr.map(s=>{
+    const[uch,odd,par]=k.split('|');return{...s,_uch:uch,_odd:parseInt(odd),_par:par};
+  }));
+  const fUch=document.getElementById('af-uch')?.value||'__svi__';
+  const fOdd=document.getElementById('af-odd')?.value||'__svi__';
+  const fPar=document.getElementById('af-par')?.value||'__svi__';
+  const fPol=document.getElementById('af-pol')?.value||'__svi__';
+  const fEtn=document.getElementById('af-etn')?.value||'__svi__';
+  const fMol=document.getElementById('af-mol')?.value||'__svi__';
+  const fNastava=document.getElementById('af-nastava')?.value||'__svi__';
+  if(fUch!=='__svi__')sts=sts.filter(s=>s._uch===fUch);
+  if(fOdd!=='__svi__')sts=sts.filter(s=>s._odd===parseInt(fOdd));
+  if(fPar!=='__svi__')sts=sts.filter(s=>s._par===fPar);
+  if(fPol!=='__svi__')sts=sts.filter(s=>s.pol===fPol);
+  if(fEtn!=='__svi__')sts=sts.filter(s=>(s.etnik||'Останато')===fEtn);
+  if(fMol!=='__svi__')sts=sts.filter(s=>s.mol===fMol);
+  if(fNastava==='oddelenska')sts=sts.filter(s=>s._odd<=5);
+  if(fNastava==='predmetna')sts=sts.filter(s=>s._odd>=6);
+  // За предмети/реализација — само ако е филтрирана една паралелка
+  let oddS=null,parS=null,uchS=null,label='училиште';
+  if(fPar!=='__svi__'&&fUch!=='__svi__'){oddS=parseInt(fOdd)||(sts[0]?._odd);parS=fPar;uchS=fUch;label=fPar;}
+  else if(fUch!=='__svi__')label=({C:'Centralno',K:'Krivolak',P:'Pepeliste',V:'Vojshanci',CR:'Crveni'}[fUch]||fUch);
+  buildExcelReport(sts,label,oddS,parS,uchS);
+}
+
 function exportAdminCSV(level){
+
   // Земи ги истите филтрирани ученици како во renderAdmin
   let sts=Object.entries(allData).flatMap(([k,arr])=>arr.map(s=>{
     const[uch,odd,par]=k.split('|');return{...s,_uch:uch,_odd:parseInt(odd),_par:par};
@@ -4459,12 +4582,7 @@ function buildAdminFilters(uchs,odds,pars,mols,fUch,fOdd,fPar,fPol,fEtn,fMol,fNa
       <div style="font-family:var(--FD);font-size:19px;font-weight:500;color:var(--tx);">Сумиран извештај</div>
     </div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-      <select id="csv-level" style="font-family:var(--F);font-size:12px;border:1px solid var(--bdr);border-radius:7px;padding:6px 9px;color:var(--tx);background:var(--bg3);cursor:pointer;">
-        <option value="par">CSV: по паралелка</option>
-        <option value="odd">CSV: по одделение</option>
-        <option value="nastava">CSV: по вид на настава</option>
-      </select>
-      <button class="btn btn-sm" onclick="exportAdminCSV(document.getElementById('csv-level').value)">⬇ Преземи CSV</button>
+      <button class="btn btn-sm" onclick="exportAdminExcel()">⬇ Преземи Excel</button>
       <button class="btn btn-sm" onclick="doPrint()">Печати / PDF</button>
     </div>
   </div>
