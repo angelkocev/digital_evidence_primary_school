@@ -1039,9 +1039,9 @@ async function persistReal(k,subj,vals){
   const row={teacher_id:currentUser.id,uciliste:uch,oddelenie:parseInt(odd),paralelka:par,predmet:subj,real:vals.real||0,nereal:vals.nereal||0,dop:vals.dop||0,dod:vals.dod||0,aktiv:vals.aktiv||0,school_year:activeSchoolYear,period:activePeriod};
   const{error}=await sb.from('realizacija').upsert(row,{onConflict:'teacher_id,uciliste,oddelenie,paralelka,predmet,school_year,period'});
   if(error){
-    console.error('persistReal error:',error);
+    console.error('persistReal error:',error.code,'|',error.message,'|',error.details,'|',error.hint,'| row:',JSON.stringify(row));
     const ind=document.getElementById('save-ind');
-    if(ind){ind.textContent='⚠ Грешка при зачувување';ind.style.color='#F87171';ind.classList.add('show');setTimeout(()=>{ind.style.color='';ind.textContent='✓ Зачувано';},3000);}
+    if(ind){ind.textContent='⚠ '+(error.message||'Грешка').slice(0,50);ind.style.color='#F87171';ind.classList.add('show');setTimeout(()=>{ind.style.color='';ind.textContent='✓ Зачувано';},5000);}
     return;
   }
   showSaveInd();
