@@ -4441,7 +4441,7 @@ async function buildExcelReport(stsRaw,scopeLabel,oddForSubjects,parForSubjects,
   let r=4;succRows.forEach(([lbl,fn])=>{const m=cntPol('М',fn),f=cntPol('Ж',fn);ws1.getCell('B'+r).value=lbl;ws1.getCell('C'+r).value=m;ws1.getCell('D'+r).value=f;ws1.getCell('E'+r).value=m+f;cellN(ws1.getCell('B'+r),true);['C','D','E'].forEach(col=>cellN(ws1.getCell(col+r),true));r++;});
   const tm=sts.filter(s=>s.pol==='М').length,tf=sts.filter(s=>s.pol==='Ж').length;
   ws1.getCell('B'+r).value='Вкупно';ws1.getCell('C'+r).value=tm;ws1.getCell('D'+r).value=tf;ws1.getCell('E'+r).value=tm+tf;['B','C','D','E'].forEach(col=>hdr(ws1.getCell(col+r),LGREEN));
-  outline(ws1,2,2,r,5);r+=2;
+  outline(ws1,2,2,r,5);outline(ws1,r,2,r,5);r+=2;
   // помошник: ред со спој B:D (етикета) + вредност во E
   const mergeRow=(label,val)=>{ws1.getCell('B'+r).value=label;ws1.mergeCells('B'+r+':D'+r);cellN(ws1.getCell('B'+r),true);['C','D'].forEach(col=>{ws1.getCell(col+r).border=allBorder;});ws1.getCell('E'+r).value=val;cellN(ws1.getCell('E'+r),true);r++;};
   let blockStart=r;
@@ -4454,14 +4454,14 @@ async function buildExcelReport(stsRaw,scopeLabel,oddForSubjects,parForSubjects,
   const totOp=allWithIsp.reduce((a,s)=>a+(s.op||0),0),totNop=allWithIsp.reduce((a,s)=>a+(s.nop||0),0);
   mergeRow('Оправдани изостаноци',totOp);
   mergeRow('Неоправдани изостаноци',totNop);
-  mergeRow('Вкупно изостаноци',totOp+totNop);
+  ws1.getCell('B'+r).value='Вкупно изостаноци';ws1.mergeCells('B'+r+':D'+r);ws1.getCell('E'+r).value=totOp+totNop;hdr(ws1.getCell('B'+r),LGREEN);['C','D','E'].forEach(col=>hdr(ws1.getCell(col+r),LGREEN));outline(ws1,r,2,r,5);r++;
   outline(ws1,blockStart,2,r-1,5);r++;
   blockStart=r;
   ws1.getCell('B'+r).value='ПЕДАГОШКИ МЕРКИ И ПОВЕДЕНИЕ НА УЧЕНИЦИТЕ';ws1.mergeCells('B'+r+':E'+r);hdr(ws1.getCell('B'+r));['C','D','E'].forEach(col=>hdr(ws1.getCell(col+r)));r++;
   const MERKI_X=['Усна опомена','Писмена опомена','Укор','Префрлање во друга паралелка','Добро поведение','Незадоволително поведение'];
   let merkiTot=0;MERKI_X.forEach(m=>{const cnt=sts.filter(s=>(s.merki||[]).includes(m)).length;merkiTot+=cnt;mergeRow(m,cnt);});
   ws1.getCell('B'+r).value='Вкупно';ws1.mergeCells('B'+r+':D'+r);ws1.getCell('E'+r).value=merkiTot;hdr(ws1.getCell('B'+r),LGREEN);['C','D','E'].forEach(col=>hdr(ws1.getCell(col+r),LGREEN));
-  outline(ws1,blockStart,2,r,5);
+  outline(ws1,r,2,r,5);outline(ws1,blockStart,2,r,5);
 
   // ── ЛИСТ 2: Етничка припадност ──
   // Вредностите во базата се во еднина; прикажуваме во множина
@@ -4470,7 +4470,7 @@ async function buildExcelReport(stsRaw,scopeLabel,oddForSubjects,parForSubjects,
   const presentEtn=ETN_DB.filter(e=>sts.some(s=>(s.etnik||'Останато')===e));
   const etnGroups=presentEtn.length?presentEtn:['Останато'];
   const ws_e=wb.addWorksheet('Етничка припадност',{views:[{showGridLines:false}]});
-  const ecols=[{width:4},{width:30}];
+  const ecols=[{width:4},{width:38}];
   etnGroups.forEach(()=>{ecols.push({width:14},{width:14},{width:14});});
   ecols.push({width:12});
   ws_e.columns=ecols;
@@ -4495,6 +4495,7 @@ async function buildExcelReport(stsRaw,scopeLabel,oddForSubjects,parForSubjects,
   const sumE=(etn,pol,sel,arr)=>arr.filter(s=>(s.etnik||'Останато')===etn&&s.pol===pol).reduce((a,s)=>a+(sel(s)||0),0);
   function fillEtnRow(rowNum,label,mode,fnOrSel,arr){
     ws_e.getCell('B'+rowNum).value=label;cellN(ws_e.getCell('B'+rowNum),true);
+    ws_e.getCell('B'+rowNum).alignment={horizontal:'center',vertical:'middle',wrapText:true};
     let cc=3,gM=0,gF=0;
     etnGroups.forEach(e=>{
       let m,f;
@@ -4512,7 +4513,7 @@ async function buildExcelReport(stsRaw,scopeLabel,oddForSubjects,parForSubjects,
   etnHeaderRow(er);er++;
   succRows.forEach(([lbl,fn])=>{fillEtnRow(er,lbl,'count',fn,sts);er++;});
   fillEtnRow(er,'Вкупно','count',()=>true,sts);for(let cc=2;cc<=NC;cc++)hdr(ws_e.getCell(er,cc),LGREEN);
-  outline(ws_e,bs,2,er,NC);er+=2;
+  outline(ws_e,er,2,er,NC);outline(ws_e,bs,2,er,NC);er+=2;
   // Секција 2: Новозапишани/Испишани
   bs=er;
   ws_e.getCell('B'+er).value='БРОЈ НА НОВОЗАПИШАНИ И ИСПИШАНИ УЧЕНИЦИ ПО ЕТНИЧКА ПРИПАДНОСТ ВО ТЕКОТ НА УЧЕБНАТА '+YEAR+' ГОДИНА';
@@ -4521,7 +4522,7 @@ async function buildExcelReport(stsRaw,scopeLabel,oddForSubjects,parForSubjects,
   fillEtnRow(er,'Новозапишани ученици','count',s=>s.novozapishan,allWithIsp);er++;
   fillEtnRow(er,'Испишани ученици','count',s=>s.ispishan,allWithIsp);er++;
   fillEtnRow(er,'Вкупно','count',s=>s.novozapishan||s.ispishan,allWithIsp);for(let cc=2;cc<=NC;cc++)hdr(ws_e.getCell(er,cc),LGREEN);
-  outline(ws_e,bs,2,er,NC);er+=2;
+  outline(ws_e,er,2,er,NC);outline(ws_e,bs,2,er,NC);er+=2;
   // Секција 3: Изостаноци
   bs=er;
   ws_e.getCell('B'+er).value='ИЗОСТАНОЦИ НА УЧЕНИЦИТЕ ПО ЕТНИЧКА ПРИПАДНОСТ ВО ТЕКОТ НА УЧЕБНАТА '+YEAR+' ГОДИНА';
@@ -4530,7 +4531,7 @@ async function buildExcelReport(stsRaw,scopeLabel,oddForSubjects,parForSubjects,
   fillEtnRow(er,'Оправдани изостаноци','sum',s=>s.op||0,allWithIsp);er++;
   fillEtnRow(er,'Неоправдани изостаноци','sum',s=>s.nop||0,allWithIsp);er++;
   fillEtnRow(er,'Вкупно','sum',s=>(s.op||0)+(s.nop||0),allWithIsp);for(let cc=2;cc<=NC;cc++)hdr(ws_e.getCell(er,cc),LGREEN);
-  outline(ws_e,bs,2,er,NC);er+=2;
+  outline(ws_e,er,2,er,NC);outline(ws_e,bs,2,er,NC);er+=2;
   // Секција 4: Педагошки мерки
   bs=er;
   ws_e.getCell('B'+er).value='ПЕДАГОШКИ МЕРКИ И ПОВЕДЕНИЈА НА УЧЕНИЦИТЕ ПО ЕТНИЧКА ПРИПАДНОСТ ВО ТЕКОТ НА УЧЕБНАТА '+YEAR+' ГОДИНА';
@@ -4538,7 +4539,7 @@ async function buildExcelReport(stsRaw,scopeLabel,oddForSubjects,parForSubjects,
   etnHeaderRow(er,'Педагошки мерки и поведенија');er++;
   MERKI_X.forEach(m=>{fillEtnRow(er,m,'count',s=>(s.merki||[]).includes(m),sts);er++;});
   fillEtnRow(er,'Вкупно','sum',s=>(s.merki||[]).filter(m=>MERKI_X.includes(m)).length,sts);for(let cc=2;cc<=NC;cc++)hdr(ws_e.getCell(er,cc),LGREEN);
-  outline(ws_e,bs,2,er,NC);
+  outline(ws_e,er,2,er,NC);outline(ws_e,bs,2,er,NC);
 
   // ── ЛИСТ 4: Активности ──
   const ws3=wb.addWorksheet('Активности',{views:[{showGridLines:false}]});
@@ -4572,12 +4573,16 @@ async function buildExcelReport(stsRaw,scopeLabel,oddForSubjects,parForSubjects,
     const avg=cnt?Number((sum/cnt).toFixed(2)):'';
     [5,4,3,2,1].forEach(n=>tot[n]+=counts[n]);tot.neoc+=counts.neoc;tot.real+=rdata.real||0;tot.nereal+=rdata.nereal||0;tot.dop+=rdata.dop||0;tot.dod+=rdata.dod||0;
     const vals=[dispSubj(subj),counts[5],counts[4],counts[3],counts[2],counts[1],counts.neoc,avg,rdata.real||0,rdata.nereal||0,rdata.dop||0,rdata.dod||0];
-    vals.forEach((v,i)=>{const cell=ws2.getCell(rr,i+1);cell.value=v;cellN(cell,i!==0);});
+    vals.forEach((v,i)=>{const cell=ws2.getCell(rr,i+1);cell.value=v;cellN(cell,true);});
     rr++;
   });
-  const totVals=['Вкупно',tot[5],tot[4],tot[3],tot[2],tot[1],tot.neoc,'',tot.real,tot.nereal,tot.dop,tot.dod];
-  totVals.forEach((v,i)=>{const cell=ws2.getCell(rr,i+1);cell.value=v;hdr(cell,LGREEN);if(i!==0)cell.alignment={horizontal:'center',vertical:'middle'};});
-  outline(ws2,1,1,rr,12);
+  // Просечен успех на паралелката — само OK ученици (идентично со KPI картичката)
+  const okStsX=sts.filter(s=>gradeStatus(s.gr||{})==='ok');
+  const validAvgs=okStsX.map(s=>computeAvg(s.gr)).filter(a=>a!==null);
+  const classAvg=validAvgs.length?(validAvgs.reduce((a,b)=>a+b,0)/validAvgs.length).toFixed(2):'';
+  const totVals=['Вкупно',tot[5],tot[4],tot[3],tot[2],tot[1],tot.neoc,classAvg,tot.real,tot.nereal,tot.dop,tot.dod];
+  totVals.forEach((v,i)=>{const cell=ws2.getCell(rr,i+1);cell.value=v;hdr(cell,LGREEN);cell.alignment={horizontal:'center',vertical:'middle'};});
+  outline(ws2,rr,1,rr,12);outline(ws2,1,1,rr,12);
 
   // Преземи
   const buf=await wb.xlsx.writeBuffer();
