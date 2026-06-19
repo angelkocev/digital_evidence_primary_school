@@ -4436,7 +4436,7 @@ async function buildExcelReport(stsRaw,scopeLabel,oddForSubjects,parForSubjects,
     ['Целосно неоценети',s=>{const st=gradeStatus(s.gr||{});return st==='celoso'||st==='no-data';}],
   ];
   const cntPol=(pol,fn)=>sts.filter(s=>s.pol===pol&&fn(s)).length;
-  ws1.getCell('B2').value='ГЕНЕРАЛЕН УСПЕХ НА УЧЕНИЦИТЕ ВО УЧЕБНАТА '+YEAR+' ГОДИНА';ws1.mergeCells('B2:E2');hdr(ws1.getCell('B2'));['C2','D2','E2'].forEach(a=>hdr(ws1.getCell(a)));
+  ws1.getCell('B2').value='ГЕНЕРАЛЕН УСПЕХ НА УЧЕНИЦИТЕ ВО УЧЕБНАТА '+YEAR+' ГОДИНА';ws1.mergeCells('B2:E2');hdr(ws1.getCell('B2'));['C2','D2','E2'].forEach(a=>hdr(ws1.getCell(a)));outline(ws1,2,2,2,5);
   ['B3','C3','D3','E3'].forEach((a,i)=>{ws1.getCell(a).value=['Успех на ученици','Машки','Женски','Вкупно'][i];hdr(ws1.getCell(a));});
   let r=4;succRows.forEach(([lbl,fn])=>{const m=cntPol('М',fn),f=cntPol('Ж',fn);ws1.getCell('B'+r).value=lbl;ws1.getCell('C'+r).value=m;ws1.getCell('D'+r).value=f;ws1.getCell('E'+r).value=m+f;cellN(ws1.getCell('B'+r),true);['C','D','E'].forEach(col=>cellN(ws1.getCell(col+r),true));r++;});
   const tm=sts.filter(s=>s.pol==='М').length,tf=sts.filter(s=>s.pol==='Ж').length;
@@ -4445,23 +4445,29 @@ async function buildExcelReport(stsRaw,scopeLabel,oddForSubjects,parForSubjects,
   // помошник: ред со спој B:D (етикета) + вредност во E
   const mergeRow=(label,val)=>{ws1.getCell('B'+r).value=label;ws1.mergeCells('B'+r+':D'+r);cellN(ws1.getCell('B'+r),true);['C','D'].forEach(col=>{ws1.getCell(col+r).border=allBorder;});ws1.getCell('E'+r).value=val;cellN(ws1.getCell('E'+r),true);r++;};
   let blockStart=r;
-  ws1.getCell('B'+r).value='НОВОЗАПИШАНИ И ИСПИШАНИ УЧЕНИЦИ ВО УЧЕБНАТА '+YEAR+' ГОДИНА';ws1.mergeCells('B'+r+':E'+r);hdr(ws1.getCell('B'+r));['C','D','E'].forEach(col=>hdr(ws1.getCell(col+r)));r++;
+  ws1.getCell('B'+r).value='НОВОЗАПИШАНИ И ИСПИШАНИ УЧЕНИЦИ ВО УЧЕБНАТА '+YEAR+' ГОДИНА';ws1.mergeCells('B'+r+':E'+r);hdr(ws1.getCell('B'+r));['C','D','E'].forEach(col=>hdr(ws1.getCell(col+r)));outline(ws1,r,2,r,5);r++;
   mergeRow('Новозапишани ученици',allWithIsp.filter(s=>s.novozapishan).length);
   mergeRow('Испишани ученици',allWithIsp.filter(s=>s.ispishan).length);
   outline(ws1,blockStart,2,r-1,5);r++;
   blockStart=r;
-  ws1.getCell('B'+r).value='ИЗОСТАНОЦИ НА УЧЕНИЦИТЕ ВО УЧЕБНАТА '+YEAR+' ГОДИНА';ws1.mergeCells('B'+r+':E'+r);hdr(ws1.getCell('B'+r));['C','D','E'].forEach(col=>hdr(ws1.getCell(col+r)));r++;
+  ws1.getCell('B'+r).value='ИЗОСТАНОЦИ НА УЧЕНИЦИТЕ ВО УЧЕБНАТА '+YEAR+' ГОДИНА';ws1.mergeCells('B'+r+':E'+r);hdr(ws1.getCell('B'+r));['C','D','E'].forEach(col=>hdr(ws1.getCell(col+r)));outline(ws1,r,2,r,5);r++;
   const totOp=allWithIsp.reduce((a,s)=>a+(s.op||0),0),totNop=allWithIsp.reduce((a,s)=>a+(s.nop||0),0);
   mergeRow('Оправдани изостаноци',totOp);
   mergeRow('Неоправдани изостаноци',totNop);
   ws1.getCell('B'+r).value='Вкупно изостаноци';ws1.mergeCells('B'+r+':D'+r);ws1.getCell('E'+r).value=totOp+totNop;hdr(ws1.getCell('B'+r),LGREEN);['C','D','E'].forEach(col=>hdr(ws1.getCell(col+r),LGREEN));outline(ws1,r,2,r,5);r++;
   outline(ws1,blockStart,2,r-1,5);r++;
   blockStart=r;
-  ws1.getCell('B'+r).value='ПЕДАГОШКИ МЕРКИ И ПОВЕДЕНИЕ НА УЧЕНИЦИТЕ';ws1.mergeCells('B'+r+':E'+r);hdr(ws1.getCell('B'+r));['C','D','E'].forEach(col=>hdr(ws1.getCell(col+r)));r++;
+  ws1.getCell('B'+r).value='ПЕДАГОШКИ МЕРКИ И ПОВЕДЕНИЕ НА УЧЕНИЦИТЕ';ws1.mergeCells('B'+r+':E'+r);hdr(ws1.getCell('B'+r));['C','D','E'].forEach(col=>hdr(ws1.getCell(col+r)));outline(ws1,r,2,r,5);r++;
   const MERKI_X=['Усна опомена','Писмена опомена','Укор','Префрлање во друга паралелка','Добро поведение','Незадоволително поведение'];
   let merkiTot=0;MERKI_X.forEach(m=>{const cnt=sts.filter(s=>(s.merki||[]).includes(m)).length;merkiTot+=cnt;mergeRow(m,cnt);});
   ws1.getCell('B'+r).value='Вкупно';ws1.mergeCells('B'+r+':D'+r);ws1.getCell('E'+r).value=merkiTot;hdr(ws1.getCell('B'+r),LGREEN);['C','D','E'].forEach(col=>hdr(ws1.getCell(col+r),LGREEN));
   outline(ws1,r,2,r,5);outline(ws1,blockStart,2,r,5);
+  // Дополнителни thick outside borders за бараните области
+  outline(ws1,3,2,3,5);   // B3:E3 заглавие на табелата за успех
+  outline(ws1,3,5,11,5);  // E3:E11 колона „Вкупно" ученици
+  outline(ws1,14,5,15,5); // E14:E15 новозапишани/испишани
+  outline(ws1,18,5,20,5); // E18:E20 изостаноци
+  outline(ws1,23,5,29,5); // E23:E29 педагошки мерки
 
   // ── ЛИСТ 2: Етничка припадност ──
   // Вредностите во базата се во еднина; прикажуваме во множина
@@ -4509,47 +4515,48 @@ async function buildExcelReport(stsRaw,scopeLabel,oddForSubjects,parForSubjects,
   // Секција 1: Успех
   let er=2,bs=2;
   ws_e.getCell('B'+er).value='ГЕНЕРАЛЕН УСПЕХ НА УЧЕНИЦИТЕ ПО ЕТНИЧКА ПРИПАДНОСТ ВО ТЕКОТ НА УЧЕБНАТА '+YEAR+' ГОДИНА';
-  ws_e.mergeCells('B'+er+':'+lastCol+er);hdr(ws_e.getCell('B'+er));for(let cc=3;cc<=NC;cc++)hdr(ws_e.getCell(er,cc));er++;
+  ws_e.mergeCells('B'+er+':'+lastCol+er);hdr(ws_e.getCell('B'+er));for(let cc=3;cc<=NC;cc++)hdr(ws_e.getCell(er,cc));outline(ws_e,er,2,er,NC);er++;
   etnHeaderRow(er);er++;
   succRows.forEach(([lbl,fn])=>{fillEtnRow(er,lbl,'count',fn,sts);er++;});
   fillEtnRow(er,'Вкупно','count',()=>true,sts);for(let cc=2;cc<=NC;cc++)hdr(ws_e.getCell(er,cc),LGREEN);
-  outline(ws_e,er,2,er,NC);outline(ws_e,bs,2,er,NC);er+=2;
+  outline(ws_e,er,2,er,NC);outline(ws_e,bs,2,er,NC);outline(ws_e,bs+1,NC,er,NC);er+=2;
   // Секција 2: Новозапишани/Испишани
   bs=er;
   ws_e.getCell('B'+er).value='БРОЈ НА НОВОЗАПИШАНИ И ИСПИШАНИ УЧЕНИЦИ ПО ЕТНИЧКА ПРИПАДНОСТ ВО ТЕКОТ НА УЧЕБНАТА '+YEAR+' ГОДИНА';
-  ws_e.mergeCells('B'+er+':'+lastCol+er);hdr(ws_e.getCell('B'+er));for(let cc=3;cc<=NC;cc++)hdr(ws_e.getCell(er,cc));er++;
+  ws_e.mergeCells('B'+er+':'+lastCol+er);hdr(ws_e.getCell('B'+er));for(let cc=3;cc<=NC;cc++)hdr(ws_e.getCell(er,cc));outline(ws_e,er,2,er,NC);er++;
   etnHeaderRow(er,'Статус на ученици');er++;
   fillEtnRow(er,'Новозапишани ученици','count',s=>s.novozapishan,allWithIsp);er++;
   fillEtnRow(er,'Испишани ученици','count',s=>s.ispishan,allWithIsp);er++;
   fillEtnRow(er,'Вкупно','count',s=>s.novozapishan||s.ispishan,allWithIsp);for(let cc=2;cc<=NC;cc++)hdr(ws_e.getCell(er,cc),LGREEN);
-  outline(ws_e,er,2,er,NC);outline(ws_e,bs,2,er,NC);er+=2;
+  outline(ws_e,er,2,er,NC);outline(ws_e,bs,2,er,NC);outline(ws_e,bs+1,NC,er,NC);er+=2;
   // Секција 3: Изостаноци
   bs=er;
   ws_e.getCell('B'+er).value='ИЗОСТАНОЦИ НА УЧЕНИЦИТЕ ПО ЕТНИЧКА ПРИПАДНОСТ ВО ТЕКОТ НА УЧЕБНАТА '+YEAR+' ГОДИНА';
-  ws_e.mergeCells('B'+er+':'+lastCol+er);hdr(ws_e.getCell('B'+er));for(let cc=3;cc<=NC;cc++)hdr(ws_e.getCell(er,cc));er++;
+  ws_e.mergeCells('B'+er+':'+lastCol+er);hdr(ws_e.getCell('B'+er));for(let cc=3;cc<=NC;cc++)hdr(ws_e.getCell(er,cc));outline(ws_e,er,2,er,NC);er++;
   etnHeaderRow(er,'Вид на изостаноци');er++;
   fillEtnRow(er,'Оправдани изостаноци','sum',s=>s.op||0,allWithIsp);er++;
   fillEtnRow(er,'Неоправдани изостаноци','sum',s=>s.nop||0,allWithIsp);er++;
   fillEtnRow(er,'Вкупно','sum',s=>(s.op||0)+(s.nop||0),allWithIsp);for(let cc=2;cc<=NC;cc++)hdr(ws_e.getCell(er,cc),LGREEN);
-  outline(ws_e,er,2,er,NC);outline(ws_e,bs,2,er,NC);er+=2;
+  outline(ws_e,er,2,er,NC);outline(ws_e,bs,2,er,NC);outline(ws_e,bs+1,NC,er,NC);er+=2;
   // Секција 4: Педагошки мерки
   bs=er;
   ws_e.getCell('B'+er).value='ПЕДАГОШКИ МЕРКИ И ПОВЕДЕНИЈА НА УЧЕНИЦИТЕ ПО ЕТНИЧКА ПРИПАДНОСТ ВО ТЕКОТ НА УЧЕБНАТА '+YEAR+' ГОДИНА';
-  ws_e.mergeCells('B'+er+':'+lastCol+er);hdr(ws_e.getCell('B'+er));for(let cc=3;cc<=NC;cc++)hdr(ws_e.getCell(er,cc));er++;
+  ws_e.mergeCells('B'+er+':'+lastCol+er);hdr(ws_e.getCell('B'+er));for(let cc=3;cc<=NC;cc++)hdr(ws_e.getCell(er,cc));outline(ws_e,er,2,er,NC);er++;
   etnHeaderRow(er,'Педагошки мерки и поведенија');er++;
   MERKI_X.forEach(m=>{fillEtnRow(er,m,'count',s=>(s.merki||[]).includes(m),sts);er++;});
   fillEtnRow(er,'Вкупно','sum',s=>(s.merki||[]).filter(m=>MERKI_X.includes(m)).length,sts);for(let cc=2;cc<=NC;cc++)hdr(ws_e.getCell(er,cc),LGREEN);
-  outline(ws_e,er,2,er,NC);outline(ws_e,bs,2,er,NC);
+  outline(ws_e,er,2,er,NC);outline(ws_e,bs,2,er,NC);outline(ws_e,bs+1,NC,er,NC);
 
   // ── ЛИСТ 4: Активности ──
   const ws3=wb.addWorksheet('Активности',{views:[{showGridLines:false}]});
   ws3.columns=[{width:4},{width:42},{width:16}];
   const akKey=(uchForReal&&oddForSubjects&&parForSubjects)?(uchForReal+'|'+keyOddFor(parForSubjects,oddForSubjects)+'|'+parForSubjects):null;
-  ws3.getCell('B2').value='АКТИВНОСТИ ВО ТЕКОТ НА УЧЕБНАТА '+YEAR+' ГОДИНА';ws3.mergeCells('B2:C2');hdr(ws3.getCell('B2'));hdr(ws3.getCell('C2'));
+  ws3.getCell('B2').value='АКТИВНОСТИ ВО ТЕКОТ НА УЧЕБНАТА '+YEAR+' ГОДИНА';ws3.mergeCells('B2:C2');hdr(ws3.getCell('B2'));hdr(ws3.getCell('C2'));outline(ws3,2,2,2,3);
   ws3.getCell('B3').value='Активност';ws3.getCell('C3').value='Број на часови';hdr(ws3.getCell('B3'));hdr(ws3.getCell('C3'));
   let ar=4;ws3.getCell('B'+ar).value='Воннаставни активности';ws3.getCell('C'+ar).value=akKey?(vonnastavniData[akKey]||0):0;cellN(ws3.getCell('B'+ar),true);cellN(ws3.getCell('C'+ar),true);ar++;
   AKTIVNOSTI_FIELDS.forEach(([key,lbl])=>{ws3.getCell('B'+ar).value=lbl;ws3.getCell('C'+ar).value=akKey?((aktivnostiData[akKey]||{})[key]||0):0;cellN(ws3.getCell('B'+ar),true);cellN(ws3.getCell('C'+ar),true);ar++;});
   outline(ws3,2,2,ar-1,3);
+  outline(ws3,3,3,ar-1,3); // C3:C(последен) колона „Број на часови"
 
   // ── ЛИСТ 5: Наставни предмети ──
   const ws2=wb.addWorksheet('Наставни предмети',{views:[{showGridLines:false}]});
@@ -4558,7 +4565,7 @@ async function buildExcelReport(stsRaw,scopeLabel,oddForSubjects,parForSubjects,
   const rd=(uchForReal&&oddForSubjects&&parForSubjects)?(getRealData()[uchForReal+'|'+keyOddFor(parForSubjects,oddForSubjects)+'|'+parForSubjects]||{}):{};
   const en=(function(){try{return getEN();}catch(e){return{};}})();
   function dispSubj(s){if(s==='Слободен изборен предмет 1')return en.s1||s;if(s==='Слободен изборен предмет 2')return en.s2||s;if(s==='Изборен предмет')return en.i9||s;return s;}
-  ws2.getCell('A1').value='РЕАЛИЗАЦИЈА НА НАСТАВНИ ПРЕДМЕТИ И ОЦЕНКИ НА УЧЕНИЦИ ВО ТЕКОТ НА УЧЕБНАТА '+YEAR+' ГОДИНА';ws2.mergeCells('A1:L1');hdr(ws2.getCell('A1'));for(let cc=2;cc<=12;cc++)hdr(ws2.getCell(1,cc));
+  ws2.getCell('A1').value='РЕАЛИЗАЦИЈА НА НАСТАВНИ ПРЕДМЕТИ И ОЦЕНКИ НА УЧЕНИЦИ ВО ТЕКОТ НА УЧЕБНАТА '+YEAR+' ГОДИНА';ws2.mergeCells('A1:L1');hdr(ws2.getCell('A1'));for(let cc=2;cc<=12;cc++)hdr(ws2.getCell(1,cc));outline(ws2,1,1,1,12);
   const H2=['Наставен предмет','5','4','3','2','1','Неоценети','Просечен успех','Реализирани часови','Нереализирани часови','Дополнителна настава','Додатна настава'];
   H2.forEach((h,i)=>{const cell=ws2.getCell(2,i+1);cell.value=h;hdr(cell);});
   const combo=parForSubjects&&isCombined(parForSubjects);
