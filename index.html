@@ -4605,15 +4605,21 @@ async function buildExcelReport(stsRaw,scopeLabel,oddForSubjects,parForSubjects,
   // Изградба на еден лист „Наставни предмети"
   function buildSubjSheet(sheetName,subjStudents,subjList,isOpisno){
     const ws=wb.addWorksheet(sheetName,{views:[{showGridLines:false}]});
-    ws.columns=[{width:4},{width:50},{width:8},{width:8},{width:8},{width:8},{width:8},{width:13},{width:15},{width:20},{width:22},{width:22},{width:18}];
+    // Бројчано: 12 колони (B–M). Описно: 11 колони (B–L) — без „Делумно" и без празна
+    const lastC=isOpisno?12:13; // последна колона (1-based, вклучувајќи ја празната A)
+    const lastL=isOpisno?'L':'M';
+    if(isOpisno)
+      ws.columns=[{width:4},{width:50},{width:8},{width:8},{width:8},{width:15},{width:14},{width:15},{width:20},{width:22},{width:22},{width:18}];
+    else
+      ws.columns=[{width:4},{width:50},{width:8},{width:8},{width:8},{width:8},{width:8},{width:13},{width:15},{width:20},{width:22},{width:22},{width:18}];
     const titleSuffix=isOpisno?' (описно оценување — I–III одделение)':' (бројчано оценување — IV–IX одделение)';
     ws.getCell('B2').value='РЕАЛИЗАЦИЈА НА НАСТАВНИ ПРЕДМЕТИ И ОЦЕНКИ НА УЧЕНИЦИ ВО УЧЕБНАТА '+YEAR+' ГОДИНА'+titleSuffix;
-    ws.mergeCells('B2:M2');hdr(ws.getCell('B2'));for(let cc=3;cc<=13;cc++)hdr(ws.getCell(2,cc));outline(ws,2,2,2,13);
+    ws.mergeCells('B2:'+lastL+'2');hdr(ws.getCell('B2'));for(let cc=3;cc<=lastC;cc++)hdr(ws.getCell(2,cc));outline(ws,2,2,2,lastC);
     const H2=isOpisno
-      ?['Наставен предмет','I ниво','II ниво','III ниво','Делумно','Неоценети','—','Просечно ниво','Реализирани часови','Нереализирани часови','Дополнителна настава','Додатна настава']
+      ?['Наставен предмет','I ниво','II ниво','III ниво','Неоценети','Просечно ниво','Реализирани часови','Нереализирани часови','Дополнителна настава','Додатна настава']
       :['Наставен предмет','5','4','3','2','1','Неоценети','Просечен успех','Реализирани часови','Нереализирани часови','Дополнителна настава','Додатна настава'];
     H2.forEach((h,i)=>{const cell=ws.getCell(3,i+2);cell.value=h;hdr(cell);});
-    const tot=isOpisno?{i1:0,i2:0,i3:0,delumno:0,neoc:0,real:0,nereal:0,dop:0,dod:0}:{5:0,4:0,3:0,2:0,1:0,neoc:0,real:0,nereal:0,dop:0,dod:0};
+    const tot=isOpisno?{i1:0,i2:0,i3:0,neoc:0,real:0,nereal:0,dop:0,dod:0}:{5:0,4:0,3:0,2:0,1:0,neoc:0,real:0,nereal:0,dop:0,dod:0};
     let rr=4;
     const OMAP={'I ниво':3,'II ниво':2,'III ниво':1};
     subjList.forEach(subj=>{
@@ -4625,14 +4631,14 @@ async function buildExcelReport(stsRaw,scopeLabel,oddForSubjects,parForSubjects,
         const rk=combo?(subj+'@'+oddForSubjects):subj;const rdata=rd[rk]||rd[subj]||{};rReal=rdata.real||0;rNereal=rdata.nereal||0;rDop=rdata.dop||0;rDod=rdata.dod||0;
       }
       if(isOpisno){
-        let i1=0,i2=0,i3=0,delumno=0,neoc=0,sumLvl=0,cntLvl=0;
+        let i1=0,i2=0,i3=0,neoc=0,sumLvl=0,cntLvl=0;
         subjStudents.forEach(s=>{const v=(s.gr||{})[subj];if(v===undefined)return;if(v==='/'||v===''||v===null){neoc++;}else if(OMAP[v]){const n=OMAP[v];if(n===3)i1++;else if(n===2)i2++;else i3++;sumLvl+=n;cntLvl++;}});
         const hasAny=cntLvl>0||neoc>0||rReal||rNereal;
         if(!hasAny)return;
         const lvlAvg=cntLvl?(sumLvl/cntLvl):null;
         const lvlLbl=lvlAvg!==null?(lvlAvg>=2.5?'I ниво':(lvlAvg>=1.5?'II ниво':'III ниво')):'';
-        tot.i1+=i1;tot.i2+=i2;tot.i3+=i3;tot.delumno+=delumno;tot.neoc+=neoc;tot.real+=rReal;tot.nereal+=rNereal;tot.dop+=rDop;tot.dod+=rDod;
-        const vals=[dispSubj(subj),i1,i2,i3,delumno,neoc,'',lvlLbl,rReal,rNereal,rDop,rDod];
+        tot.i1+=i1;tot.i2+=i2;tot.i3+=i3;tot.neoc+=neoc;tot.real+=rReal;tot.nereal+=rNereal;tot.dop+=rDop;tot.dod+=rDod;
+        const vals=[dispSubj(subj),i1,i2,i3,neoc,lvlLbl,rReal,rNereal,rDop,rDod];
         vals.forEach((v,i)=>{const cell=ws.getCell(rr,i+2);cell.value=v;cellN(cell,true);if(i===0)cell.alignment={horizontal:'center',vertical:'middle',wrapText:true};});
         rr++;
       } else {
@@ -4654,7 +4660,7 @@ async function buildExcelReport(stsRaw,scopeLabel,oddForSubjects,parForSubjects,
       const avgsO=okO.map(s=>computeAvg(s.gr)).filter(a=>a!==null);
       const aO=avgsO.length?(avgsO.reduce((a,b)=>a+b,0)/avgsO.length):null;
       const clsLvl=aO!==null?(aO>=2.5?'I ниво':(aO>=1.5?'II ниво':'III ниво')):'';
-      totVals=['Вкупно',tot.i1,tot.i2,tot.i3,tot.delumno,tot.neoc,'',clsLvl,tot.real,tot.nereal,tot.dop,tot.dod];
+      totVals=['Вкупно',tot.i1,tot.i2,tot.i3,tot.neoc,clsLvl,tot.real,tot.nereal,tot.dop,tot.dod];
     } else {
       const okX=subjStudents.filter(s=>gradeStatus(s.gr||{})==='ok');
       const avgsX=okX.map(s=>computeAvg(s.gr)).filter(a=>a!==null);
@@ -4662,8 +4668,17 @@ async function buildExcelReport(stsRaw,scopeLabel,oddForSubjects,parForSubjects,
       totVals=['Вкупно',tot[5],tot[4],tot[3],tot[2],tot[1],tot.neoc,classAvg,tot.real,tot.nereal,tot.dop,tot.dod];
     }
     totVals.forEach((v,i)=>{const cell=ws.getCell(rr,i+2);cell.value=v;hdr(cell,LGREEN);cell.alignment={horizontal:'center',vertical:'middle'};});
-    outline(ws,rr,2,rr,13);outline(ws,2,2,rr,13);
-    outline(ws,3,2,3,13);outline(ws,3,2,rr,2);outline(ws,3,3,rr,8);outline(ws,3,9,rr,9);outline(ws,3,10,rr,11);outline(ws,3,12,rr,13);
+    outline(ws,rr,2,rr,lastC);outline(ws,2,2,rr,lastC);
+    outline(ws,3,2,3,lastC);outline(ws,3,2,rr,2);
+    if(isOpisno){
+      outline(ws,3,3,rr,5);   // C:E нивоа
+      outline(ws,3,6,rr,6);   // F Неоценети
+      outline(ws,3,7,rr,7);   // G Просечно ниво
+      outline(ws,3,8,rr,9);   // H:I реализација
+      outline(ws,3,10,rr,11); // J:K додатна/дополнителна
+    } else {
+      outline(ws,3,3,rr,8);outline(ws,3,9,rr,9);outline(ws,3,10,rr,11);outline(ws,3,12,rr,13);
+    }
   }
   // Бројчано (IV–IX)
   const stsNumSubj=sts.filter(s=>realGr(s)>=4);
