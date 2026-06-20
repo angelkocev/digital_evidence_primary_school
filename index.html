@@ -4437,6 +4437,16 @@ async function buildExcelReport(stsRaw,scopeLabel,oddForSubjects,parForSubjects,
     ['Целосно неоценети',s=>{const st=gradeStatus(s.gr||{});return st==='celoso'||st==='no-data';}],
   ];
   const cntPol=(pol,fn)=>sts.filter(s=>s.pol===pol&&fn(s)).length;
+  // Вистинско одделение на ученик (за комбинирани — odd_ucenik)
+  const realGr=(s)=>{const o=(s.odd_ucenik&&s.odd_ucenik>0)?parseInt(s.odd_ucenik):parseInt(s._odd||s.oddelenie||0);return o;};
+  // Описни редови (I–III одделение)
+  const succRowsOpisno=[
+    ['Прво ниво',s=>{const a=computeAvg(s.gr);return gradeStatus(s.gr||{})==='ok'&&a!==null&&a>=2.5;}],
+    ['Второ ниво',s=>{const a=computeAvg(s.gr);return gradeStatus(s.gr||{})==='ok'&&a!==null&&a>=1.5&&a<2.5;}],
+    ['Трето ниво',s=>{const a=computeAvg(s.gr);return gradeStatus(s.gr||{})==='ok'&&a!==null&&a<1.5;}],
+    ['Делумно оценети',s=>gradeStatus(s.gr||{})==='delumno'],
+    ['Целосно неоценети',s=>{const st=gradeStatus(s.gr||{});return st==='celoso'||st==='no-data';}],
+  ];
   ws1.getCell('B2').value='ГЕНЕРАЛЕН УСПЕХ НА УЧЕНИЦИТЕ ВО УЧЕБНАТА '+YEAR+' ГОДИНА';ws1.mergeCells('B2:E2');hdr(ws1.getCell('B2'));['C2','D2','E2'].forEach(a=>hdr(ws1.getCell(a)));outline(ws1,2,2,2,5);
   ['B3','C3','D3','E3'].forEach((a,i)=>{ws1.getCell(a).value=['Успех на ученици','Машки','Женски','Вкупно'][i];hdr(ws1.getCell(a));});
   let r=4;succRows.forEach(([lbl,fn])=>{const m=cntPol('М',fn),f=cntPol('Ж',fn);ws1.getCell('B'+r).value=lbl;ws1.getCell('C'+r).value=m;ws1.getCell('D'+r).value=f;ws1.getCell('E'+r).value=m+f;cellN(ws1.getCell('B'+r),true);['C','D','E'].forEach(col=>cellN(ws1.getCell(col+r),true));r++;});
@@ -4514,13 +4524,24 @@ async function buildExcelReport(stsRaw,scopeLabel,oddForSubjects,parForSubjects,
     });
     const tc=ws_e.getCell(rowNum,cc);tc.value=gM+gF;cellN(tc,true);
   }
-  // Секција 1: Успех
+  // Секција 1: Успех — две табели (бројчано IV–IX и описно I–III)
+  const stsNum=sts.filter(s=>realGr(s)>=4);
+  const stsOpis=sts.filter(s=>realGr(s)>=1&&realGr(s)<=3);
   let er=2,bs=2;
-  ws_e.getCell('B'+er).value='ГЕНЕРАЛЕН УСПЕХ НА УЧЕНИЦИТЕ ПО ЕТНИЧКА ПРИПАДНОСТ ВО УЧЕБНАТА '+YEAR+' ГОДИНА';
+  // Табела 1: Бројчано оценување (IV–IX)
+  ws_e.getCell('B'+er).value='ГЕНЕРАЛЕН УСПЕХ НА УЧЕНИЦИТЕ ПО ЕТНИЧКА ПРИПАДНОСТ ВО УЧЕБНАТА '+YEAR+' ГОДИНА (бројчано оценување — IV–IX одделение)';
   ws_e.mergeCells('B'+er+':'+lastCol+er);hdr(ws_e.getCell('B'+er));for(let cc=3;cc<=NC;cc++)hdr(ws_e.getCell(er,cc));outline(ws_e,er,2,er,NC);er++;
   etnHeaderRow(er);outline(ws_e,er,2,er,NC);er++;
-  succRows.forEach(([lbl,fn])=>{fillEtnRow(er,lbl,'count',fn,sts);er++;});
-  fillEtnRow(er,'Вкупно','count',()=>true,sts);for(let cc=2;cc<=NC;cc++)hdr(ws_e.getCell(er,cc),LGREEN);
+  succRows.forEach(([lbl,fn])=>{fillEtnRow(er,lbl,'count',fn,stsNum);er++;});
+  fillEtnRow(er,'Вкупно','count',()=>true,stsNum);for(let cc=2;cc<=NC;cc++)hdr(ws_e.getCell(er,cc),LGREEN);
+  outline(ws_e,er,2,er,NC);outline(ws_e,bs,2,er,NC);outline(ws_e,bs+1,NC,er,NC);etnGroups.forEach((g,gi)=>{outline(ws_e,bs+1,3+gi*3,er,5+gi*3);});er+=2;
+  // Табела 2: Описно оценување (I–III)
+  bs=er;
+  ws_e.getCell('B'+er).value='ГЕНЕРАЛЕН УСПЕХ НА УЧЕНИЦИТЕ ПО ЕТНИЧКА ПРИПАДНОСТ ВО УЧЕБНАТА '+YEAR+' ГОДИНА (описно оценување — I–III одделение)';
+  ws_e.mergeCells('B'+er+':'+lastCol+er);hdr(ws_e.getCell('B'+er));for(let cc=3;cc<=NC;cc++)hdr(ws_e.getCell(er,cc));outline(ws_e,er,2,er,NC);er++;
+  etnHeaderRow(er);outline(ws_e,er,2,er,NC);er++;
+  succRowsOpisno.forEach(([lbl,fn])=>{fillEtnRow(er,lbl,'count',fn,stsOpis);er++;});
+  fillEtnRow(er,'Вкупно','count',()=>true,stsOpis);for(let cc=2;cc<=NC;cc++)hdr(ws_e.getCell(er,cc),LGREEN);
   outline(ws_e,er,2,er,NC);outline(ws_e,bs,2,er,NC);outline(ws_e,bs+1,NC,er,NC);etnGroups.forEach((g,gi)=>{outline(ws_e,bs+1,3+gi*3,er,5+gi*3);});er+=2;
   // Секција 2: Новозапишани/Испишани
   bs=er;
@@ -4564,68 +4585,92 @@ async function buildExcelReport(stsRaw,scopeLabel,oddForSubjects,parForSubjects,
   outline(ws3,2,2,ar-1,3);
   outline(ws3,3,3,ar-1,3); // C3:C(последен) колона „Број на часови"
 
-  // ── ЛИСТ 5: Наставни предмети ──
-  const ws2=wb.addWorksheet('Наставни предмети',{views:[{showGridLines:false}]});
-  ws2.columns=[{width:4},{width:50},{width:5},{width:5},{width:5},{width:5},{width:5},{width:13},{width:15},{width:18},{width:20},{width:20},{width:16}];
+  // ── ЛИСТОВИ: Наставни предмети (бројчано + описно) ──
   const en=(function(){try{return getEN();}catch(e){return{};}})();
   function dispSubj(s){if(s==='Слободен изборен предмет 1')return en.s1||s;if(s==='Слободен изборен предмет 2')return en.s2||s;if(s==='Изборен предмет')return en.i9||s;return s;}
-  ws2.getCell('B2').value='РЕАЛИЗАЦИЈА НА НАСТАВНИ ПРЕДМЕТИ И ОЦЕНКИ НА УЧЕНИЦИ ВО УЧЕБНАТА '+YEAR+' ГОДИНА';ws2.mergeCells('B2:M2');hdr(ws2.getCell('B2'));for(let cc=3;cc<=13;cc++)hdr(ws2.getCell(2,cc));outline(ws2,2,2,2,13);
-  const H2=['Наставен предмет','5','4','3','2','1','Неоценети','Просечен успех','Реализирани часови','Нереализирани часови','Дополнителна настава','Додатна настава'];
-  H2.forEach((h,i)=>{const cell=ws2.getCell(3,i+2);cell.value=h;hdr(cell);});
-  const tot={5:0,4:0,3:0,2:0,1:0,neoc:0,real:0,nereal:0,dop:0,dod:0};
-  let rr=4;
   const rdAll=getRealData();
-  // Изгради уникатна листа на предмети (за цело училиште — унија од сите одделенија)
   const isSchoolWide=scopeKeys&&scopeKeys.length;
-  let subjOrder=[];
-  if(isSchoolWide){
-    const seen=new Set();
-    [1,2,3,4,5,6,7,8,9].forEach(od=>{(allSubjs(od)||[]).forEach(s=>{if(!seen.has(s)){seen.add(s);subjOrder.push(s);}});});
-  } else {
-    subjOrder=oddForSubjects?allSubjs(oddForSubjects,parForSubjects):[];
-  }
   const combo=parForSubjects&&isCombined(parForSubjects);
-  subjOrder.forEach(subj=>{
-    const counts={5:0,4:0,3:0,2:0,1:0,neoc:0};let sum=0,cnt=0;
-    sts.forEach(s=>{const v=(s.gr||{})[subj];if(v===undefined)return;if(v==='/'||v===''||v===null){counts.neoc++;}else{const n=Number(v);if(n>=1&&n<=5){counts[n]++;sum+=n;cnt++;}}});
-    // Реализација: сумирај низ сите паралелки во опсег (или една)
-    let rReal=0,rNereal=0,rDop=0,rDod=0;
+  // Предмети по тип на оценување
+  function subjListFor(grades){
     if(isSchoolWide){
-      scopeKeys.forEach(k=>{
-        const od=parseInt(k.split('|')[1]);const par=k.split('|')[2];
-        const rdk=rdAll[k]||{};
-        const isC=isCombined(par);
-        const rk=isC?(subj+'@'+od):subj;
-        const rdata=rdk[rk]||rdk[subj]||{};
-        rReal+=rdata.real||0;rNereal+=rdata.nereal||0;rDop+=rdata.dop||0;rDod+=rdata.dod||0;
-      });
-    } else {
-      const rd=(uchForReal&&oddForSubjects&&parForSubjects)?(rdAll[uchForReal+'|'+keyOddFor(parForSubjects,oddForSubjects)+'|'+parForSubjects]||{}):{};
-      const rk=combo?(subj+'@'+oddForSubjects):subj;const rdata=rd[rk]||rd[subj]||{};
-      rReal=rdata.real||0;rNereal=rdata.nereal||0;rDop=rdata.dop||0;rDod=rdata.dod||0;
+      const seen=new Set();const arr=[];
+      grades.forEach(od=>{(allSubjs(od)||[]).forEach(s=>{if(!seen.has(s)){seen.add(s);arr.push(s);}});});
+      return arr;
     }
-    const hasAny=cnt>0||counts.neoc>0||rReal||rNereal;
-    if(!hasAny)return;
-    const avg=cnt?Number((sum/cnt).toFixed(2)):'';
-    [5,4,3,2,1].forEach(n=>tot[n]+=counts[n]);tot.neoc+=counts.neoc;tot.real+=rReal;tot.nereal+=rNereal;tot.dop+=rDop;tot.dod+=rDod;
-    const vals=[dispSubj(subj),counts[5],counts[4],counts[3],counts[2],counts[1],counts.neoc,avg,rReal,rNereal,rDop,rDod];
-    vals.forEach((v,i)=>{const cell=ws2.getCell(rr,i+2);cell.value=v;cellN(cell,true);if(i===0)cell.alignment={horizontal:'center',vertical:'middle',wrapText:true};});
-    rr++;
-  });
-  // Просечен успех на паралелката — само OK ученици (идентично со KPI картичката)
-  const okStsX=sts.filter(s=>gradeStatus(s.gr||{})==='ok');
-  const validAvgs=okStsX.map(s=>computeAvg(s.gr)).filter(a=>a!==null);
-  const classAvg=validAvgs.length?(validAvgs.reduce((a,b)=>a+b,0)/validAvgs.length).toFixed(2):'';
-  const totVals=['Вкупно',tot[5],tot[4],tot[3],tot[2],tot[1],tot.neoc,classAvg,tot.real,tot.nereal,tot.dop,tot.dod];
-  totVals.forEach((v,i)=>{const cell=ws2.getCell(rr,i+2);cell.value=v;hdr(cell,LGREEN);cell.alignment={horizontal:'center',vertical:'middle'};});
-  outline(ws2,rr,2,rr,13);outline(ws2,2,2,rr,13);
-  // Thick outside borders за бараните области (од заглавие ред 3 до Вкупно ред)
-  outline(ws2,3,2,3,13);   // B3:M3 заглавие
-  outline(ws2,3,2,rr,2);   // B (наставни предмети)
-  outline(ws2,3,3,rr,8);   // C:H распределба на оценки
-  outline(ws2,3,9,rr,9);   // I просечен успех
-  outline(ws2,3,10,rr,11); // J:K реализација часови
-  outline(ws2,3,12,rr,13); // L:M додатна и дополнителна настава
+    // Една паралелка — само ако одделението е во опсегот
+    if(oddForSubjects&&grades.includes(oddForSubjects))return allSubjs(oddForSubjects,parForSubjects);
+    return [];
+  }
+  // Изградба на еден лист „Наставни предмети"
+  function buildSubjSheet(sheetName,subjStudents,subjList,isOpisno){
+    const ws=wb.addWorksheet(sheetName,{views:[{showGridLines:false}]});
+    ws.columns=[{width:4},{width:50},{width:8},{width:8},{width:8},{width:8},{width:8},{width:13},{width:15},{width:20},{width:22},{width:22},{width:18}];
+    const titleSuffix=isOpisno?' (описно оценување — I–III одделение)':' (бројчано оценување — IV–IX одделение)';
+    ws.getCell('B2').value='РЕАЛИЗАЦИЈА НА НАСТАВНИ ПРЕДМЕТИ И ОЦЕНКИ НА УЧЕНИЦИ ВО УЧЕБНАТА '+YEAR+' ГОДИНА'+titleSuffix;
+    ws.mergeCells('B2:M2');hdr(ws.getCell('B2'));for(let cc=3;cc<=13;cc++)hdr(ws.getCell(2,cc));outline(ws,2,2,2,13);
+    const H2=isOpisno
+      ?['Наставен предмет','I ниво','II ниво','III ниво','Делумно','Неоценети','—','Просечно ниво','Реализирани часови','Нереализирани часови','Дополнителна настава','Додатна настава']
+      :['Наставен предмет','5','4','3','2','1','Неоценети','Просечен успех','Реализирани часови','Нереализирани часови','Дополнителна настава','Додатна настава'];
+    H2.forEach((h,i)=>{const cell=ws.getCell(3,i+2);cell.value=h;hdr(cell);});
+    const tot=isOpisno?{i1:0,i2:0,i3:0,delumno:0,neoc:0,real:0,nereal:0,dop:0,dod:0}:{5:0,4:0,3:0,2:0,1:0,neoc:0,real:0,nereal:0,dop:0,dod:0};
+    let rr=4;
+    const OMAP={'I ниво':3,'II ниво':2,'III ниво':1};
+    subjList.forEach(subj=>{
+      let rReal=0,rNereal=0,rDop=0,rDod=0;
+      if(isSchoolWide){
+        scopeKeys.forEach(k=>{const od=parseInt(k.split('|')[1]);const par=k.split('|')[2];const rdk=rdAll[k]||{};const isC=isCombined(par);const rk=isC?(subj+'@'+od):subj;const rdata=rdk[rk]||rdk[subj]||{};rReal+=rdata.real||0;rNereal+=rdata.nereal||0;rDop+=rdata.dop||0;rDod+=rdata.dod||0;});
+      } else {
+        const rd=(uchForReal&&oddForSubjects&&parForSubjects)?(rdAll[uchForReal+'|'+keyOddFor(parForSubjects,oddForSubjects)+'|'+parForSubjects]||{}):{};
+        const rk=combo?(subj+'@'+oddForSubjects):subj;const rdata=rd[rk]||rd[subj]||{};rReal=rdata.real||0;rNereal=rdata.nereal||0;rDop=rdata.dop||0;rDod=rdata.dod||0;
+      }
+      if(isOpisno){
+        let i1=0,i2=0,i3=0,delumno=0,neoc=0,sumLvl=0,cntLvl=0;
+        subjStudents.forEach(s=>{const v=(s.gr||{})[subj];if(v===undefined)return;if(v==='/'||v===''||v===null){neoc++;}else if(OMAP[v]){const n=OMAP[v];if(n===3)i1++;else if(n===2)i2++;else i3++;sumLvl+=n;cntLvl++;}});
+        const hasAny=cntLvl>0||neoc>0||rReal||rNereal;
+        if(!hasAny)return;
+        const lvlAvg=cntLvl?(sumLvl/cntLvl):null;
+        const lvlLbl=lvlAvg!==null?(lvlAvg>=2.5?'I ниво':(lvlAvg>=1.5?'II ниво':'III ниво')):'';
+        tot.i1+=i1;tot.i2+=i2;tot.i3+=i3;tot.delumno+=delumno;tot.neoc+=neoc;tot.real+=rReal;tot.nereal+=rNereal;tot.dop+=rDop;tot.dod+=rDod;
+        const vals=[dispSubj(subj),i1,i2,i3,delumno,neoc,'',lvlLbl,rReal,rNereal,rDop,rDod];
+        vals.forEach((v,i)=>{const cell=ws.getCell(rr,i+2);cell.value=v;cellN(cell,true);if(i===0)cell.alignment={horizontal:'center',vertical:'middle',wrapText:true};});
+        rr++;
+      } else {
+        const counts={5:0,4:0,3:0,2:0,1:0,neoc:0};let sum=0,cnt=0;
+        subjStudents.forEach(s=>{const v=(s.gr||{})[subj];if(v===undefined)return;if(v==='/'||v===''||v===null){counts.neoc++;}else{const n=Number(v);if(n>=1&&n<=5){counts[n]++;sum+=n;cnt++;}}});
+        const hasAny=cnt>0||counts.neoc>0||rReal||rNereal;
+        if(!hasAny)return;
+        const avg=cnt?Number((sum/cnt).toFixed(2)):'';
+        [5,4,3,2,1].forEach(n=>tot[n]+=counts[n]);tot.neoc+=counts.neoc;tot.real+=rReal;tot.nereal+=rNereal;tot.dop+=rDop;tot.dod+=rDod;
+        const vals=[dispSubj(subj),counts[5],counts[4],counts[3],counts[2],counts[1],counts.neoc,avg,rReal,rNereal,rDop,rDod];
+        vals.forEach((v,i)=>{const cell=ws.getCell(rr,i+2);cell.value=v;cellN(cell,true);if(i===0)cell.alignment={horizontal:'center',vertical:'middle',wrapText:true};});
+        rr++;
+      }
+    });
+    // Вкупно ред
+    let totVals;
+    if(isOpisno){
+      const okO=subjStudents.filter(s=>gradeStatus(s.gr||{})==='ok');
+      const avgsO=okO.map(s=>computeAvg(s.gr)).filter(a=>a!==null);
+      const aO=avgsO.length?(avgsO.reduce((a,b)=>a+b,0)/avgsO.length):null;
+      const clsLvl=aO!==null?(aO>=2.5?'I ниво':(aO>=1.5?'II ниво':'III ниво')):'';
+      totVals=['Вкупно',tot.i1,tot.i2,tot.i3,tot.delumno,tot.neoc,'',clsLvl,tot.real,tot.nereal,tot.dop,tot.dod];
+    } else {
+      const okX=subjStudents.filter(s=>gradeStatus(s.gr||{})==='ok');
+      const avgsX=okX.map(s=>computeAvg(s.gr)).filter(a=>a!==null);
+      const classAvg=avgsX.length?(avgsX.reduce((a,b)=>a+b,0)/avgsX.length).toFixed(2):'';
+      totVals=['Вкупно',tot[5],tot[4],tot[3],tot[2],tot[1],tot.neoc,classAvg,tot.real,tot.nereal,tot.dop,tot.dod];
+    }
+    totVals.forEach((v,i)=>{const cell=ws.getCell(rr,i+2);cell.value=v;hdr(cell,LGREEN);cell.alignment={horizontal:'center',vertical:'middle'};});
+    outline(ws,rr,2,rr,13);outline(ws,2,2,rr,13);
+    outline(ws,3,2,3,13);outline(ws,3,2,rr,2);outline(ws,3,3,rr,8);outline(ws,3,9,rr,9);outline(ws,3,10,rr,11);outline(ws,3,12,rr,13);
+  }
+  // Бројчано (IV–IX)
+  const stsNumSubj=sts.filter(s=>realGr(s)>=4);
+  buildSubjSheet('Наставни предмети - Бројчано',stsNumSubj,subjListFor([4,5,6,7,8,9]),false);
+  // Описно (I–III)
+  const stsOpisSubj=sts.filter(s=>realGr(s)>=1&&realGr(s)<=3);
+  buildSubjSheet('Наставни предмети - Описно',stsOpisSubj,subjListFor([1,2,3]),true);
 
   // Преземи
   const buf=await wb.xlsx.writeBuffer();
