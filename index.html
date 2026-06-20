@@ -4472,6 +4472,42 @@ async function buildExcelReport(stsRaw,scopeLabel,oddForSubjects,parForSubjects,
   function hdr(cell,fill){cell.font={bold:true,size:11,name:'Arial'};cell.alignment={horizontal:'center',vertical:'middle',wrapText:true};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:fill||GREEN}};cell.border=allBorder;}
   function cellN(cell,center){cell.font={size:11,name:'Arial'};cell.alignment={horizontal:center?'center':'left',vertical:'middle'};cell.border=allBorder;}
 
+  // ── ЛИСТ 0: Информации за извештајот ──
+  const UCH_FULL={C:'ООУ „Страшо Пинџур" — Централно училиште',K:'ПУ с. Криволак',P:'ПУ с. Пепелиште',V:'ПУ с. Војшанци',CR:'ПУ с. Црвени Брегови'};
+  // Уникатни паралелки во опсегот (со училиште)
+  const parSet=[];
+  stsRaw.forEach(s=>{const uch=s._uch||s.uciliste||uchForReal;const par=s._par||s.paralelka||parForSubjects;if(uch&&par){const key=uch+'|'+par;if(!parSet.some(x=>x.key===key))parSet.push({key,uch,par});}});
+  parSet.sort((a,b)=>(a.uch+a.par).localeCompare(b.uch+b.par,'mk'));
+  // Повлечи раководители од profiles (мапа: uch|par → full_name)
+  let teacherMap={};
+  try{
+    const{data:profs}=await sb.from('profiles').select('full_name,uciliste,paralelka');
+    (profs||[]).forEach(p=>{if(p.paralelka&&p.uciliste)teacherMap[p.uciliste+'|'+p.paralelka]=p.full_name||'';});
+  }catch(e){console.warn('profiles fetch:',e);}
+  const wsInfo=wb.addWorksheet('Информации',{views:[{showGridLines:false}]});
+  wsInfo.columns=[{width:4},{width:32},{width:42},{width:38}];
+  const now=new Date();
+  const pad=n=>String(n).padStart(2,'0');
+  const dtStr=pad(now.getDate())+'.'+pad(now.getMonth()+1)+'.'+now.getFullYear()+' '+pad(now.getHours())+':'+pad(now.getMinutes());
+  let ir=2;
+  wsInfo.getCell('B'+ir).value='ИНФОРМАЦИИ ЗА ИЗВЕШТАЈОТ';wsInfo.mergeCells('B'+ir+':D'+ir);hdr(wsInfo.getCell('B'+ir));hdr(wsInfo.getCell('C'+ir));hdr(wsInfo.getCell('D'+ir));outline(wsInfo,ir,2,ir,4);ir++;
+  const infoRow=(label,val)=>{wsInfo.getCell('B'+ir).value=label;wsInfo.getCell('B'+ir).font={bold:true,size:11,name:'Arial'};wsInfo.getCell('B'+ir).alignment={vertical:'middle'};wsInfo.getCell('B'+ir).border=allBorder;wsInfo.mergeCells('C'+ir+':D'+ir);wsInfo.getCell('C'+ir).value=val;cellN(wsInfo.getCell('C'+ir));wsInfo.getCell('D'+ir).border=allBorder;outline(wsInfo,ir,2,ir,4);ir++;};
+  infoRow('Учебна година',YEAR);
+  infoRow('Датум и час на генерирање',dtStr);
+  infoRow('Опсег на извештајот',scopeLabel||'—');
+  ir++;
+  // Табела со паралелки/училишта/раководители
+  wsInfo.getCell('B'+ir).value='Паралелка';wsInfo.getCell('C'+ir).value='Училиште';wsInfo.getCell('D'+ir).value='Одделенски раководител';
+  ['B','C','D'].forEach(col=>hdr(wsInfo.getCell(col+ir)));outline(wsInfo,ir,2,ir,4);ir++;
+  const parStart=ir;
+  parSet.forEach(({uch,par,key})=>{
+    wsInfo.getCell('B'+ir).value=par;cellN(wsInfo.getCell('B'+ir),true);
+    wsInfo.getCell('C'+ir).value=UCH_FULL[uch]||uch;cellN(wsInfo.getCell('C'+ir));
+    wsInfo.getCell('D'+ir).value=teacherMap[key]||'—';cellN(wsInfo.getCell('D'+ir));
+    ir++;
+  });
+  if(parSet.length)outline(wsInfo,parStart-1,2,ir-1,4);
+
   // ── ЛИСТ 1: Ученици ──
   const ws1=wb.addWorksheet('Ученици',{views:[{showGridLines:false}]});
   ws1.columns=[{width:4},{width:46},{width:11},{width:11},{width:11}];
