@@ -4751,7 +4751,6 @@ async function exportGradeExcel(){
   const scopeKeys=[];
   try{
     const{data,error}=await sb.from('ucenici').select('*')
-      .eq('uciliste',curUch)
       .eq('school_year',activeSchoolYear);
     if(error)throw error;
     (data||[]).forEach(s=>{
@@ -4769,7 +4768,7 @@ async function exportGradeExcel(){
       const[uch,odd,par]=k.split('|');
       arr.forEach(s=>{
         const realOdd=(s.odd_ucenik&&s.odd_ucenik>0)?parseInt(s.odd_ucenik):parseInt(odd);
-        if(uch===curUch&&realOdd===parseInt(curOdd)){
+        if(realOdd===parseInt(curOdd)){
           gradeSts.push({...s,_uch:uch,_odd:parseInt(odd),_par:par});
           if(!scopeKeys.includes(k))scopeKeys.push(k);
         }
@@ -4780,7 +4779,7 @@ async function exportGradeExcel(){
   // Повлечи ја и реализацијата + активностите за целото одделение (за точни податоци)
   try{
     const{data:realData}=await sb.from('realizacija').select('*')
-      .eq('uciliste',curUch).eq('school_year',activeSchoolYear).eq('period',activePeriod);
+      .eq('school_year',activeSchoolYear).eq('period',activePeriod);
     (realData||[]).forEach(r=>{
       const realOdd=keyOddFor(r.paralelka,r.oddelenie);
       const k=r.uciliste+'|'+realOdd+'|'+r.paralelka;
@@ -4791,7 +4790,7 @@ async function exportGradeExcel(){
       }
     });
     const{data:vonData}=await sb.from('vonnastavni_aktivnosti').select('*')
-      .eq('uciliste',curUch).eq('school_year',activeSchoolYear).eq('period',activePeriod);
+      .eq('school_year',activeSchoolYear).eq('period',activePeriod);
     (vonData||[]).forEach(v=>{
       const realOdd=keyOddFor(v.paralelka,v.oddelenie);
       const k=v.uciliste+'|'+realOdd+'|'+v.paralelka;
@@ -4803,7 +4802,7 @@ async function exportGradeExcel(){
     });
   }catch(e){console.warn('Grade realizacija/activities fetch:',e);}
   const ROMAN=['','I','II','III','IV','V','VI','VII','VIII','IX'];
-  const label=(curUch||'')+'-'+(ROMAN[curOdd]||curOdd)+'-odd';
+  const label=(ROMAN[curOdd]||curOdd)+'-oddelenie';
   await buildExcelReport(gradeSts,label,null,null,null,scopeKeys);
 }
 
@@ -4862,24 +4861,21 @@ async function exportAllSeparate(){
       parFolder.file(fn,buf);
     }
 
-    // 2) По ОДДЕЛЕНИЕ (по училиште, групирано по вистинско одделение)
+    // 2) По ОДДЕЛЕНИЕ — сите паралелки од сите училишта (централно + подрачни)
     const oddFolder=zip.folder('2-Oddelenija');
-    const uchList=[...new Set(allSts.map(s=>s._uch))];
-    for(const uch of uchList){
-      const grades=[...new Set(allSts.filter(s=>s._uch===uch).map(realGrOf))].sort((a,b)=>a-b);
-      for(const g of grades){
-        if(!g)continue;
-        const gsts=allSts.filter(s=>s._uch===uch&&realGrOf(s)===g);
-        if(!gsts.length)continue;
-        const gKeys=[...new Set(gsts.map(s=>s._uch+'|'+s._odd+'|'+s._par))];
-        const buf=await buildExcelReport(gsts,uch+'-'+(ROMAN[g]||g)+'odd',null,null,null,gKeys,true);
-        const fn=(UCH_NAME[uch]||uch)+'_'+(ROMAN[g]||g)+'-oddelenie.xlsx';
-        oddFolder.file(fn,buf);
-      }
+    const allGrades=[...new Set(allSts.map(realGrOf))].filter(g=>g>=1).sort((a,b)=>a-b);
+    for(const g of allGrades){
+      const gsts=allSts.filter(s=>realGrOf(s)===g);
+      if(!gsts.length)continue;
+      const gKeys=[...new Set(gsts.map(s=>s._uch+'|'+s._odd+'|'+s._par))];
+      const buf=await buildExcelReport(gsts,(ROMAN[g]||g)+'-oddelenie',null,null,null,gKeys,true);
+      const fn=(ROMAN[g]||g)+'-oddelenie.xlsx';
+      oddFolder.file(fn,buf);
     }
 
     // 3) По УЧИЛИШТЕ
     const uchFolder=zip.folder('3-Ucilishta');
+    const uchList=[...new Set(allSts.map(s=>s._uch))];
     for(const uch of uchList){
       const usts=allSts.filter(s=>s._uch===uch);
       if(!usts.length)continue;
