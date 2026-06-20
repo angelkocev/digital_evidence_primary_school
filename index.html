@@ -4552,7 +4552,7 @@ async function buildExcelReport(stsRaw,scopeLabel,oddForSubjects,parForSubjects,
   const ws3=wb.addWorksheet('Активности',{views:[{showGridLines:false}]});
   ws3.columns=[{width:4},{width:42},{width:16}];
   const akKey=(uchForReal&&oddForSubjects&&parForSubjects)?(uchForReal+'|'+keyOddFor(parForSubjects,oddForSubjects)+'|'+parForSubjects):null;
-  ws3.getCell('B2').value='АКТИВНОСТИ ВО ТЕКОТ НА УЧЕБНАТА '+YEAR+' ГОДИНА';ws3.mergeCells('B2:C2');hdr(ws3.getCell('B2'));hdr(ws3.getCell('C2'));outline(ws3,2,2,2,3);
+  ws3.getCell('B2').value='АКТИВНОСТИ ВО УЧЕБНАТА '+YEAR+' ГОДИНА';ws3.mergeCells('B2:C2');hdr(ws3.getCell('B2'));hdr(ws3.getCell('C2'));outline(ws3,2,2,2,3);
   ws3.getCell('B3').value='Активност';ws3.getCell('C3').value='Број на часови';hdr(ws3.getCell('B3'));hdr(ws3.getCell('C3'));outline(ws3,3,2,3,3);
   let ar=4;ws3.getCell('B'+ar).value='Воннаставни активности';ws3.getCell('C'+ar).value=akKey?(vonnastavniData[akKey]||0):0;cellN(ws3.getCell('B'+ar),true);cellN(ws3.getCell('C'+ar),true);ar++;
   AKTIVNOSTI_FIELDS.forEach(([key,lbl])=>{ws3.getCell('B'+ar).value=lbl;ws3.getCell('C'+ar).value=akKey?((aktivnostiData[akKey]||{})[key]||0):0;cellN(ws3.getCell('B'+ar),true);cellN(ws3.getCell('C'+ar),true);ar++;});
@@ -4566,7 +4566,7 @@ async function buildExcelReport(stsRaw,scopeLabel,oddForSubjects,parForSubjects,
   const rd=(uchForReal&&oddForSubjects&&parForSubjects)?(getRealData()[uchForReal+'|'+keyOddFor(parForSubjects,oddForSubjects)+'|'+parForSubjects]||{}):{};
   const en=(function(){try{return getEN();}catch(e){return{};}})();
   function dispSubj(s){if(s==='Слободен изборен предмет 1')return en.s1||s;if(s==='Слободен изборен предмет 2')return en.s2||s;if(s==='Изборен предмет')return en.i9||s;return s;}
-  ws2.getCell('B2').value='РЕАЛИЗАЦИЈА НА НАСТАВНИ ПРЕДМЕТИ И ОЦЕНКИ НА УЧЕНИЦИ ВО ТЕКОТ НА УЧЕБНАТА '+YEAR+' ГОДИНА';ws2.mergeCells('B2:M2');hdr(ws2.getCell('B2'));for(let cc=3;cc<=13;cc++)hdr(ws2.getCell(2,cc));outline(ws2,2,2,2,13);
+  ws2.getCell('B2').value='РЕАЛИЗАЦИЈА НА НАСТАВНИ ПРЕДМЕТИ И ОЦЕНКИ НА УЧЕНИЦИ ВО УЧЕБНАТА '+YEAR+' ГОДИНА';ws2.mergeCells('B2:M2');hdr(ws2.getCell('B2'));for(let cc=3;cc<=13;cc++)hdr(ws2.getCell(2,cc));outline(ws2,2,2,2,13);
   const H2=['Наставен предмет','5','4','3','2','1','Неоценети','Просечен успех','Реализирани часови','Нереализирани часови','Дополнителна настава','Додатна настава'];
   H2.forEach((h,i)=>{const cell=ws2.getCell(3,i+2);cell.value=h;hdr(cell);});
   const combo=parForSubjects&&isCombined(parForSubjects);
@@ -4581,7 +4581,7 @@ async function buildExcelReport(stsRaw,scopeLabel,oddForSubjects,parForSubjects,
     const avg=cnt?Number((sum/cnt).toFixed(2)):'';
     [5,4,3,2,1].forEach(n=>tot[n]+=counts[n]);tot.neoc+=counts.neoc;tot.real+=rdata.real||0;tot.nereal+=rdata.nereal||0;tot.dop+=rdata.dop||0;tot.dod+=rdata.dod||0;
     const vals=[dispSubj(subj),counts[5],counts[4],counts[3],counts[2],counts[1],counts.neoc,avg,rdata.real||0,rdata.nereal||0,rdata.dop||0,rdata.dod||0];
-    vals.forEach((v,i)=>{const cell=ws2.getCell(rr,i+2);cell.value=v;cellN(cell,true);});
+    vals.forEach((v,i)=>{const cell=ws2.getCell(rr,i+2);cell.value=v;cellN(cell,true);if(i===0)cell.alignment={horizontal:'center',vertical:'middle',wrapText:true};});
     rr++;
   });
   // Просечен успех на паралелката — само OK ученици (идентично со KPI картичката)
@@ -4591,6 +4591,13 @@ async function buildExcelReport(stsRaw,scopeLabel,oddForSubjects,parForSubjects,
   const totVals=['Вкупно',tot[5],tot[4],tot[3],tot[2],tot[1],tot.neoc,classAvg,tot.real,tot.nereal,tot.dop,tot.dod];
   totVals.forEach((v,i)=>{const cell=ws2.getCell(rr,i+2);cell.value=v;hdr(cell,LGREEN);cell.alignment={horizontal:'center',vertical:'middle'};});
   outline(ws2,rr,2,rr,13);outline(ws2,2,2,rr,13);
+  // Thick outside borders за бараните области (од заглавие ред 3 до Вкупно ред)
+  outline(ws2,3,2,3,13);   // B3:M3 заглавие
+  outline(ws2,3,2,rr,2);   // B (наставни предмети)
+  outline(ws2,3,3,rr,8);   // C:H распределба на оценки
+  outline(ws2,3,9,rr,9);   // I просечен успех
+  outline(ws2,3,10,rr,11); // J:K реализација часови
+  outline(ws2,3,12,rr,13); // L:M додатна и дополнителна настава
 
   // Преземи
   const buf=await wb.xlsx.writeBuffer();
