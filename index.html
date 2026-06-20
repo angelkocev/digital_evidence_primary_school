@@ -1472,6 +1472,20 @@ function onParChange(){curPar=document.getElementById('sel-par').value;renderL()
 
 /* ══ ОЦЕНКИ АНАЛИЗА ══ */
 const OPISNO_VALS=['I ниво','II ниво','III ниво'];
+// Посебни паралелки за ученици со ПОП што се оценуваат ОПИСНО иако се IV–IX одделение
+// Формат: 'УЧИЛИШТЕ|ОДДЕЛЕНИЕ|ПАРАЛЕЛКА' или само 'ПАРАЛЕЛКА' (важи за сите училишта)
+const SPECIAL_OPISNO_PARS=['IV-г'];
+function isSpecialOpisnoPar(uch,odd,par){
+  if(!par)return false;
+  if(SPECIAL_OPISNO_PARS.includes(par))return true;
+  if(uch&&odd&&SPECIAL_OPISNO_PARS.includes(uch+'|'+odd+'|'+par))return true;
+  return false;
+}
+// Дали оваа паралелка/одделение се оценува ОПИСНО (I–III природно ИЛИ посебна ПОП паралелка)
+function isOpisnoPar(odd,par,uch){
+  if(isSpecialOpisnoPar(uch||curUch,odd,par))return true;
+  return odd<=3;
+}
 function isOpisnoGr(gr){
   const vals=Object.values(gr||{}).filter(v=>v!==''&&v!==undefined&&v!==null&&v!=='/');
   return vals.length>0&&vals.every(v=>OPISNO_VALS.includes(String(v)));
@@ -1602,7 +1616,7 @@ function openModal(idx){
   // Брзо внесување — опции според одделение
   const effectiveOdd=s?.odd_ucenik||curOdd;
   const qfSel=document.getElementById('qfval');
-  const opisno=effectiveOdd<=3;
+  const opisno=isOpisnoPar(effectiveOdd,curPar,curUch);
   const qfOpts=opisno?GRADE_OPTS_OPISNO:GRADE_OPTS;
   qfSel.innerHTML='<option value="">—</option>'+qfOpts.map(g=>`<option value="${g}">${g==='/'?'/ (Неоценет)':g}</option>`).join('');
   buildMerkiWrap(s?s.merki:[]);
@@ -1774,7 +1788,7 @@ function buildSG(gr={}){
             </div>`;
           }
           const isEl=isE1||isE2||(/Слободен изборен предмет/i.test(subj));
-          const opisno=effectiveOdd<=3;
+          const opisno=isOpisnoPar(effectiveOdd,curPar,curUch);
           const opts=opisno?GRADE_OPTS_OPISNO:(isEl?[5,3,1,'/']:GRADE_OPTS);
           return`<div class="srow" title="${subj}">
             ${nameEl}
@@ -2171,7 +2185,7 @@ function buildRealizacijaCharts(uciliste,oddelenie,paralelka){
     const w=Math.min(100,pct);
     const icon=pct>=100?'✓':(pct>0?'◑':'○');
     const iconCol=pct>=100?'#34D399':(pct>0?'#FBBF24':'#94A3B8');
-    const showExtra=(totDop+totDod>0)||curOdd<=3;
+    const showExtra=(totDop+totDod>0)||isOpisnoPar(curOdd,curPar,curUch);
     const showAkt=false; // колоната „Активности" е отстранета
     return'<tr>'+
       '<td style="font-family:var(--FC);font-size:12px;font-weight:600;">'+dN(s)+'</td>'+
@@ -2203,7 +2217,7 @@ function buildRealizacijaCharts(uciliste,oddelenie,paralelka){
         '<th style="width:60px;text-align:center;">Фонд</th>'+
         '<th style="width:100px;text-align:center;color:#34D399;">Реализирани часови</th>'+
         '<th style="width:110px;text-align:center;color:#F87171;">Нереализирани часови</th>'+
-        ((totDop+totDod>0)||curOdd<=3?'<th style="width:100px;text-align:center;color:#60A5FA;">Дополнителна настава</th><th style="width:85px;text-align:center;color:#A78BFA;">Додатна настава</th>':'')+
+        ((totDop+totDod>0)||isOpisnoPar(curOdd,curPar,curUch)?'<th style="width:100px;text-align:center;color:#60A5FA;">Дополнителна настава</th><th style="width:85px;text-align:center;color:#A78BFA;">Додатна настава</th>':'')+
         (false?'<th style="width:80px;text-align:center;color:#34D399;">Активности</th>':'')+
         '<th style="min-width:160px;text-align:center;">% Реализација</th>'+
       '</tr></thead>'+
@@ -2649,8 +2663,9 @@ function getFilteredSts(allSts){
     const eOk=ev==='__svi__'||(s.etnik||'Останато')===ev;
     const mOk=mv==='__svi__'||s.mol===mv;
     const realOdd=getOdd(s);
+    const sParOpisno=isOpisnoPar(realOdd,s._par||curPar,s._uch||curUch);
     const oOk=ov==='__svi__'||realOdd===parseInt(ov);
-    const cOk=cv==='__svi__'||(cv==='opisno'?realOdd<=3:realOdd>3);
+    const cOk=cv==='__svi__'||(cv==='opisno'?sParOpisno:!sParOpisno);
     return pOk&&eOk&&mOk&&oOk&&cOk;
   });
 }
@@ -3303,8 +3318,8 @@ function updateRaspredel(){
   });
   const fTotG=Object.values(filtDist).reduce((a,b)=>a+b,0);
   function bw2(p){return p>0?Math.max(4,p):0;}
-  // Описно оценување (I–III) — прикажи по нивоа
-  if(curOdd<=3){
+  // Описно оценување (I–III или посебна ПОП паралелка) — прикажи по нивоа
+  if(isOpisnoPar(curOdd,curPar,curUch)){
     const fd={'I ниво':0,'II ниво':0,'III ниво':0,'неоценети':0};
     sts.forEach(st=>{
       if(filterSubj==='__svi__'){Object.values(st.gr||{}).forEach(v=>{if(fd[v]!==undefined)fd[v]++;else if(v==='/'||v===''||v===null)fd['неоценети']++;});}
@@ -3323,7 +3338,7 @@ function updateRaspredel(){
 
 function buildUspehChart(stsList,forceMode){
   stsList=stsList.filter(s=>!s.ispishan);
-  const useOpisno=forceMode?(forceMode==='opisno'):(curOdd<=3);
+  const useOpisno=forceMode?(forceMode==='opisno'):isOpisnoPar(curOdd,curPar,curUch);
   const cats=(useOpisno?[
     {lbl:'I ниво',  c:'#34D399',f:'rgba(52,211,153,.15)', fn:s=>gradeStatus(s.gr||{})==='ok'&&opisnoAvg(s.gr||{})==='I ниво'},
     {lbl:'II ниво', c:'#FBBF24',f:'rgba(251,191,36,.15)', fn:s=>gradeStatus(s.gr||{})==='ok'&&opisnoAvg(s.gr||{})==='II ниво'},
@@ -4445,6 +4460,9 @@ async function buildExcelReport(stsRaw,scopeLabel,oddForSubjects,parForSubjects,
   // Вистинско одделение на ученик (за комбинирани — odd_ucenik)
   const realGr=(s)=>{const o=(s.odd_ucenik&&s.odd_ucenik>0)?parseInt(s.odd_ucenik):parseInt(s._odd||s.oddelenie||oddForSubjects||0);return o;};
   const isSchoolWide=scopeKeys&&scopeKeys.length;
+  // Дали ученикот се оценува ОПИСНО (одделение I–III ИЛИ посебна ПОП паралелка како IV-г)
+  const stdOpisno=(s)=>{const par=s._par||s.paralelka||parForSubjects;const uch=s._uch||s.uciliste||uchForReal;return isOpisnoPar(realGr(s),par,uch);};
+  const stdNumeric=(s)=>!stdOpisno(s);
   // Описни редови (I–III одделение)
   const succRowsOpisno=[
     ['Прво ниво',s=>{const a=computeAvg(s.gr);return gradeStatus(s.gr||{})==='ok'&&a!==null&&a>=2.5;}],
@@ -4531,8 +4549,8 @@ async function buildExcelReport(stsRaw,scopeLabel,oddForSubjects,parForSubjects,
     const tc=ws_e.getCell(rowNum,cc);tc.value=gM+gF;cellN(tc,true);
   }
   // Секција 1: Успех — две табели (бројчано IV–IX и описно I–III)
-  const stsNum=sts.filter(s=>realGr(s)>=4);
-  const stsOpis=sts.filter(s=>realGr(s)>=1&&realGr(s)<=3);
+  const stsNum=sts.filter(s=>stdNumeric(s)&&realGr(s)>=1);
+  const stsOpis=sts.filter(s=>stdOpisno(s)&&realGr(s)>=1);
   const hasNumEtn=stsNum.length>0;
   const hasOpisEtn=stsOpis.length>0;
   const showNumEtn=hasNumEtn||(!hasNumEtn&&!hasOpisEtn);
@@ -4694,16 +4712,19 @@ async function buildExcelReport(stsRaw,scopeLabel,oddForSubjects,parForSubjects,
     }
   }
   // Бројчано (IV–IX) и Описно (I–III)
-  const stsNumSubj=sts.filter(s=>realGr(s)>=4);
-  const stsOpisSubj=sts.filter(s=>realGr(s)>=1&&realGr(s)<=3);
+  const stsNumSubj=sts.filter(s=>stdNumeric(s)&&realGr(s)>=1);
+  const stsOpisSubj=sts.filter(s=>stdOpisno(s)&&realGr(s)>=1);
   const hasNum=stsNumSubj.length>0;
   const hasOpis=stsOpisSubj.length>0;
+  // Одделенија застапени во секоја група (за точна листа предмети)
+  const numGrades=[...new Set(stsNumSubj.map(realGr))].filter(g=>g>=1);
+  const opisGrades=[...new Set(stsOpisSubj.map(realGr))].filter(g=>g>=1);
   // Прикажи лист само ако постојат ученици од тој тип оценување (празно → бројчано по дифолт)
   if(hasNum||(!hasNum&&!hasOpis)){
-    buildSubjSheet('Наставни предмети - Бројчано',stsNumSubj,subjListFor([4,5,6,7,8,9]),false);
+    buildSubjSheet('Наставни предмети - Бројчано',stsNumSubj,subjListFor(numGrades.length?numGrades:[4,5,6,7,8,9]),false);
   }
   if(hasOpis){
-    buildSubjSheet('Наставни предмети - Описно',stsOpisSubj,subjListFor([1,2,3]),true);
+    buildSubjSheet('Наставни предмети - Описно',stsOpisSubj,subjListFor(opisGrades.length?opisGrades:[1,2,3]),true);
   }
 
   // Преземи (или врати буфер ако е побарано)
