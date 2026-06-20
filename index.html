@@ -4443,6 +4443,7 @@ async function buildExcelReport(stsRaw,scopeLabel,oddForSubjects,parForSubjects,
   const cntPol=(pol,fn)=>sts.filter(s=>s.pol===pol&&fn(s)).length;
   // Вистинско одделение на ученик (за комбинирани — odd_ucenik)
   const realGr=(s)=>{const o=(s.odd_ucenik&&s.odd_ucenik>0)?parseInt(s.odd_ucenik):parseInt(s._odd||s.oddelenie||oddForSubjects||0);return o;};
+  const isSchoolWide=scopeKeys&&scopeKeys.length;
   // Описни редови (I–III одделение)
   const succRowsOpisno=[
     ['Прво ниво',s=>{const a=computeAvg(s.gr);return gradeStatus(s.gr||{})==='ok'&&a!==null&&a>=2.5;}],
@@ -4531,15 +4532,22 @@ async function buildExcelReport(stsRaw,scopeLabel,oddForSubjects,parForSubjects,
   // Секција 1: Успех — две табели (бројчано IV–IX и описно I–III)
   const stsNum=sts.filter(s=>realGr(s)>=4);
   const stsOpis=sts.filter(s=>realGr(s)>=1&&realGr(s)<=3);
+  const hasNumEtn=stsNum.length>0;
+  const hasOpisEtn=stsOpis.length>0;
+  const showNumEtn=hasNumEtn||(!hasNumEtn&&!hasOpisEtn);
+  const showOpisEtn=hasOpisEtn;
   let er=2,bs=2;
   // Табела 1: Бројчано оценување (IV–IX)
+  if(showNumEtn){
   ws_e.getCell('B'+er).value='ГЕНЕРАЛЕН УСПЕХ НА УЧЕНИЦИТЕ ПО ЕТНИЧКА ПРИПАДНОСТ ВО УЧЕБНАТА '+YEAR+' ГОДИНА (бројчано оценување — IV–IX одделение)';
   ws_e.mergeCells('B'+er+':'+lastCol+er);hdr(ws_e.getCell('B'+er));for(let cc=3;cc<=NC;cc++)hdr(ws_e.getCell(er,cc));outline(ws_e,er,2,er,NC);er++;
   etnHeaderRow(er);outline(ws_e,er,2,er,NC);er++;
   succRows.forEach(([lbl,fn])=>{fillEtnRow(er,lbl,'count',fn,stsNum);er++;});
   fillEtnRow(er,'Вкупно','count',()=>true,stsNum);for(let cc=2;cc<=NC;cc++)hdr(ws_e.getCell(er,cc),LGREEN);
   outline(ws_e,er,2,er,NC);outline(ws_e,bs,2,er,NC);outline(ws_e,bs+1,NC,er,NC);etnGroups.forEach((g,gi)=>{outline(ws_e,bs+1,3+gi*3,er,5+gi*3);});er+=2;
+  }
   // Табела 2: Описно оценување (I–III)
+  if(showOpisEtn){
   bs=er;
   ws_e.getCell('B'+er).value='ГЕНЕРАЛЕН УСПЕХ НА УЧЕНИЦИТЕ ПО ЕТНИЧКА ПРИПАДНОСТ ВО УЧЕБНАТА '+YEAR+' ГОДИНА (описно оценување — I–III одделение)';
   ws_e.mergeCells('B'+er+':'+lastCol+er);hdr(ws_e.getCell('B'+er));for(let cc=3;cc<=NC;cc++)hdr(ws_e.getCell(er,cc));outline(ws_e,er,2,er,NC);er++;
@@ -4547,6 +4555,7 @@ async function buildExcelReport(stsRaw,scopeLabel,oddForSubjects,parForSubjects,
   succRowsOpisno.forEach(([lbl,fn])=>{fillEtnRow(er,lbl,'count',fn,stsOpis);er++;});
   fillEtnRow(er,'Вкупно','count',()=>true,stsOpis);for(let cc=2;cc<=NC;cc++)hdr(ws_e.getCell(er,cc),LGREEN);
   outline(ws_e,er,2,er,NC);outline(ws_e,bs,2,er,NC);outline(ws_e,bs+1,NC,er,NC);etnGroups.forEach((g,gi)=>{outline(ws_e,bs+1,3+gi*3,er,5+gi*3);});er+=2;
+  }
   // Секција 2: Новозапишани/Испишани
   bs=er;
   ws_e.getCell('B'+er).value='БРОЈ НА НОВОЗАПИШАНИ И ИСПИШАНИ УЧЕНИЦИ ПО ЕТНИЧКА ПРИПАДНОСТ ВО УЧЕБНАТА '+YEAR+' ГОДИНА';
@@ -4593,7 +4602,6 @@ async function buildExcelReport(stsRaw,scopeLabel,oddForSubjects,parForSubjects,
   const en=(function(){try{return getEN();}catch(e){return{};}})();
   function dispSubj(s){if(s==='Слободен изборен предмет 1')return en.s1||s;if(s==='Слободен изборен предмет 2')return en.s2||s;if(s==='Изборен предмет')return en.i9||s;return s;}
   const rdAll=getRealData();
-  const isSchoolWide=scopeKeys&&scopeKeys.length;
   const combo=parForSubjects&&isCombined(parForSubjects);
   // Предмети по тип на оценување
   function subjListFor(grades){
@@ -4689,11 +4697,11 @@ async function buildExcelReport(stsRaw,scopeLabel,oddForSubjects,parForSubjects,
   const stsOpisSubj=sts.filter(s=>realGr(s)>=1&&realGr(s)<=3);
   const hasNum=stsNumSubj.length>0;
   const hasOpis=stsOpisSubj.length>0;
-  // За цело училиште — секогаш двата; за паралелка/одделение — само соодветните (комбинираните имаат и двата)
-  if(isSchoolWide||hasNum||(!hasNum&&!hasOpis)){
+  // Прикажи лист само ако постојат ученици од тој тип оценување (празно → бројчано по дифолт)
+  if(hasNum||(!hasNum&&!hasOpis)){
     buildSubjSheet('Наставни предмети - Бројчано',stsNumSubj,subjListFor([4,5,6,7,8,9]),false);
   }
-  if(isSchoolWide||hasOpis){
+  if(hasOpis){
     buildSubjSheet('Наставни предмети - Описно',stsOpisSubj,subjListFor([1,2,3]),true);
   }
 
