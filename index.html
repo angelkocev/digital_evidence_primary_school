@@ -3660,6 +3660,7 @@ function renderAdmin(){
   const fMol=document.getElementById('af-mol')?.value||'__svi__';
   const fNastava=document.getElementById('af-nastava')?.value||'__svi__';
   const fUcPeriod=document.getElementById('af-ucperiod')?.value||'__svi__';
+  const fStatus=document.getElementById('af-status')?.value||'__svi__';
 
   let sts=allSts;
   if(fUch!=='__svi__')sts=sts.filter(s=>s._uch===fUch);
@@ -3673,10 +3674,14 @@ function renderAdmin(){
   if(fUcPeriod==='p1')sts=sts.filter(s=>s._realOdd<=3);
   if(fUcPeriod==='p2')sts=sts.filter(s=>s._realOdd>=4&&s._realOdd<=6);
   if(fUcPeriod==='p3')sts=sts.filter(s=>s._realOdd>=7);
+  // Статус на ученик
+  if(fStatus==='novozapishani')sts=sts.filter(s=>s.novozapishan);
+  if(fStatus==='pop')sts=sts.filter(s=>s.pop||s.pop_status);
 
   // Испишаните не се бројат во активниот состав
   const allStsWithIsp=sts;
-  sts=sts.filter(s=>!s.ispishan);
+  if(fStatus==='ispishani')sts=sts.filter(s=>s.ispishan);
+  else sts=sts.filter(s=>!s.ispishan);
   const n=sts.length;
 
   const UCH_NAMES={C:'Централно училиште',K:'ПУ с. Криволак',P:'ПУ с. Пепелиште',V:'ПУ с. Војшанци',CR:'ПУ с. Црвени Брегови'};
@@ -3728,7 +3733,7 @@ function renderAdmin(){
 
   // Ако е филтрирана комбинирана паралелка — прикажи ист извештај како во „Извештај за паралелка"
   if(fPar!=='__svi__'&&isCombined(fPar)&&fUch!=='__svi__'){
-    el.innerHTML=supervisorBanner+buildAdminFilters(uchs,odds,pars,mols,fUch,fOdd,fPar,fPol,fEtn,fMol,fNastava,fUcPeriod,UCH_NAMES)+'<div id="admin-combined-report"></div>';
+    el.innerHTML=supervisorBanner+buildAdminFilters(uchs,odds,pars,mols,fUch,fOdd,fPar,fPol,fEtn,fMol,fNastava,fUcPeriod,UCH_NAMES,fStatus)+'<div id="admin-combined-report"></div>';
     const combSts=allSts.filter(s=>s._uch===fUch&&s._par===fPar);
     // Привремено постави cur* за renderRepBody (кој користи глобални)
     const _u=curUch,_o=curOdd,_p=curPar;
@@ -3780,7 +3785,7 @@ function renderAdmin(){
   // opisnoStats е дефинирана глобално (пред renderAdmin)
 
   if(!n){
-    el.innerHTML=supervisorBanner+buildAdminFilters(uchs,odds,pars,mols,fUch,fOdd,fPar,fPol,fEtn,fMol,fNastava,fUcPeriod,UCH_NAMES)+
+    el.innerHTML=supervisorBanner+buildAdminFilters(uchs,odds,pars,mols,fUch,fOdd,fPar,fPol,fEtn,fMol,fNastava,fUcPeriod,UCH_NAMES,fStatus)+
       '<div class="empty-s">Нема ученици за избраните филтри.</div>';return;
   }
 
@@ -3877,7 +3882,7 @@ function renderAdmin(){
   const povtoruvanje=sts.filter(s=>(s.extra||[]).includes('Повторување на одделение'))
     .sort(byOddPar);
 
-  el.innerHTML=buildAdminFilters(uchs,odds,pars,mols,fUch,fOdd,fPar,fPol,fEtn,fMol,fNastava,fUcPeriod,UCH_NAMES)+`
+  el.innerHTML=buildAdminFilters(uchs,odds,pars,mols,fUch,fOdd,fPar,fPol,fEtn,fMol,fNastava,fUcPeriod,UCH_NAMES,fStatus)+`
 
   <div class="kpis" style="grid-template-columns:repeat(6,1fr);">
     <div class="kpi"><div class="kpi-l">Ученици</div><div class="kpi-v">${n}</div><div class="kpi-bot" style="background:var(--acc);width:100%;"></div></div>
@@ -5065,7 +5070,7 @@ function resetAdminSort(tableId,btn){
   // Ресетирај го паѓачкото мени
   if(btn){const card=btn.closest('.rttl');const selEl=card?.querySelector('select');if(selEl)selEl.value='';}
 }
-function buildAdminFilters(uchs,odds,pars,mols,fUch,fOdd,fPar,fPol,fEtn,fMol,fNastava,fUcPeriod,UCH_NAMES){
+function buildAdminFilters(uchs,odds,pars,mols,fUch,fOdd,fPar,fPol,fEtn,fMol,fNastava,fUcPeriod,UCH_NAMES,fStatus){
   const selStyle='font-family:var(--F);font-size:12px;border:1px solid var(--bdr);border-radius:7px;padding:5px 9px;color:var(--tx);background:var(--bg3);outline:none;cursor:pointer;width:100%;';
   const labelStyle='font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--tx3);margin-bottom:4px;';
   return`<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:12px;">
@@ -5102,6 +5107,14 @@ function buildAdminFilters(uchs,odds,pars,mols,fUch,fOdd,fPar,fPol,fEtn,fMol,fNa
       <option value="p1" ${fUcPeriod==='p1'?'selected':''}>Прв учебен период (I – III)</option>
       <option value="p2" ${fUcPeriod==='p2'?'selected':''}>Втор учебен период (IV – VI)</option>
       <option value="p3" ${fUcPeriod==='p3'?'selected':''}>Трет учебен период (VII – IX)</option>
+    </select></div>
+    <div><div style="${labelStyle}">Статус на ученик</div>
+    <select id="af-status" onchange="renderAdmin()" style="${selStyle}">
+      <option value="__svi__">Сите</option>
+      <option value="aktivni" ${fStatus==='aktivni'?'selected':''}>Активни ученици</option>
+      <option value="ispishani" ${fStatus==='ispishani'?'selected':''}>Испишани ученици</option>
+      <option value="novozapishani" ${fStatus==='novozapishani'?'selected':''}>Новозапишани ученици</option>
+      <option value="pop" ${fStatus==='pop'?'selected':''}>Ученици со ПОП</option>
     </select></div>
   </div>`;
 }
