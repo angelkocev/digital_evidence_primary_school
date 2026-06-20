@@ -4680,12 +4680,18 @@ async function buildExcelReport(stsRaw,scopeLabel,oddForSubjects,parForSubjects,
       outline(ws,3,3,rr,8);outline(ws,3,9,rr,9);outline(ws,3,10,rr,11);outline(ws,3,12,rr,13);
     }
   }
-  // Бројчано (IV–IX)
+  // Бројчано (IV–IX) и Описно (I–III)
   const stsNumSubj=sts.filter(s=>realGr(s)>=4);
-  buildSubjSheet('Наставни предмети - Бројчано',stsNumSubj,subjListFor([4,5,6,7,8,9]),false);
-  // Описно (I–III)
   const stsOpisSubj=sts.filter(s=>realGr(s)>=1&&realGr(s)<=3);
-  buildSubjSheet('Наставни предмети - Описно',stsOpisSubj,subjListFor([1,2,3]),true);
+  const hasNum=stsNumSubj.length>0;
+  const hasOpis=stsOpisSubj.length>0;
+  // За цело училиште — секогаш двата; за паралелка/одделение — само соодветните (комбинираните имаат и двата)
+  if(isSchoolWide||hasNum||(!hasNum&&!hasOpis)){
+    buildSubjSheet('Наставни предмети - Бројчано',stsNumSubj,subjListFor([4,5,6,7,8,9]),false);
+  }
+  if(isSchoolWide||hasOpis){
+    buildSubjSheet('Наставни предмети - Описно',stsOpisSubj,subjListFor([1,2,3]),true);
+  }
 
   // Преземи
   const buf=await wb.xlsx.writeBuffer();
