@@ -3620,7 +3620,7 @@ function renderAdmin(){
   const supervisorBanner=isSupervisor()?'<div style="background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);border-radius:9px;padding:8px 14px;margin-bottom:14px;font-size:12px;color:#FBBF24;display:flex;align-items:center;gap:8px;">👁 Режим на преглед — само читање, без можност за уредување</div>':'';
 
   const allSts=Object.entries(allData).flatMap(([k,arr])=>arr.map(s=>{
-    const[uch,odd,par]=k.split('|');return{...s,_uch:uch,_odd:parseInt(odd),_par:par};
+    const[uch,odd,par]=k.split('|');const ro=(s.odd_ucenik&&s.odd_ucenik>0)?parseInt(s.odd_ucenik):parseInt(odd);return{...s,_uch:uch,_odd:parseInt(odd),_realOdd:ro,_par:par};
   }));
   if(!allSts.length){el.innerHTML='<div class="empty-s">Нема внесени ученици.</div>';return;}
 
@@ -3635,16 +3635,16 @@ function renderAdmin(){
 
   let sts=allSts;
   if(fUch!=='__svi__')sts=sts.filter(s=>s._uch===fUch);
-  if(fOdd!=='__svi__')sts=sts.filter(s=>s._odd===parseInt(fOdd));
+  if(fOdd!=='__svi__')sts=sts.filter(s=>s._realOdd===parseInt(fOdd));
   if(fPar!=='__svi__')sts=sts.filter(s=>s._par===fPar);
   if(fPol!=='__svi__')sts=sts.filter(s=>s.pol===fPol);
   if(fEtn!=='__svi__')sts=sts.filter(s=>(s.etnik||'Останато')===fEtn);
   if(fMol!=='__svi__')sts=sts.filter(s=>s.mol===fMol);
-  if(fNastava==='oddelenska')sts=sts.filter(s=>s._odd<=5);
-  if(fNastava==='predmetna')sts=sts.filter(s=>s._odd>=6);
-  if(fUcPeriod==='p1')sts=sts.filter(s=>s._odd<=3);
-  if(fUcPeriod==='p2')sts=sts.filter(s=>s._odd>=4&&s._odd<=6);
-  if(fUcPeriod==='p3')sts=sts.filter(s=>s._odd>=7);
+  if(fNastava==='oddelenska')sts=sts.filter(s=>s._realOdd<=5);
+  if(fNastava==='predmetna')sts=sts.filter(s=>s._realOdd>=6);
+  if(fUcPeriod==='p1')sts=sts.filter(s=>s._realOdd<=3);
+  if(fUcPeriod==='p2')sts=sts.filter(s=>s._realOdd>=4&&s._realOdd<=6);
+  if(fUcPeriod==='p3')sts=sts.filter(s=>s._realOdd>=7);
 
   // Испишаните не се бројат во активниот состав
   const allStsWithIsp=sts;
@@ -3694,8 +3694,8 @@ function renderAdmin(){
     return c.par+' '+(UCH_NAMES[c.uch]||c.uch);
   };
   const uchs=[...new Set(allSts.map(s=>s._uch))].sort();
-  const odds=[...new Set(allSts.filter(s=>fUch==='__svi__'||s._uch===fUch).map(s=>s._odd))].sort((a,b)=>a-b);
-  const pars=[...new Set(allSts.filter(s=>(fUch==='__svi__'||s._uch===fUch)&&(fOdd==='__svi__'||s._odd===parseInt(fOdd))).map(s=>s._par))].sort();
+  const odds=[...new Set(allSts.filter(s=>fUch==='__svi__'||s._uch===fUch).map(s=>s._realOdd))].sort((a,b)=>a-b);
+  const pars=[...new Set(allSts.filter(s=>(fUch==='__svi__'||s._uch===fUch)&&(fOdd==='__svi__'||s._realOdd===parseInt(fOdd))).map(s=>s._par))].sort();
   const mols=[...new Set(allSts.map(s=>s.mol||'').filter(Boolean))].sort();
 
   // Ако е филтрирана комбинирана паралелка — прикажи ист извештај како во „Извештај за паралелка"
@@ -3715,7 +3715,7 @@ function renderAdmin(){
   // Per-class data (uses only uch/odd/par filters)
   let stsByClass=allSts;
   if(fUch!=='__svi__')stsByClass=stsByClass.filter(s=>s._uch===fUch);
-  if(fOdd!=='__svi__')stsByClass=stsByClass.filter(s=>s._odd===parseInt(fOdd));
+  if(fOdd!=='__svi__')stsByClass=stsByClass.filter(s=>s._realOdd===parseInt(fOdd));
   if(fPar!=='__svi__')stsByClass=stsByClass.filter(s=>s._par===fPar);
   const byClass={};
   stsByClass.forEach(s=>{
@@ -3765,7 +3765,7 @@ function renderAdmin(){
   const gs=gStyle(cAvg);
   // Просечно ниво за ученици од I–III (описно оценување)
   const LVL_NUM={'I ниво':3,'II ниво':2,'III ниво':1};
-  const opisnoSts=sts.filter(s=>s._odd>=1&&s._odd<=3&&gradeStatus(s.gr||{})==="ok");
+  const opisnoSts=sts.filter(s=>s._realOdd>=1&&s._realOdd<=3&&gradeStatus(s.gr||{})==="ok");
   const opisnoNums=opisnoSts.map(s=>LVL_NUM[opisnoAvg(s.gr||{})]).filter(x=>x);
   const opisnoAvgNum=opisnoNums.length?opisnoNums.reduce((a,b)=>a+b,0)/opisnoNums.length:null;
   const opisnoAvgLbl=opisnoAvgNum!=null?opisnoLevelFromAvg(opisnoAvgNum):"—";
@@ -4809,7 +4809,7 @@ async function exportGradeExcel(){
 
 function exportAdminExcel(){
   let sts=Object.entries(allData).flatMap(([k,arr])=>arr.map(s=>{
-    const[uch,odd,par]=k.split('|');return{...s,_uch:uch,_odd:parseInt(odd),_par:par};
+    const[uch,odd,par]=k.split('|');const ro=(s.odd_ucenik&&s.odd_ucenik>0)?parseInt(s.odd_ucenik):parseInt(odd);return{...s,_uch:uch,_odd:parseInt(odd),_realOdd:ro,_par:par};
   }));
   const fUch=document.getElementById('af-uch')?.value||'__svi__';
   const fOdd=document.getElementById('af-odd')?.value||'__svi__';
@@ -4819,13 +4819,13 @@ function exportAdminExcel(){
   const fMol=document.getElementById('af-mol')?.value||'__svi__';
   const fNastava=document.getElementById('af-nastava')?.value||'__svi__';
   if(fUch!=='__svi__')sts=sts.filter(s=>s._uch===fUch);
-  if(fOdd!=='__svi__')sts=sts.filter(s=>s._odd===parseInt(fOdd));
+  if(fOdd!=='__svi__')sts=sts.filter(s=>s._realOdd===parseInt(fOdd));
   if(fPar!=='__svi__')sts=sts.filter(s=>s._par===fPar);
   if(fPol!=='__svi__')sts=sts.filter(s=>s.pol===fPol);
   if(fEtn!=='__svi__')sts=sts.filter(s=>(s.etnik||'Останато')===fEtn);
   if(fMol!=='__svi__')sts=sts.filter(s=>s.mol===fMol);
-  if(fNastava==='oddelenska')sts=sts.filter(s=>s._odd<=5);
-  if(fNastava==='predmetna')sts=sts.filter(s=>s._odd>=6);
+  if(fNastava==='oddelenska')sts=sts.filter(s=>s._realOdd<=5);
+  if(fNastava==='predmetna')sts=sts.filter(s=>s._realOdd>=6);
   // За предмети/реализација — само ако е филтрирана една паралелка
   let oddS=null,parS=null,uchS=null,label='училиште';
   if(fPar!=='__svi__'&&fUch!=='__svi__'){oddS=parseInt(fOdd)||(sts[0]?._odd);parS=fPar;uchS=fUch;label=fPar;buildExcelReport(sts,label,oddS,parS,uchS);return;}
@@ -4906,7 +4906,7 @@ function exportAdminCSV(level){
 
   // Земи ги истите филтрирани ученици како во renderAdmin
   let sts=Object.entries(allData).flatMap(([k,arr])=>arr.map(s=>{
-    const[uch,odd,par]=k.split('|');return{...s,_uch:uch,_odd:parseInt(odd),_par:par};
+    const[uch,odd,par]=k.split('|');const ro=(s.odd_ucenik&&s.odd_ucenik>0)?parseInt(s.odd_ucenik):parseInt(odd);return{...s,_uch:uch,_odd:parseInt(odd),_realOdd:ro,_par:par};
   }));
   const fUch=document.getElementById('af-uch')?.value||'__svi__';
   const fOdd=document.getElementById('af-odd')?.value||'__svi__';
@@ -4916,13 +4916,13 @@ function exportAdminCSV(level){
   const fMol=document.getElementById('af-mol')?.value||'__svi__';
   const fNastava=document.getElementById('af-nastava')?.value||'__svi__';
   if(fUch!=='__svi__')sts=sts.filter(s=>s._uch===fUch);
-  if(fOdd!=='__svi__')sts=sts.filter(s=>s._odd===parseInt(fOdd));
+  if(fOdd!=='__svi__')sts=sts.filter(s=>s._realOdd===parseInt(fOdd));
   if(fPar!=='__svi__')sts=sts.filter(s=>s._par===fPar);
   if(fPol!=='__svi__')sts=sts.filter(s=>s.pol===fPol);
   if(fEtn!=='__svi__')sts=sts.filter(s=>(s.etnik||'Останато')===fEtn);
   if(fMol!=='__svi__')sts=sts.filter(s=>s.mol===fMol);
-  if(fNastava==='oddelenska')sts=sts.filter(s=>s._odd<=5);
-  if(fNastava==='predmetna')sts=sts.filter(s=>s._odd>=6);
+  if(fNastava==='oddelenska')sts=sts.filter(s=>s._realOdd<=5);
+  if(fNastava==='predmetna')sts=sts.filter(s=>s._realOdd>=6);
   const active=sts.filter(s=>!s.ispishan);
 
   const UCH_FULL={C:'Централно училиште',K:'ПУ с. Криволак',P:'ПУ с. Пепелиште',V:'ПУ с. Војшанци',CR:'ПУ с. Црвени Брегови'};
