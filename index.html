@@ -4473,11 +4473,12 @@ async function buildExcelReport(stsRaw,scopeLabel,oddForSubjects,parForSubjects,
   function cellN(cell,center){cell.font={size:11,name:'Arial'};cell.alignment={horizontal:center?'center':'left',vertical:'middle'};cell.border=allBorder;}
 
   // ── ЛИСТ 0: Информации за извештајот ──
-  const UCH_FULL={C:'ООУ „Страшо Пинџур" — Централно училиште',K:'ПУ с. Криволак',P:'ПУ с. Пепелиште',V:'ПУ с. Војшанци',CR:'ПУ с. Црвени Брегови'};
+  const UCH_FULL={C:'Централно училиште',K:'ПУ с. Криволак',P:'ПУ с. Пепелиште',V:'ПУ с. Војшанци',CR:'ПУ с. Црвени Брегови'};
+  const UCH_SORT={C:0,K:1,P:2,V:3,CR:4};
   // Уникатни паралелки во опсегот (со училиште)
   const parSet=[];
   stsRaw.forEach(s=>{const uch=s._uch||s.uciliste||uchForReal;const par=s._par||s.paralelka||parForSubjects;if(uch&&par){const key=uch+'|'+par;if(!parSet.some(x=>x.key===key))parSet.push({key,uch,par});}});
-  parSet.sort((a,b)=>(a.uch+a.par).localeCompare(b.uch+b.par,'mk'));
+  parSet.sort((a,b)=>{const d=(UCH_SORT[a.uch]??99)-(UCH_SORT[b.uch]??99);return d!==0?d:a.par.localeCompare(b.par,'mk');});
   // Повлечи раководители од profiles (мапа: uch|par → full_name)
   let teacherMap={};
   try{
@@ -4485,7 +4486,7 @@ async function buildExcelReport(stsRaw,scopeLabel,oddForSubjects,parForSubjects,
     (profs||[]).forEach(p=>{if(p.paralelka&&p.uciliste)teacherMap[p.uciliste+'|'+p.paralelka]=p.full_name||'';});
   }catch(e){console.warn('profiles fetch:',e);}
   const wsInfo=wb.addWorksheet('Информации',{views:[{showGridLines:false}]});
-  wsInfo.columns=[{width:4},{width:32},{width:42},{width:38}];
+  wsInfo.columns=[{width:4},{width:32},{width:24},{width:38}];
   const now=new Date();
   const pad=n=>String(n).padStart(2,'0');
   const dtStr=pad(now.getDate())+'.'+pad(now.getMonth()+1)+'.'+now.getFullYear()+' '+pad(now.getHours())+':'+pad(now.getMinutes());
@@ -5083,10 +5084,12 @@ function buildAdminFilters(uchs,odds,pars,mols,fUch,fOdd,fPar,fPol,fEtn,fMol,fNa
     <div><div style="${labelStyle}">Одделение</div><select id="af-odd" onchange="renderAdmin()" style="${selStyle}"><option value="__svi__">Сите одделенија</option>${odds.map(o=>`<option value="${o}" ${fOdd==o?'selected':''}>${ODD_LBL[o]||o}</option>`).join('')}</select></div>
     <div><div style="${labelStyle}">Паралелка</div><select id="af-par" onchange="renderAdmin()" style="${selStyle}"><option value="__svi__">Сите паралелки</option>${pars.map(p=>`<option value="${p}" ${fPar===p?'selected':''}>${p}</option>`).join('')}</select></div>
   </div>
-  <div style="background:var(--bg2);border:1px solid var(--bdr);border-top:none;border-radius:0 0 10px 10px;padding:8px 14px 10px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:1.5rem;">
+  <div style="background:var(--bg2);border:1px solid var(--bdr);border-top:none;padding:8px 14px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
     <div><div style="${labelStyle}">Пол</div><select id="af-pol" onchange="renderAdmin()" style="${selStyle}"><option value="__svi__">Сите</option><option value="М" ${fPol==='М'?'selected':''}>Машки</option><option value="Ж" ${fPol==='Ж'?'selected':''}>Женски</option></select></div>
     <div><div style="${labelStyle}">Етничка припадност</div><select id="af-etn" onchange="renderAdmin()" style="${selStyle}"><option value="__svi__">Сите</option>${ETN_ORDER.map(e=>'<option value="'+e+'" '+(fEtn===e?'selected':'')+'>'+e+'</option>').join('')}</select></div>
     <div><div style="${labelStyle}">Место на живеење</div><select id="af-mol" onchange="renderAdmin()" style="${selStyle}"><option value="__svi__">Сите</option>${mols.map(m=>`<option value="${m}" ${fMol===m?'selected':''}>${m}</option>`).join('')}</select></div>
+  </div>
+  <div style="background:var(--bg2);border:1px solid var(--bdr);border-top:none;border-radius:0 0 10px 10px;padding:8px 14px 10px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:1.5rem;">
     <div><div style="${labelStyle}">Вид на настава</div>
     <select id="af-nastava" onchange="renderAdmin()" style="${selStyle}">
       <option value="__svi__">Сите одделенија</option>
