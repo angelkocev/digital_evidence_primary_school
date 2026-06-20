@@ -1472,6 +1472,34 @@ function onParChange(){curPar=document.getElementById('sel-par').value;renderL()
 
 /* ══ ОЦЕНКИ АНАЛИЗА ══ */
 const OPISNO_VALS=['I ниво','II ниво','III ниво'];
+// Канонски редослед на предмети (како во графиконот „Реализација по предмет")
+const SUBJ_ORDER_GLOBAL=[
+  'Македонски јазик','Математика','Англиски јазик','Природни науки','Општество',
+  'Историја и општество',
+  'Историја и општество - Модул: Историја',
+  'Историја и општество - Модул: Географија',
+  'Историја и општество - Модул: Граѓанско образование',
+  'Биологија','Хемија','Физика','Историја','Географија','Граѓанско образование',
+  'Техничко образование и информатика',
+  'Техничко образование и информатика - Модул: Техничко образование',
+  'Техничко образование и информатика - Модул: Информатика',
+  'Музичко образование','Ликовно образование','Физичко и здравствено образование',
+  'Француски јазик','Иновации'
+];
+const SUBJ_ORDER_LAST_GLOBAL=[
+  'Проекти од ликовната уметност','Проекти од музичката уметност',
+  'Истражување на родниот крај','Час на одделенска заедница'
+];
+function subjOrderIdx(dn){
+  let i=SUBJ_ORDER_GLOBAL.indexOf(dn);
+  if(i>=0)return i;
+  if(/изборен|изборни/i.test(dn))return SUBJ_ORDER_GLOBAL.length+0.5;
+  const li=SUBJ_ORDER_LAST_GLOBAL.indexOf(dn);
+  if(li>=0)return 1000+li;
+  return 500;
+}
+// Предмети што се ОПИСНО исклучени (се оценуваат бројчано дури и кај описни паралелки)
+const NUMERIC_ONLY_SUBJECTS=['Историја и општество','Техничко образование и информатика','Готвење','Заштита на животна средина'];
 // Посебни паралелки за ученици со ПОП што се оценуваат ОПИСНО иако се IV–IX одделение
 // Формат: 'УЧИЛИШТЕ|ОДДЕЛЕНИЕ|ПАРАЛЕЛКА' или само 'ПАРАЛЕЛКА' (важи за сите училишта)
 const SPECIAL_OPISNO_PARS=['IV-г'];
@@ -4653,7 +4681,13 @@ async function buildExcelReport(stsRaw,scopeLabel,oddForSubjects,parForSubjects,
     const tot=isOpisno?{i1:0,i2:0,i3:0,neoc:0,real:0,nereal:0,dop:0,dod:0}:{5:0,4:0,3:0,2:0,1:0,neoc:0,real:0,nereal:0,dop:0,dod:0};
     let rr=4;
     const OMAP={'I ниво':3,'II ниво':2,'III ниво':1};
-    subjList.forEach(subj=>{
+    // Сортирај по канонскиот редослед; за описен лист исклучи ги предметите што се само бројчани
+    let subjListSorted=subjList.slice();
+    if(isOpisno){
+      subjListSorted=subjListSorted.filter(s=>!NUMERIC_ONLY_SUBJECTS.includes(s));
+    }
+    subjListSorted.sort((a,b)=>{const d=subjOrderIdx(a)-subjOrderIdx(b);return d!==0?d:a.localeCompare(b,'mk');});
+    subjListSorted.forEach(subj=>{
       let rReal=0,rNereal=0,rDop=0,rDod=0;
       if(isSchoolWide){
         scopeKeys.forEach(k=>{const od=parseInt(k.split('|')[1]);const par=k.split('|')[2];const rdk=rdAll[k]||{};const isC=isCombined(par);const rk=isC?(subj+'@'+od):subj;const rdata=rdk[rk]||rdk[subj]||{};rReal+=rdata.real||0;rNereal+=rdata.nereal||0;rDop+=rdata.dop||0;rDod+=rdata.dod||0;});
