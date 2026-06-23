@@ -1730,8 +1730,18 @@ function refreshExtraOptions(){
 
 function getExtra(){
   const sel=document.getElementById('extra-sel');
-  if(!sel||!sel.value)return[];
-  return[sel.value];
+  if(sel&&sel.value)return[sel.value];
+  // Ако сите оценки се валидни (нема неоценети ниту 1) — автоматски „Успешна реализација"
+  const gr=getGr();
+  let effectiveOdd=curOdd;
+  if(isCombined(curPar)){const fodd=document.getElementById('fodd');const chosen=parseInt(fodd?.value)||0;if(chosen)effectiveOdd=chosen;}
+  const subjs=allSubjs(effectiveOdd,curPar).filter(subj=>!(subj==='Час на одделенска заедница'&&effectiveOdd>=8));
+  if(subjs.length>0){
+    const allFilled=subjs.every(subj=>{const v=gr[subj];return v!==undefined&&v!==null&&v!=='';});
+    const anyFailOrUnmarked=subjs.some(subj=>{const v=gr[subj];if(v==='/'||v===''||v===null||v===undefined)return true;if(Number(v)===1)return true;return false;});
+    if(allFilled&&!anyFailOrUnmarked)return['Успешна реализација'];
+  }
+  return[];
 }
 function loadExtra(extra=[]){
   const sel=document.getElementById('extra-sel');
@@ -1975,7 +1985,17 @@ function renderL(){
                 const v=gr[subj];
                 return v!==undefined&&v!==null&&v!=='';
               });
-              const hasExtra=(s.extra||[]).length>0;
+              // Белешка: експлицитно внесена ИЛИ автоматски „Успешна реализација" кога сите оценки се валидни (2–5 / I–III ниво, без неоценети и без 1)
+              let hasExtra=(s.extra||[]).length>0;
+              if(!hasExtra&&allGradesFilled){
+                const anyFailOrUnmarked=subjs.some(subj=>{
+                  const v=gr[subj];
+                  if(v==='/'||v===''||v===null||v===undefined)return true; // неоценет
+                  if(Number(v)===1)return true; // слаба оценка
+                  return false;
+                });
+                if(!anyFailOrUnmarked)hasExtra=true; // имплицитна „Успешна реализација"
+              }
               const allDone=allGradesFilled&&hasExtra;
               const icon=allDone?'✓':'✗';
               const col=allDone?'#34D399':'#F87171';
