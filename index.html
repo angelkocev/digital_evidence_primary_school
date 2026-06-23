@@ -1444,6 +1444,10 @@ function allSubjs(o,par){
   if(par!==undefined&&par!==null)list=list.filter(subj=>subjVisibleForPar(o,subj,par));
   return list;
 }
+// Предмети што бараат оценка (исклучувајќи го „Час на одделенска заедница" во VIII/IX каде нема оценка)
+function gradedSubjectsFor(odd,par){
+  return allSubjs(odd,par).filter(subj=>!(subj==='Час на одделенска заедница'&&odd>=8));
+}
 function getSts(){return allData[stKey()]||[];}
 function setSts(a){allData[stKey()]=a;}
 function getEN(){return electiveNames[stKey()]||{s1:'Слободен изборен предмет 1',s2:'Слободен изборен предмет 2',i9:'Изборен предмет'};}
@@ -1678,10 +1682,7 @@ function refreshExtraOptions(){
     const chosen=parseInt(fodd?.value)||0;
     if(chosen)effectiveOdd=chosen;
   }
-  let subjs=allSubjs(effectiveOdd,curPar).filter(subj=>{
-    if(subj==='Час на одделенска заедница'&&effectiveOdd>=8)return false;
-    return true;
-  });
+  let subjs=gradedSubjectsFor(effectiveOdd,curPar);
   const gr=getGr();
   let graded=0, unmarked=0, failing=0;
   subjs.forEach(subj=>{
@@ -1735,7 +1736,7 @@ function getExtra(){
   const gr=getGr();
   let effectiveOdd=curOdd;
   if(isCombined(curPar)){const fodd=document.getElementById('fodd');const chosen=parseInt(fodd?.value)||0;if(chosen)effectiveOdd=chosen;}
-  const subjs=allSubjs(effectiveOdd,curPar).filter(subj=>!(subj==='Час на одделенска заедница'&&effectiveOdd>=8));
+  const subjs=gradedSubjectsFor(effectiveOdd,curPar);
   if(subjs.length>0){
     const allFilled=subjs.every(subj=>{const v=gr[subj];return v!==undefined&&v!==null&&v!=='';});
     const anyFailOrUnmarked=subjs.some(subj=>{const v=gr[subj];if(v==='/'||v===''||v===null||v===undefined)return true;if(Number(v)===1)return true;return false;});
@@ -1980,7 +1981,7 @@ function renderL(){
               }
               // Зелено = сите полиња за оценки се пополнети (со 1-5 или /) И белешката е избрана
               const gr=s.gr||{};
-              const subjs=allSubjs(getStudentOdd(s));
+              const subjs=gradedSubjectsFor(getStudentOdd(s),curPar);
               const allGradesFilled=subjs.length>0&&subjs.every(subj=>{
                 const v=gr[subj];
                 return v!==undefined&&v!==null&&v!=='';
