@@ -907,7 +907,7 @@ async function loadFromSupabase(){
   if(e1){
     console.error('Load ucenici error:',e1);
     // Ако колоната odd_ucenik не постои, обиди се без неа
-    let q2=sb.from('ucenici').select('id,teacher_id,uciliste,oddelenie,paralelka,rn,ime,prz,pol,mol,etnik,op,nop,gr,merki,extra,pop,pop_note,pop_status,pop_program,ispishan,datum_ispishuvanje,prichina_ispishuvanje,novozapishan,datum_zapishuvanje,prethodno_uciliste,odd_ucenik,created_at,updated_at');
+    let q2=sb.from('ucenici').select('id,teacher_id,uciliste,oddelenie,paralelka,rn,ime,prz,pol,mol,etnik,op,nop,gr,merki,extra,pop,pop_note,pop_status,pop_program,ispishan,datum_ispishuvanje,prichina_ispishuvanje,completed_instruction,novozapishan,datum_zapishuvanje,prethodno_uciliste,odd_ucenik,created_at,updated_at');
     if(!isAdmin&&!isSup)q2=q2.eq('teacher_id',currentUser.id);
     const{data:sts2,error:e2}=await q2;
     if(e2){console.error('Fallback load error:',e2);return;}
@@ -915,7 +915,7 @@ async function loadFromSupabase(){
       sts2.forEach(s=>{
         const k=`${s.uciliste}|${keyOddFor(s.paralelka,s.oddelenie)}|${s.paralelka}`;
         if(!allData[k])allData[k]=[];
-        allData[k].push({rn:s.rn,ime:s.ime,prz:s.prz,pol:s.pol,mol:s.mol,etnik:s.etnik,op:s.op,nop:s.nop,gr:s.gr||{},merki:s.merki||[],extra:s.extra||[],oddelenie:s.oddelenie,paralelka:s.paralelka,uciliste:s.uciliste,odd_ucenik:s.odd_ucenik||0,ispishan:s.ispishan||false,datumIspishuvanje:s.datum_ispishuvanje||null,prichinaIspishuvanje:s.prichina_ispishuvanje||null,novozapishan:s.novozapishan||false,datum_zapishuvanje:s.datum_zapishuvanje||null,prethodno_uciliste:s.prethodno_uciliste||null,pop:(s.pop||(s.pop_status?(s.pop_program||'ПОП'):'')),popNote:s.pop_note||(s.pop_program||''),_teacher_id:s.teacher_id,_dbid:s.id});
+        allData[k].push({rn:s.rn,ime:s.ime,prz:s.prz,pol:s.pol,mol:s.mol,etnik:s.etnik,op:s.op,nop:s.nop,gr:s.gr||{},merki:s.merki||[],extra:s.extra||[],oddelenie:s.oddelenie,paralelka:s.paralelka,uciliste:s.uciliste,odd_ucenik:s.odd_ucenik||0,ispishan:s.ispishan||false,datumIspishuvanje:s.datum_ispishuvanje||null,prichinaIspishuvanje:s.prichina_ispishuvanje||null,completedInstruction:s.completed_instruction||false,novozapishan:s.novozapishan||false,datum_zapishuvanje:s.datum_zapishuvanje||null,prethodno_uciliste:s.prethodno_uciliste||null,pop:(s.pop||(s.pop_status?(s.pop_program||'ПОП'):'')),popNote:s.pop_note||(s.pop_program||''),_teacher_id:s.teacher_id,_dbid:s.id});
       });
       Object.keys(allData).forEach(k=>{allData[k].sort((a,b)=>(a.rn||999)-(b.rn||999));});
     }
@@ -934,6 +934,7 @@ async function loadFromSupabase(){
         ispishan:s.ispishan||false,
         datumIspishuvanje:s.datum_ispishuvanje||null,
         prichinaIspishuvanje:s.prichina_ispishuvanje||null,
+        completedInstruction:s.completed_instruction||false,
         novozapishan:s.novozapishan||false,
         datum_zapishuvanje:s.datum_zapishuvanje||null,
         prethodno_uciliste:s.prethodno_uciliste||null,
@@ -1002,6 +1003,7 @@ async function persistStudent(s,k){
     ispishan:s.ispishan||false,
     datum_ispishuvanje:s.datumIspishuvanje||null,
     prichina_ispishuvanje:s.prichinaIspishuvanje||null,
+    completed_instruction:s.completedInstruction||false,
     pop:s.pop||'',
     pop_note:s.popNote||'',
     school_year:activeSchoolYear,
@@ -1604,6 +1606,7 @@ function openModal(idx){
   document.getElementById('fispishan').checked=s?!!s.ispishan:false;
   document.getElementById('fispishan-datum').value=s&&s.datumIspishuvanje?s.datumIspishuvanje:'';
   document.getElementById('fispishan-prichina').value=s&&s.prichinaIspishuvanje?s.prichinaIspishuvanje:'';
+  window._editingCompletedInstruction=s?!!s.completedInstruction:false;
   toggleIspishan();
   document.getElementById('fnp').value=s?(s.nop||0):0;
   document.getElementById('atot').textContent=s?((s.op||0)+(s.nop||0)):0;
@@ -1854,11 +1857,24 @@ function toggleIspishan(){
   const on=document.getElementById('fispishan').checked;
   const det=document.getElementById('ispishan-detali');
   if(det)det.style.display=on?'flex':'none';
-  // За испишани ученици — сокриј ги оценките и дополнителните белешки
+  // Испишан ПО завршување на редовната настава → оценките се валидни, не ги криј
+  const completedInstr=on&&window._editingCompletedInstruction;
+  const hideGrades=on&&!completedInstr;
   const gradesSec=document.getElementById('grades-section');
   const extraSec=document.getElementById('extra-section');
-  if(gradesSec)gradesSec.style.display=on?'none':'block';
-  if(extraSec)extraSec.style.display=on?'none':'block';
+  if(gradesSec)gradesSec.style.display=hideGrades?'none':'block';
+  if(extraSec)extraSec.style.display=hideGrades?'none':'block';
+  // Ознака за ученик испишан по завршување на настава
+  let note=document.getElementById('completed-instr-note');
+  if(completedInstr){
+    if(!note&&det){
+      note=document.createElement('div');
+      note.id='completed-instr-note';
+      note.style.cssText='flex:1 1 100%;font-size:11px;font-weight:600;color:#22c55e;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);border-radius:6px;padding:7px 10px;margin-top:4px;';
+      note.textContent='✓ Испишан по завршување на редовната настава — оценките се валидни и достапни.';
+      det.appendChild(note);
+    }
+  } else if(note){note.remove();}
 }
 function getGr(){
   const g={};
@@ -1893,8 +1909,9 @@ async function saveSt(){
   // Наставниците мора да внесат оценки.
   // Администраторот може да уредува само ПОП без внесување оценки.
   const isIspishan=document.getElementById('fispishan').checked;
-  // Наставниците мора да внесат оценки — освен за испишани ученици
-  if(!isAdmin&&!isIspishan){
+  const completedInstr=isIspishan&&window._editingCompletedInstruction;
+  // Наставниците мора да внесат оценки — освен за испишани ученици (но НЕ и за оние што завршиле настава)
+  if(!isAdmin&&!isIspishan||(!isAdmin&&completedInstr)){
     const emptyGrades=document.querySelectorAll('#sgw .gr-sel');
     for(const sel of emptyGrades){
       if(sel.value===''){
@@ -1921,6 +1938,7 @@ async function saveSt(){
     ispishan:isIspishan,
     datumIspishuvanje:isIspishan?(document.getElementById('fispishan-datum').value||null):null,
     prichinaIspishuvanje:isIspishan?(document.getElementById('fispishan-prichina').value||null):null,
+    completedInstruction:isIspishan?(window._editingCompletedInstruction||false):false,
     gr:isAdmin&&existingSt?(Object.values(getGr()).every(v=>v==='')?existingSt.gr:getGr()):getGr(),
     merki:getMerki(),
     extra:isAdmin&&existingSt?(getExtra().length?getExtra():existingSt.extra||[]):getExtra(),
@@ -1968,14 +1986,15 @@ function renderL(){
         <div class="sc-rn">${s.rn!=null?s.rn:'—'}</div>
         <div class="ava" style="background:${ac.bg};color:${ac.c};">${(s.ime[0]||'')+(s.prz[0]||'')}</div>
         <div class="sc-info">
-          <div class="sc-name">${s.ime} ${s.prz} ${currentUser?.is_admin?`<span class="tag ${s.pol==='М'?'mt':'ft'}" style="margin-left:5px;">${s.pol}</span>`:''}${s.ispishan?'<span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:99px;background:rgba(248,113,113,.18);color:#F87171;margin-left:4px;">ИСПИШАН</span>':''}${s.odd_ucenik?'<span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:99px;background:rgba(251,191,36,.2);color:var(--amber);margin-left:4px;">'+(ODD_LBL[s.odd_ucenik]||s.odd_ucenik+' одд.')+'</span>':''}</div>
+          <div class="sc-name">${s.ime} ${s.prz} ${currentUser?.is_admin?`<span class="tag ${s.pol==='М'?'mt':'ft'}" style="margin-left:5px;">${s.pol}</span>`:''}${s.ispishan?(s.completedInstruction?'<span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:99px;background:rgba(34,197,94,.18);color:#22c55e;margin-left:4px;" title="Испишан по завршување на редовната настава">ИСПИШАН (завршил настава)</span>':'<span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:99px;background:rgba(248,113,113,.18);color:#F87171;margin-left:4px;">ИСПИШАН</span>'):''}${s.odd_ucenik?'<span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:99px;background:rgba(251,191,36,.2);color:var(--amber);margin-left:4px;">'+(ODD_LBL[s.odd_ucenik]||s.odd_ucenik+' одд.')+'</span>':''}</div>
           ${currentUser?.is_admin?`<div class="sc-meta">${s.etnik||'—'}${s.mol?' · '+s.mol:''} </div>`:''}
         </div>
         <div class="sc-right">
           <div class="sc-acts">
             ${(()=>{
               // За испишани ученици — статусот е „внесено" (немаат оценки/белешка)
-              if(s.ispishan){
+              // ОСВЕН за оние што завршиле редовна настава (имаат валидни оценки → нормална логика)
+              if(s.ispishan&&!s.completedInstruction){
                 const col='#94A3B8';
                 return'<span title="Испишан ученик" style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:'+col+'22;color:'+col+';border:1px solid '+col+'55;font-size:13px;font-weight:700;flex-shrink:0;">↪</span>';
               }
