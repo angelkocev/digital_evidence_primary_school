@@ -2491,7 +2491,7 @@ function renderR(){
   presentEtn.forEach(e=>{if(!etnOptsR.includes(e))etnOptsR.push(e);});
   const molOptsR=[...new Set(sts.map(s=>s.mol).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'mk'));
   const periodLabel=PERIOD_LABELS[activePeriod]||activePeriod;
-  const activeSts=sts.filter(s=>!s.ispishan);
+  const activeSts=sts.filter(s=>!s.ispishan||s.completedInstruction);
   const n=activeSts.length;
   const males=activeSts.filter(s=>s.pol==='М').length;
   const totOp=sts.reduce((a,s)=>a+(s.op||0),0);
@@ -2769,7 +2769,7 @@ function renderRepBody(sts,oddOverride,targetElId){
       const lowestNumeric=Math.min(...grades.filter(g=>g>3));
 
       // ── Заеднички дел за СИТЕ ученици во паралелката ──
-      const allActive=sts.filter(s=>!s.ispishan);
+      const allActive=sts.filter(s=>!s.ispishan||s.completedInstruction);
       const allN=allActive.length;
       const allM=allActive.filter(s=>s.pol==='М').length;
       const allF=allN-allM;
@@ -2872,7 +2872,7 @@ function renderRepBody(sts,oddOverride,targetElId){
 
   // Испишаните ученици не се бројат во активниот состав на паралелката
   const allStsWithIsp=sts;
-  sts=sts.filter(s=>!s.ispishan);
+  sts=sts.filter(s=>!s.ispishan||s.completedInstruction);
   const n=sts.length;
   if(!n&&!allStsWithIsp.some(s=>s.ispishan)){el.innerHTML='<div class="empty-s">Нема ученици за прикажаните филтри.</div>';return;}
 
@@ -3405,7 +3405,7 @@ function updateRaspredel(){
 }
 
 function buildUspehChart(stsList,forceMode){
-  stsList=stsList.filter(s=>!s.ispishan);
+  stsList=stsList.filter(s=>!s.ispishan||s.completedInstruction);
   const useOpisno=forceMode?(forceMode==='opisno'):isOpisnoPar(curOdd,curPar,curUch);
   const cats=(useOpisno?[
     {lbl:'I ниво',  c:'#34D399',f:'rgba(52,211,153,.15)', fn:s=>gradeStatus(s.gr||{})==='ok'&&opisnoAvg(s.gr||{})==='I ниво'},
@@ -3445,7 +3445,7 @@ function buildUspehChart(stsList,forceMode){
 
 
 function buildOpisnoUspehChart(stsList){
-  stsList=stsList.filter(s=>!s.ispishan);
+  stsList=stsList.filter(s=>!s.ispishan||s.completedInstruction);
   const cats=[
     {lbl:'I ниво',  c:'#34D399',f:'rgba(52,211,153,.15)', fn:s=>gradeStatus(s.gr||{})==='ok'&&opisnoAvg(s.gr||{})==='I ниво'},
     {lbl:'II ниво', c:'#60A5FA',f:'rgba(96,165,250,.15)', fn:s=>gradeStatus(s.gr||{})==='ok'&&opisnoAvg(s.gr||{})==='II ниво'},
@@ -3720,8 +3720,8 @@ function renderAdmin(){
 
   // Испишаните не се бројат во активниот состав
   const allStsWithIsp=sts;
-  if(fStatus==='ispishani')sts=sts.filter(s=>s.ispishan);
-  else sts=sts.filter(s=>!s.ispishan);
+  if(fStatus==='ispishani')sts=sts.filter(s=>s.ispishan&&!s.completedInstruction);
+  else sts=sts.filter(s=>!s.ispishan||s.completedInstruction);
   const n=sts.length;
 
   const UCH_NAMES={C:'Централно училиште',K:'ПУ с. Криволак',P:'ПУ с. Пепелиште',V:'ПУ с. Војшанци',CR:'ПУ с. Црвени Брегови'};
@@ -4495,7 +4495,7 @@ const ETN_XLSX=['Македонци','Роми','Турци','Албанци','�
 // ═══ EXCEL ИЗВЕШТАЈ (ExcelJS — со форматирање) ═══
 async function buildExcelReport(stsRaw,scopeLabel,oddForSubjects,parForSubjects,uchForReal,scopeKeys,returnBuffer){
   if(typeof ExcelJS==='undefined'){alert('Excel библиотеката сè уште се вчитува. Обидете се повторно за момент.');return;}
-  const sts=stsRaw.filter(s=>!s.ispishan);
+  const sts=stsRaw.filter(s=>!s.ispishan||s.completedInstruction);
   const allWithIsp=stsRaw;
   const YEAR=activeSchoolYear||'2025/2026';
   const GREEN='FF99FFCC',LGREEN='FFCCFFCC';
@@ -5035,7 +5035,7 @@ function exportAdminCSV(level){
   if(fMol!=='__svi__')sts=sts.filter(s=>s.mol===fMol);
   if(fNastava==='oddelenska')sts=sts.filter(s=>s._realOdd<=5);
   if(fNastava==='predmetna')sts=sts.filter(s=>s._realOdd>=6);
-  const active=sts.filter(s=>!s.ispishan);
+  const active=sts.filter(s=>!s.ispishan||s.completedInstruction);
 
   const UCH_FULL={C:'Централно училиште',K:'ПУ с. Криволак',P:'ПУ с. Пепелиште',V:'ПУ с. Војшанци',CR:'ПУ с. Црвени Брегови'};
   // Групирање
