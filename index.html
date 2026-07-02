@@ -2666,6 +2666,8 @@ function renderR(){
     <div style="display:flex;gap:8px;">
       <button class="btn btn-sm" onclick="exportReportExcel()">⬇ Excel (паралелка)</button>
       <button class="btn btn-sm" onclick="exportGradeExcel()">⬇ Excel (цело одделение)</button>
+      <button class="btn btn-sm" onclick="exportReportWord()">⬇ Word (паралелка)</button>
+      <button class="btn btn-sm" onclick="exportGradeWord()">⬇ Word (цело одделение)</button>
       <button class="btn btn-sm" onclick="doPrint()">Печати / PDF</button>
     </div>
   </div>
@@ -4852,6 +4854,243 @@ async function buildExcelReport(stsRaw,scopeLabel,oddForSubjects,parForSubjects,
   document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
 }
 
+// ═══════════════════════════════════════════════════════════
+// WORD ИЗВЕШТАЈ (landscape .doc) — по примерок на „Статистички преглед"
+// Работи за произволен опфат: паралелка / одделение / училиште / цело училиште
+// ═══════════════════════════════════════════════════════════
+const WORD_ETN_ORDER=['Македонец','Ром','Турчин','Албанец','Србин'];
+const WORD_ETN_LABELS={'Македонец':'Македонци','Ром':'Роми','Турчин':'Турци','Албанец':'Албанци','Србин':'Срби'};
+const WORD_MERKI=['Укор','Усна опомена','Писмена опомена','Добро поведение','Незадоволително поведение'];
+
+async function buildWordReport(stsRaw,scopeLabel,oddForSubjects,parForSubjects,uchForReal,scopeKeys,oddRangeLabel,returnBlob){
+  const sts=(stsRaw||[]).filter(s=>!s.ispishan||s.completedInstruction);
+  const allWithIsp=stsRaw||[];
+  const YEAR=activeSchoolYear||'2025/2026';
+  const UCH_FULL={C:'Централно училиште',K:'ПУ с. Криволак',P:'ПУ с. Пепелиште',V:'ПУ с. Војшанци',CR:'ПУ с. Црвени Брегови'};
+
+  // ── Одделенски раководител (од profiles, по паралелка/училиште) ──
+  let teacherMap={};
+  try{
+    const{data:profs}=await sb.from('profiles').select('full_name,uciliste,paralelka');
+    (profs||[]).forEach(p=>{if(p.paralelka&&p.uciliste)teacherMap[p.uciliste+'|'+p.paralelka]=p.full_name||'';});
+  }catch(e){console.warn('profiles fetch:',e);}
+  let rakovoditelLbl='—';
+  if(uchForReal&&parForSubjects){
+    rakovoditelLbl=teacherMap[uchForReal+'|'+parForSubjects]||'—';
+  } else {
+    // За опфат со повеќе паралелки — прикажи ги сите (паралелка: име)
+    const parSet=[];
+    stsRaw.forEach(s=>{const uch=s._uch||s.uciliste||uchForReal;const par=s._par||s.paralelka;if(uch&&par){const key=uch+'|'+par;if(!parSet.some(x=>x.key===key))parSet.push({key,uch,par});}});
+    if(parSet.length===1){
+      rakovoditelLbl=teacherMap[parSet[0].key]||'—';
+    } else if(parSet.length>1){
+      rakovoditelLbl=parSet.map(p=>p.par+': '+(teacherMap[p.key]||'—')).join('; ');
+    }
+  }
+
+  // ── Табела 1: Успех по етничка припадност ──
+  function etnKey(s){
+    const e=s.etnik||'';
+    return WORD_ETN_ORDER.includes(e)?e:'Останато';
+  }
+  const gradeCategories=[
+    {key:'5',label:'Одличен',test:(avg)=>avg!==null&&avg>=4.5},
+    {key:'4',label:'Многу добар',test:(avg)=>avg!==null&&avg>=3.5&&avg<4.5},
+    {key:'3',label:'Добар',test:(avg)=>avg!==null&&avg>=2.5&&avg<3.5},
+    {key:'2',label:'Доволен',test:(avg)=>avg!==null&&avg>=1&&avg<2.5}
+  ];
+  const etnCols=[...WORD_ETN_ORDER,'Останато'];
+  // Иницијализирај матрица: ред(успех) x колона(етникум) x (м,ж,се)
+  const successRows=['Одличен','Многу добар','Добар','Доволен','Со слаби оценки','Неоценети'];
+  const matrix={};
+  successRows.forEach(r=>{matrix[r]={};etnCols.forEach(e=>{matrix[r][e]={m:0,z:0};});});
+  sts.forEach(s=>{
+    const e=etnKey(s);
+    const pol=s.pol==='М'?'m':'z';
+    const status=gradeStatus(s.gr||{});
+    let rowKey;
+    if(status==='no-data'){rowKey='Неоценети';}
+    else if(status==='slab'){rowKey='Со слаби оценки';}
+    else if(status==='delumno'){rowKey='Неоценети';}
+    else{
+      const avg=computeAvg(s.gr);
+      const cat=gradeCategories.find(c=>c.test(avg));
+      rowKey=cat?cat.label:'Доволен';
+    }
+    if(!matrix[rowKey])matrix[rowKey]={};
+    if(!matrix[rowKey][e])matrix[rowKey][e]={m:0,z:0};
+    matrix[rowKey][e][pol]++;
+  });
+  const totalsByEtn={};
+  etnCols.forEach(e=>{
+    let m=0,z=0;
+    successRows.forEach(r=>{m+=matrix[r][e]?.m||0;z+=matrix[r][e]?.z||0;});
+    totalsByEtn[e]={m,z,se:m+z};
+  });
+  const grandM=Object.values(totalsByEtn).reduce((a,v)=>a+v.m,0);
+  const grandZ=Object.values(totalsByEtn).reduce((a,v)=>a+v.z,0);
+
+  const ispCount=allWithIsp.filter(s=>s.ispishan&&!s.completedInstruction).length;
+  const novoCount=allWithIsp.filter(s=>s.novozapishan).length;
+  const totOp=sts.reduce((a,s)=>a+(s.op||0),0);
+  const totNop=sts.reduce((a,s)=>a+(s.nop||0),0);
+
+  // Изречени педагошки мерки — сумирано по тип, разбиено по етникум/пол
+  const merkiMatrix={};
+  WORD_MERKI.forEach(m=>{merkiMatrix[m]={};etnCols.forEach(e=>{merkiMatrix[m][e]={m:0,z:0};});});
+  sts.forEach(s=>{
+    const e=etnKey(s);const pol=s.pol==='М'?'m':'z';
+    (s.merki||[]).forEach(mk=>{if(merkiMatrix[mk]){if(!merkiMatrix[mk][e])merkiMatrix[mk][e]={m:0,z:0};merkiMatrix[mk][e][pol]++;}});
+  });
+
+  const okStsAll=sts.filter(s=>gradeStatus(s.gr||{})==='ok');
+  const avgList=okStsAll.map(s=>computeAvg(s.gr)).filter(x=>x!==null);
+  const cAvg=avgList.length?(avgList.reduce((a,b)=>a+b,0)/avgList.length):null;
+
+  const cell=(v)=>'<td style="border:1px solid #000;padding:3px 5px;text-align:center;font-size:9px;">'+(v||v===0?v:'')+'</td>';
+  const cellB=(v)=>'<td style="border:1px solid #000;padding:3px 5px;text-align:center;font-size:9px;font-weight:bold;">'+(v||v===0?v:'')+'</td>';
+
+  let t1='<table style="border-collapse:collapse;width:100%;font-family:Arial;">';
+  t1+='<tr>'
+    +'<td rowspan="2" colspan="1" style="border:1px solid #000;padding:4px;text-align:center;font-weight:bold;font-size:9px;width:170px;">УСПЕХ<br>на ученици по<br>етн. Припадност</td>';
+  etnCols.forEach(e=>{t1+='<td colspan="3" style="border:1px solid #000;padding:4px;text-align:center;font-weight:bold;font-size:9px;">'+(WORD_ETN_LABELS[e]||e)+'</td>';});
+  t1+='<td colspan="3" style="border:1px solid #000;padding:4px;text-align:center;font-weight:bold;font-size:9px;">Вкупно</td></tr>';
+  t1+='<tr>';
+  etnCols.forEach(()=>{t1+='<td style="border:1px solid #000;padding:2px;text-align:center;font-weight:bold;font-size:9px;">м</td><td style="border:1px solid #000;padding:2px;text-align:center;font-weight:bold;font-size:9px;">ж</td><td style="border:1px solid #000;padding:2px;text-align:center;font-weight:bold;font-size:9px;">се</td>';});
+  t1+='<td style="border:1px solid #000;padding:2px;text-align:center;font-weight:bold;font-size:9px;">м</td><td style="border:1px solid #000;padding:2px;text-align:center;font-weight:bold;font-size:9px;">ж</td><td style="border:1px solid #000;padding:2px;text-align:center;font-weight:bold;font-size:9px;">се</td></tr>';
+  successRows.forEach(r=>{
+    t1+='<tr>'+cell(r);
+    let rM=0,rZ=0;
+    etnCols.forEach(e=>{
+      const v=matrix[r][e]||{m:0,z:0};
+      rM+=v.m;rZ+=v.z;
+      t1+=cell(v.m||'')+cell(v.z||'')+cellB((v.m+v.z)||'');
+    });
+    t1+=cell(rM||'')+cell(rZ||'')+cellB((rM+rZ)||'');
+    t1+='</tr>';
+  });
+  t1+='<tr>'+cellB('ВКУПНО');
+  etnCols.forEach(e=>{const v=totalsByEtn[e];t1+=cellB(v.m||'')+cellB(v.z||'')+cellB(v.se||'');});
+  t1+=cellB(grandM||'')+cellB(grandZ||'')+cellB((grandM+grandZ)||'');
+  t1+='</tr>';
+  t1+='<tr><td colspan="'+(1+etnCols.length*3+3)+'" style="border:none;height:6px;"></td></tr>';
+  t1+='<tr>'+cell('Испишани ученици')+'<td colspan="'+(etnCols.length*3+3-1)+'" style="border:1px solid #000;padding:3px;text-align:center;font-size:9px;">'+(ispCount||0)+'</td></tr>';
+  t1+='<tr>'+cell('Новозапишани ученици')+'<td colspan="'+(etnCols.length*3+3-1)+'" style="border:1px solid #000;padding:3px;text-align:center;font-size:9px;">'+(novoCount||0)+'</td></tr>';
+  t1+='<tr><td colspan="'+(1+etnCols.length*3+3)+'" style="border:none;height:6px;"></td></tr>';
+  const izostRows=[['Изостаноци','Оправдани',totOp],['Изостаноци','Неоправдани',totNop],['Изостаноци','Вкупно',totOp+totNop]];
+  izostRows.forEach(([grp,lbl,val],i)=>{
+    t1+='<tr>'+(i===0?'<td rowspan="3" style="border:1px solid #000;padding:3px;text-align:center;font-size:9px;">'+grp+'</td>':'')+cell(lbl)+'<td colspan="'+(etnCols.length*3+3-2)+'" style="border:1px solid #000;padding:3px;text-align:center;font-size:9px;">'+val+'</td></tr>';
+  });
+  WORD_MERKI.forEach((mk,i)=>{
+    const tot=etnCols.reduce((a,e)=>a+(merkiMatrix[mk][e]?.m||0)+(merkiMatrix[mk][e]?.z||0),0);
+    t1+='<tr>'+(i===0?'<td rowspan="'+WORD_MERKI.length+'" style="border:1px solid #000;padding:3px;text-align:center;font-size:9px;">Изречени<br>педагошки<br>мерки</td>':'')+cell(mk)+'<td colspan="'+(etnCols.length*3+3-2)+'" style="border:1px solid #000;padding:3px;text-align:center;font-size:9px;">'+(tot||'')+'</td></tr>';
+  });
+  t1+='</table>';
+
+  // ── Табела 2: Предмети ──
+  const odd=oddForSubjects;
+  const subjs=odd?allSubjs(odd,parForSubjects):[];
+  const fond=odd?(FOND[odd]||{}):{};
+  const en=getEN();
+  function dName(s){
+    if(s==='Слободен изборен предмет 1')return en.s1;
+    if(s==='Слободен изборен предмет 2')return en.s2;
+    if(s==='Изборен предмет')return en.i9||'Изборен предмет';
+    return (s.includes(' - ')&&!/Модул/i.test(s))?s.split(' - ')[1]:s;
+  }
+  let rd={};
+  if(uchForReal&&odd&&parForSubjects){
+    rd=getRealData()[uchForReal+'|'+odd+'|'+parForSubjects]||{};
+  } else if(scopeKeys&&scopeKeys.length){
+    // Просек на часовите (реализирани/нереализирани/дополнителна/додатна) низ сите паралелки во одделението
+    // (фондот е ист за сите паралелки од исто одделение, па просек е појасен показател отколку сума)
+    const allRd=getRealData();
+    const sums={};const counts={};
+    scopeKeys.forEach(k=>{
+      const perPar=allRd[k]||{};
+      Object.entries(perPar).forEach(([subj,vals])=>{
+        if(!sums[subj])sums[subj]={real:0,nereal:0,dop:0,dod:0,aktiv:0};
+        if(!counts[subj])counts[subj]=0;
+        sums[subj].real+=vals.real||0;sums[subj].nereal+=vals.nereal||0;
+        sums[subj].dop+=vals.dop||0;sums[subj].dod+=vals.dod||0;sums[subj].aktiv+=vals.aktiv||0;
+        counts[subj]++;
+      });
+    });
+    Object.entries(sums).forEach(([subj,v])=>{
+      const c=counts[subj]||1;
+      rd[subj]={real:Math.round(v.real/c),nereal:Math.round(v.nereal/c),dop:Math.round(v.dop/c),dod:Math.round(v.dod/c),aktiv:Math.round(v.aktiv/c)};
+    });
+  }
+  let t2='';
+  if(subjs.length){
+    t2='<table style="border-collapse:collapse;width:100%;font-family:Arial;margin-top:14px;">';
+    t2+='<tr>'
+      +'<td rowspan="2" style="border:1px solid #000;padding:4px;font-weight:bold;text-align:center;font-size:9px;width:150px;">ПРЕДМЕТИ</td>'
+      +'<td colspan="5" style="border:1px solid #000;padding:2px;font-weight:bold;text-align:center;font-size:9px;">Оценки</td>'
+      +'<td rowspan="2" style="border:1px solid #000;padding:2px;font-weight:bold;text-align:center;font-size:8px;width:44px;">Неоценети</td>'
+      +'<td rowspan="2" style="border:1px solid #000;padding:2px;font-weight:bold;text-align:center;font-size:8px;width:44px;">Среден<br>успех</td>'
+      +'<td rowspan="2" style="border:1px solid #000;padding:2px;font-weight:bold;text-align:center;font-size:8px;width:50px;">Реализирани<br>часови</td>'
+      +'<td rowspan="2" style="border:1px solid #000;padding:2px;font-weight:bold;text-align:center;font-size:8px;width:50px;">Нереализирани<br>часови</td>'
+      +'<td rowspan="2" style="border:1px solid #000;padding:2px;font-weight:bold;text-align:center;font-size:8px;width:44px;">Дополнителна</td>'
+      +'<td rowspan="2" style="border:1px solid #000;padding:2px;font-weight:bold;text-align:center;font-size:8px;width:44px;">Додатна</td>'
+      +'</tr><tr>'
+      +'<td style="border:1px solid #000;padding:2px;font-weight:bold;text-align:center;font-size:9px;width:26px;">5</td>'
+      +'<td style="border:1px solid #000;padding:2px;font-weight:bold;text-align:center;font-size:9px;width:26px;">4</td>'
+      +'<td style="border:1px solid #000;padding:2px;font-weight:bold;text-align:center;font-size:9px;width:26px;">3</td>'
+      +'<td style="border:1px solid #000;padding:2px;font-weight:bold;text-align:center;font-size:9px;width:26px;">2</td>'
+      +'<td style="border:1px solid #000;padding:2px;font-weight:bold;text-align:center;font-size:9px;width:26px;">1</td>'
+      +'</tr>';
+    subjs.filter(s=>(fond[s]||0)>0).forEach(s=>{
+      const dist={'5':0,'4':0,'3':0,'2':0,'1':0};let neoc=0,sum=0,cnt=0;
+      sts.forEach(st=>{
+        const v=st.gr?.[s];
+        if(v===undefined||v===null||v===''){neoc++;return;}
+        if(v==='/'){neoc++;return;}
+        const numMap={'I ниво':5,'II ниво':4,'III ниво':3};
+        const n=numMap[v]!==undefined?numMap[v]:Number(v);
+        if(!isNaN(n)&&dist[String(n)]!==undefined){dist[String(n)]++;sum+=n;cnt++;}
+      });
+      const avg=cnt?(sum/cnt).toFixed(2):'';
+      const real=rd[s]?.real||'';const nereal=rd[s]?.nereal||'';const dop=rd[s]?.dop||'';const dod=rd[s]?.dod||'';
+      t2+='<tr>'
+        +'<td style="border:1px solid #000;padding:3px;text-align:left;font-size:9px;">'+dName(s)+'</td>'
+        +cell(dist['5']||'')+cell(dist['4']||'')+cell(dist['3']||'')+cell(dist['2']||'')+cell(dist['1']||'')
+        +cell(neoc||'')+cell(avg)+cell(real)+cell(nereal)+cell(dop)+cell(dod)
+        +'</tr>';
+    });
+    t2+='</table>';
+  }
+
+  // ── Табела 3: Одделенски раководител ──
+  let t3='<table style="border-collapse:collapse;width:60%;font-family:Arial;margin-top:16px;">'
+    +'<tr><td style="border:1px solid #000;padding:6px 8px;font-weight:bold;font-size:10px;width:220px;">Одделенски раководител</td>'
+    +'<td style="border:1px solid #000;padding:6px 8px;font-size:10px;">'+escapeHtmlEv(rakovoditelLbl)+'</td></tr>'
+    +'</table>';
+
+  const ROMAN_W=['','I','II','III','IV','V','VI','VII','VIII','IX'];
+  const oddLabelTxt=oddRangeLabel||(oddForSubjects?(ROMAN_W[oddForSubjects]||''):'');
+  const scopeIsWholeGrade=!parForSubjects&&oddForSubjects;
+  const title=scopeIsWholeGrade
+    ?('ИЗВЕШТАЈ НА '+(oddLabelTxt||'')+' ОДДЕЛЕНИЕ ЗА КРАЈОТ ОД УЧЕБНАТА '+YEAR+' ГОДИНА')
+    :('ИЗВЕШТАЈ НА '+(scopeLabel||'')+' ПАРАЛЕЛКА ЗА КРАЈОТ ОД УЧЕБНАТА '+YEAR+' ГОДИНА'+(oddLabelTxt?' ('+oddLabelTxt+' одделение)':''));
+
+  const html='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word">'
+    +'<head><meta charset="utf-8"><title>Извештај</title>'
+    +'<style>@page Section1{size:841.9pt 595.3pt;mso-page-orientation:landscape;margin:1cm 1cm;}div.Section1{page:Section1;}body{font-family:Arial;}h3{text-align:center;margin:2px 0;}</style>'
+    +'</head><body><div class="Section1">'
+    +'<h3>ООУ„Страшо Пинџур"-Неготино</h3>'
+    +'<h3 style="font-size:12px;">'+title+'</h3>'
+    +t1+t2+t3
+    +'<p style="margin-top:18px;font-size:10px;">Бр. на наставни денови: ____________ &nbsp;&nbsp;&nbsp; Среден успех на паралелка: <strong>'+(cAvg!==null?cAvg.toFixed(2):'____________')+'</strong></p>'
+    +'</div></body></html>';
+
+  const blob=new Blob(['\ufeff'+html],{type:'application/msword'});
+  if(returnBlob)return blob;
+  const url=URL.createObjectURL(blob);const a=document.createElement('a');
+  a.href=url;a.download='Izveshtaj-Word-'+(scopeLabel||'paralelka').replace(/[^\wА-Ша-ш-]/g,'_')+'-'+new Date().toISOString().slice(0,10)+'.doc';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+}
+function escapeHtmlEv(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
 
 function exportReportExcel(){
   const sts=getSts();
@@ -4920,6 +5159,59 @@ async function exportGradeExcel(){
   const ROMAN=['','I','II','III','IV','V','VI','VII','VIII','IX'];
   const label=(ROMAN[curOdd]||curOdd)+'-oddelenie';
   await buildExcelReport(gradeSts,label,null,null,null,scopeKeys);
+}
+
+function exportReportWord(){
+  const sts=getSts();
+  if(!sts.length){alert('Нема ученици за извештај.');return;}
+  buildWordReport(sts,curPar,curOdd,curPar,curUch);
+}
+
+async function exportGradeWord(){
+  if(!curUch||!curOdd){alert('Нема избрано одделение.');return;}
+  let gradeSts=[];
+  const scopeKeys=[];
+  try{
+    const{data,error}=await sb.from('ucenici').select('*')
+      .eq('school_year',activeSchoolYear);
+    if(error)throw error;
+    (data||[]).forEach(s=>{
+      const realOdd=(s.odd_ucenik&&s.odd_ucenik>0)?parseInt(s.odd_ucenik):parseInt(s.oddelenie);
+      if(realOdd===parseInt(curOdd)){
+        gradeSts.push({...s,_uch:s.uciliste,_odd:parseInt(s.oddelenie),_par:s.paralelka});
+        const k=s.uciliste+'|'+keyOddFor(s.paralelka,s.oddelenie)+'|'+s.paralelka;
+        if(!scopeKeys.includes(k))scopeKeys.push(k);
+      }
+    });
+  }catch(e){console.warn('Grade fetch fallback to local:',e);}
+  if(!gradeSts.length){
+    Object.entries(allData).forEach(([k,arr])=>{
+      const[uch,odd,par]=k.split('|');
+      arr.forEach(s=>{
+        const realOdd=(s.odd_ucenik&&s.odd_ucenik>0)?parseInt(s.odd_ucenik):parseInt(odd);
+        if(realOdd===parseInt(curOdd)){
+          gradeSts.push({...s,_uch:uch,_odd:parseInt(odd),_par:par});
+          if(!scopeKeys.includes(k))scopeKeys.push(k);
+        }
+      });
+    });
+  }
+  if(!gradeSts.length){alert('Нема вчитани ученици за ова одделение.');return;}
+  try{
+    const{data:realData}=await sb.from('realizacija').select('*')
+      .eq('school_year',activeSchoolYear).eq('period',activePeriod);
+    (realData||[]).forEach(r=>{
+      const realOdd=keyOddFor(r.paralelka,r.oddelenie);
+      const k=r.uciliste+'|'+realOdd+'|'+r.paralelka;
+      if(scopeKeys.includes(k)){
+        const rd=getRealData();
+        if(!rd[k])rd[k]={};
+        rd[k][r.predmet]={real:r.real,nereal:r.nereal,dop:r.dop,dod:r.dod,aktiv:r.aktiv||0};
+      }
+    });
+  }catch(e){console.warn('Grade realizacija fetch:',e);}
+  const ROMAN=['','I','II','III','IV','V','VI','VII','VIII','IX'];
+  await buildWordReport(gradeSts,'',curOdd,null,null,scopeKeys,ROMAN[curOdd]||curOdd);
 }
 
 function exportAdminExcel(){
@@ -5012,6 +5304,70 @@ async function exportAllSeparate(){
     document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
   }catch(e){console.error('exportAllSeparate error:',e);alert('Грешка при генерирање: '+(e.message||e));}
   if(btn){btn.disabled=false;btn.textContent='⬇ Поединечни извештаи (ZIP)';}
+}
+
+// Word верзија: посебен .doc за секоја паралелка/одделение/училиште + еден за цело училиште
+async function exportAllSeparateWord(){
+  if(typeof JSZip==='undefined'){alert('ZIP библиотеката сè уште се вчитува. Обидете се повторно за момент.');return;}
+  const btn=document.getElementById('btn-all-sep-word');
+  if(btn){btn.disabled=true;btn.textContent='⏳ Се генерира...';}
+  try{
+    const ROMAN=['','I','II','III','IV','V','VI','VII','VIII','IX'];
+    const UCH_NAME={C:'Centralno',K:'Krivolak',P:'Pepeliste',V:'Vojshanci',CR:'Crveni'};
+    const allSts=Object.entries(allData).flatMap(([k,arr])=>arr.map(s=>{
+      const[uch,odd,par]=k.split('|');return{...s,_uch:uch,_odd:parseInt(odd),_par:par,_key:k};
+    }));
+    if(!allSts.length){alert('Нема податоци.');if(btn){btn.disabled=false;btn.textContent='⬇ Поединечни извештаи Word (ZIP)';}return;}
+    const zip=new JSZip();
+    const realGrOf=s=>(s.odd_ucenik&&s.odd_ucenik>0)?parseInt(s.odd_ucenik):parseInt(s._odd||s.oddelenie||0);
+
+    // 1) По ПАРАЛЕЛКА
+    const parFolder=zip.folder('1-Paralelki');
+    const parKeys=[...new Set(allSts.map(s=>s._key))];
+    for(const k of parKeys){
+      const[uch,odd,par]=k.split('|');
+      const psts=allSts.filter(s=>s._key===k);
+      if(!psts.length)continue;
+      const blob=await buildWordReport(psts,par,parseInt(odd),par,uch,null,null,true);
+      const fn=(UCH_NAME[uch]||uch)+'_'+par.replace(/[^\wА-Шa-ш-]/g,'_')+'.doc';
+      parFolder.file(fn,blob);
+    }
+
+    // 2) По ОДДЕЛЕНИЕ — сите паралелки од сите училишта (централно + подрачни)
+    const oddFolder=zip.folder('2-Oddelenija');
+    const allGrades=[...new Set(allSts.map(realGrOf))].filter(g=>g>=1).sort((a,b)=>a-b);
+    for(const g of allGrades){
+      const gsts=allSts.filter(s=>realGrOf(s)===g);
+      if(!gsts.length)continue;
+      const gKeys=[...new Set(gsts.map(s=>s._uch+'|'+s._odd+'|'+s._par))];
+      const blob=await buildWordReport(gsts,'',g,null,null,gKeys,ROMAN[g]||g,true);
+      const fn=(ROMAN[g]||g)+'-oddelenie.doc';
+      oddFolder.file(fn,blob);
+    }
+
+    // 3) По УЧИЛИШТЕ
+    const uchFolder=zip.folder('3-Ucilishta');
+    const uchList=[...new Set(allSts.map(s=>s._uch))];
+    for(const uch of uchList){
+      const usts=allSts.filter(s=>s._uch===uch);
+      if(!usts.length)continue;
+      const uKeys=[...new Set(usts.map(s=>s._uch+'|'+s._odd+'|'+s._par))];
+      const blob=await buildWordReport(usts,(UCH_NAME[uch]||uch),null,null,null,uKeys,null,true);
+      const fn=(UCH_NAME[uch]||uch)+'.doc';
+      uchFolder.file(fn,blob);
+    }
+
+    // 4) Цело УЧИЛИШТЕ (сите заедно)
+    const allKeys=[...new Set(allSts.map(s=>s._uch+'|'+s._odd+'|'+s._par))];
+    const blobAll=await buildWordReport(allSts,'Cela-skola',null,null,null,allKeys,null,true);
+    zip.file('0-Cela-skola.doc',blobAll);
+
+    const content=await zip.generateAsync({type:'blob'});
+    const url=URL.createObjectURL(content);const a=document.createElement('a');
+    a.href=url;a.download='Izveshtai-Word-site-'+new Date().toISOString().slice(0,10)+'.zip';
+    document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+  }catch(e){console.error('exportAllSeparateWord error:',e);alert('Грешка при генерирање: '+(e.message||e));}
+  if(btn){btn.disabled=false;btn.textContent='⬇ Поединечни извештаи Word (ZIP)';}
 }
 
 function exportAdminCSV(level){
@@ -5121,6 +5477,7 @@ function buildAdminFilters(uchs,odds,pars,mols,fUch,fOdd,fPar,fPol,fEtn,fMol,fNa
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
       <button class="btn btn-sm" onclick="exportAdminExcel()">⬇ Преземи Excel</button>
       <button class="btn btn-sm" id="btn-all-sep" onclick="exportAllSeparate()">⬇ Поединечни извештаи (ZIP)</button>
+      <button class="btn btn-sm" id="btn-all-sep-word" onclick="exportAllSeparateWord()">⬇ Поединечни извештаи Word (ZIP)</button>
       <button class="btn btn-sm" onclick="doPrint()">Печати / PDF</button>
     </div>
   </div>
