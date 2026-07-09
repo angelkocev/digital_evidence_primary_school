@@ -3181,10 +3181,10 @@ function renderRepBody(sts,oddOverride,targetElId){
         // Забелешка: слаби оценки или делумно оценети предмети
         let beleshka='';
         if(st==='slab'){
-          const slabi=allSubjs(EFFODD,curPar).filter(subj=>Number((s.gr||{})[subj])===1);
+          const slabi=gradedSubjectsFor(EFFODD,curPar).filter(subj=>Number((s.gr||{})[subj])===1);
           beleshka=slabi.map(subj=>`<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;background:rgba(248,113,113,.15);color:#F87171;">${dName(subj)}</span>`).join(' ');
         } else if(st==='delumno'){
-          const neoc=allSubjs(EFFODD,curPar).filter(subj=>{const v=(s.gr||{})[subj];return v==='/'||v===undefined||v===''||v===null;});
+          const neoc=gradedSubjectsFor(EFFODD,curPar).filter(subj=>{const v=(s.gr||{})[subj];return v==='/'||v===undefined||v===''||v===null;});
           beleshka=neoc.map(subj=>`<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;background:rgba(251,191,36,.15);color:#FBBF24;">${dName(subj)}</span>`).join(' ');
         }
         return`<tr>
@@ -3300,7 +3300,7 @@ function renderRepBody(sts,oddOverride,targetElId){
 
         let extraCols='';
         if(isOddelensk){
-          const neoc=allSubjs(EFFODD,curPar).filter(subj=>gr[subj]==='/'||gr[subj]===undefined||gr[subj]===''||gr[subj]===null);
+          const neoc=gradedSubjectsFor(EFFODD,curPar).filter(subj=>gr[subj]==='/'||gr[subj]===undefined||gr[subj]===''||gr[subj]===null);
           extraCols=
             '<td style="text-align:center;font-family:var(--FD);font-size:14px;font-weight:600;color:#60A5FA;">'+neoc.length+'</td>'+
             '<td><div style="display:flex;gap:4px;flex-wrap:wrap;">'+
@@ -3308,7 +3308,7 @@ function renderRepBody(sts,oddOverride,targetElId){
             '</div></td>';
         }
         if(isPopraven||isPovtoruvanje){
-          const slabi=allSubjs(EFFODD,curPar).filter(subj=>Number(gr[subj])===1);
+          const slabi=gradedSubjectsFor(EFFODD,curPar).filter(subj=>Number(gr[subj])===1);
           extraCols='<td><div style="display:flex;gap:4px;flex-wrap:wrap;">'+
             (slabi.length?slabi.map(subj=>`<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;background:rgba(248,113,113,.15);color:#F87171;">${dName(subj)}</span>`).join(''):'<span style="font-size:11px;color:var(--tx3);">—</span>')+
             '</div></td>';
@@ -4330,9 +4330,9 @@ function renderAdmin(){
             if(isOdd){
               const st=gradeStatus(gr);
               const isFullyUngraded=(st==='celoso'||st==='no-data');
-              const neoc=allSubjs(s._odd||0).filter(subj=>gr[subj]==='/'||gr[subj]===undefined||gr[subj]===''||gr[subj]===null);
+              const neoc=gradedSubjectsFor(s._odd||0,s._par).filter(subj=>gr[subj]==='/'||gr[subj]===undefined||gr[subj]===''||gr[subj]===null);
               if(isFullyUngraded){
-                const allSubjCnt=allSubjs(s._odd||0).length;
+                const allSubjCnt=gradedSubjectsFor(s._odd||0,s._par).length;
                 extraCols='<td style="text-align:center;font-family:var(--FD);font-size:14px;font-weight:600;color:#60A5FA;">'+allSubjCnt+'</td>'+
                   '<td><span style="font-size:11px;color:var(--tx3);font-style:italic;">Сите наставни предмети</span></td>';
               } else {
@@ -4340,7 +4340,7 @@ function renderAdmin(){
                   '<td><div style="display:flex;gap:4px;flex-wrap:wrap;">'+(neoc.length?neoc.map(subj=>'<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;background:rgba(96,165,250,.15);color:#60A5FA;">'+subj+'</span>').join(''):'<span style="font-size:11px;color:var(--tx3);">—</span>')+'</div></td>';
               }
             } else {
-              const slabi=allSubjs(s._odd||0).filter(subj=>Number(gr[subj])===1);
+              const slabi=gradedSubjectsFor(s._odd||0,s._par).filter(subj=>Number(gr[subj])===1);
               extraCols='<td><div style="display:flex;gap:4px;flex-wrap:wrap;">'+(slabi.length?slabi.map(subj=>'<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;background:rgba(248,113,113,.15);color:#F87171;">'+subj+'</span>').join(''):'<span style="font-size:11px;color:var(--tx3);">—</span>')+'</div></td>';
             }
             return`<tr>
