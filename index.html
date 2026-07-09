@@ -915,7 +915,7 @@ async function loadFromSupabase(){
       sts2.forEach(s=>{
         const k=`${s.uciliste}|${keyOddFor(s.paralelka,s.oddelenie)}|${s.paralelka}`;
         if(!allData[k])allData[k]=[];
-        allData[k].push({rn:s.rn,ime:s.ime,prz:s.prz,pol:s.pol,mol:s.mol,etnik:s.etnik,op:s.op,nop:s.nop,gr:s.gr||{},merki:s.merki||[],extra:s.extra||[],oddelenie:s.oddelenie,paralelka:s.paralelka,uciliste:s.uciliste,odd_ucenik:s.odd_ucenik||0,ispishan:s.ispishan||false,datumIspishuvanje:s.datum_ispishuvanje||null,prichinaIspishuvanje:s.prichina_ispishuvanje||null,completedInstruction:s.completed_instruction||false,novozapishan:s.novozapishan||false,datum_zapishuvanje:s.datum_zapishuvanje||null,prethodno_uciliste:s.prethodno_uciliste||null,pop:(s.pop||(s.pop_status?(s.pop_program||'ПОП'):'')),popNote:s.pop_note||(s.pop_program||''),_teacher_id:s.teacher_id,_dbid:s.id});
+        allData[k].push({rn:s.rn,ime:s.ime,prz:s.prz,pol:s.pol,mol:s.mol,etnik:s.etnik,op:s.op,nop:s.nop,gr:sanitizeGr(s.gr,s.odd_ucenik||s.oddelenie),merki:s.merki||[],extra:s.extra||[],oddelenie:s.oddelenie,paralelka:s.paralelka,uciliste:s.uciliste,odd_ucenik:s.odd_ucenik||0,ispishan:s.ispishan||false,datumIspishuvanje:s.datum_ispishuvanje||null,prichinaIspishuvanje:s.prichina_ispishuvanje||null,completedInstruction:s.completed_instruction||false,novozapishan:s.novozapishan||false,datum_zapishuvanje:s.datum_zapishuvanje||null,prethodno_uciliste:s.prethodno_uciliste||null,pop:(s.pop||(s.pop_status?(s.pop_program||'ПОП'):'')),popNote:s.pop_note||(s.pop_program||''),_teacher_id:s.teacher_id,_dbid:s.id});
       });
       Object.keys(allData).forEach(k=>{allData[k].sort((a,b)=>(a.rn||999)-(b.rn||999));});
     }
@@ -928,7 +928,7 @@ async function loadFromSupabase(){
       allData[k].push({
         rn:s.rn,ime:s.ime,prz:s.prz,pol:s.pol,
         mol:s.mol,etnik:s.etnik,op:s.op,nop:s.nop,
-        gr:s.gr||{},merki:s.merki||[],extra:s.extra||[],
+        gr:sanitizeGr(s.gr,s.odd_ucenik||s.oddelenie),merki:s.merki||[],extra:s.extra||[],
         oddelenie:s.oddelenie,paralelka:s.paralelka,uciliste:s.uciliste,
         odd_ucenik:s.odd_ucenik||0,
         ispishan:s.ispishan||false,
@@ -1425,6 +1425,18 @@ function getStudentOdd(s){
   return s?.odd_ucenik||curOdd;
 }
 
+// „Час на одделенска заедница" нема оценка во VIII и IX одделение — ако некаде во старите
+// податоци (пр. кај повторувачи) сепак постои таков запис, отстрани го при вчитување за да не
+// се третира како „неоценет" предмет во извештаите и списоците.
+function sanitizeGr(gr,effectiveOdd){
+  if(effectiveOdd>=8&&gr&&Object.prototype.hasOwnProperty.call(gr,'Час на одделенска заедница')){
+    const copy={...gr};
+    delete copy['Час на одделенска заедница'];
+    return copy;
+  }
+  return gr||{};
+}
+
 
 
 let curUch='',curOdd=0,curPar='';
@@ -1806,7 +1818,7 @@ function buildSG(gr={}){
   }
   const en=getEN();
   wrap.innerHTML='<div class="subj-groups">'+PROG[effectiveOdd].map(grp=>{
-    const visibleSubs=grp.s.filter(subj=>subjVisibleForPar(effectiveOdd,subj,curPar));
+    const visibleSubs=grp.s.filter(subj=>subjVisibleForPar(effectiveOdd,subj,curPar)&&!(subj==='Час на одделенска заедница'&&effectiveOdd>=8));
     if(!visibleSubs.length)return '';
     return `
     <div>
@@ -5111,7 +5123,7 @@ async function exportGradeExcel(){
     (data||[]).forEach(s=>{
       const realOdd=(s.odd_ucenik&&s.odd_ucenik>0)?parseInt(s.odd_ucenik):parseInt(s.oddelenie);
       if(realOdd===parseInt(curOdd)){
-        gradeSts.push({...s,_uch:s.uciliste,_odd:parseInt(s.oddelenie),_par:s.paralelka});
+        gradeSts.push({...s,gr:sanitizeGr(s.gr,realOdd),_uch:s.uciliste,_odd:parseInt(s.oddelenie),_par:s.paralelka});
         const k=s.uciliste+'|'+keyOddFor(s.paralelka,s.oddelenie)+'|'+s.paralelka;
         if(!scopeKeys.includes(k))scopeKeys.push(k);
       }
@@ -5178,7 +5190,7 @@ async function exportGradeWord(){
     (data||[]).forEach(s=>{
       const realOdd=(s.odd_ucenik&&s.odd_ucenik>0)?parseInt(s.odd_ucenik):parseInt(s.oddelenie);
       if(realOdd===parseInt(curOdd)){
-        gradeSts.push({...s,_uch:s.uciliste,_odd:parseInt(s.oddelenie),_par:s.paralelka});
+        gradeSts.push({...s,gr:sanitizeGr(s.gr,realOdd),_uch:s.uciliste,_odd:parseInt(s.oddelenie),_par:s.paralelka});
         const k=s.uciliste+'|'+keyOddFor(s.paralelka,s.oddelenie)+'|'+s.paralelka;
         if(!scopeKeys.includes(k))scopeKeys.push(k);
       }
