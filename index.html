@@ -239,6 +239,17 @@ body{font-family:var(--F);color:var(--tx);background:var(--bg);font-size:14px;pa
   #p-rep .rttl,#p-rep .kpi-l{color:#444!important;}
   #p-rep h1,#p-rep h2,#p-rep h3,#p-rep .kpi-v{color:#000!important;}
   #p-rep th{background:#f0f0f0!important;}
+  /* „Преглед на ниво на училиште" — истиот принцип на бои, но претходно немаше воопшто
+     поддршка во CSS-от, па печатењето секогаш прикажуваше празен/погрешен таб. */
+  body.print-admin-tab #p-rep{display:none!important;}
+  body.print-admin-tab #p-admin.panel,body.print-admin-tab #p-admin{display:block!important;}
+  body.print-admin-tab #p-admin,body.print-admin-tab #p-admin *{color:#000!important;}
+  body.print-admin-tab #p-admin .kpi,body.print-admin-tab #p-admin .rcard,body.print-admin-tab #p-admin .rtbl,
+  body.print-admin-tab #p-admin table,body.print-admin-tab #p-admin td,body.print-admin-tab #p-admin th,
+  body.print-admin-tab #p-admin .sc-card,body.print-admin-tab #p-admin [class*="card"]{background:#fff!important;border-color:#ccc!important;}
+  body.print-admin-tab #p-admin .rttl,body.print-admin-tab #p-admin .kpi-l{color:#444!important;}
+  body.print-admin-tab #p-admin h1,body.print-admin-tab #p-admin h2,body.print-admin-tab #p-admin h3,body.print-admin-tab #p-admin .kpi-v{color:#000!important;}
+  body.print-admin-tab #p-admin th{background:#f0f0f0!important;}
 }
 /* ── LOGIN SCREEN ── */
 .login-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg);padding:1rem;}
@@ -3537,6 +3548,7 @@ function updateMerki(){
 function doPrint(){
   // Find active tab
   const activePanel=document.querySelector('.panel.on');
+  document.body.classList.toggle('print-admin-tab',!!(activePanel&&activePanel.id==='p-admin'));
   if(activePanel&&activePanel.id==='p-rep'){
     // already on rep tab
   } else if(activePanel&&activePanel.id==='p-admin'){
@@ -3695,13 +3707,75 @@ function saveReal(){
   if(btn){const orig=btn.textContent;btn.textContent='✓ Зачувано';btn.style.background='#34D399';setTimeout(()=>{btn.textContent=orig;btn.style.background='';},2000);}
 }
 
+// ═══ ИСТОРИСКИ ПРЕГЛЕД (архивирани учебни години) во „Преглед на ниво на училиште" ═══
+// Забелешка: оваа самостојна датотека нема сопствено копче „Архивирај" — ги чита
+// записите што веќе се создадени преку главната апликација (иста Supabase база).
+let adminHistoricalMode=false;
+let adminAvailableArchiveYears=null;
+let adminArchivedDataCache={};
+
+async function ensureAdminArchiveYearsLoaded(){
+  if(adminAvailableArchiveYears)return;
+  const{data,error}=await sb.from('student_year_records').select('school_year');
+  if(error){console.warn('ensureAdminArchiveYearsLoaded:',error.message);adminAvailableArchiveYears=[];return;}
+  adminAvailableArchiveYears=[...new Set((data||[]).map(r=>r.school_year))].sort().reverse();
+}
+
+async function initAdminTab(){
+  await ensureAdminArchiveYearsLoaded();
+  renderAdmin();
+}
+
+async function loadArchivedYearData(year){
+  if(adminArchivedDataCache[year])return adminArchivedDataCache[year];
+  const{data,error}=await sb.from('student_year_records').select('*').eq('school_year',year);
+  if(error){alert('Грешка при вчитување архива: '+error.message);return null;}
+  const grouped={};
+  (data||[]).forEach(r=>{
+    const key=(r.uciliste||'C')+'|'+(r.oddelenie||0)+'|'+(r.paralelka||'');
+    if(!grouped[key])grouped[key]=[];
+    grouped[key].push({
+      ime:r.ime||'',prz:r.prz||'',pol:r.pol||'',mol:r.mol||'',etnik:r.etnik||'',
+      odd_ucenik:r.odd_ucenik||0,rn:r.rn||null,
+      gr:r.gr||{},merki:r.merki||[],extra:r.extra||[],
+      op:r.op||0,nop:r.nop||0,
+      pop:r.pop||'',pop_note:r.pop_note||'',
+      ispishan:r.ispishan||false,completedInstruction:r.completed_instruction||false
+    });
+  });
+  adminArchivedDataCache[year]=grouped;
+  return grouped;
+}
+
+async function onAdminYearChange(){
+  const sel=document.getElementById('af-year');
+  const year=sel?.value||activeSchoolYear;
+  if(year===activeSchoolYear){
+    adminHistoricalMode=false;
+    window._adminSwapData=null;
+    renderAdmin();
+    return;
+  }
+  const el=document.getElementById('adminwrap');
+  if(el)el.innerHTML='<div class="empty-s">Се вчитува архивата за '+year+'...</div>';
+  const archived=await loadArchivedYearData(year);
+  if(!archived||!Object.keys(archived).length){
+    if(el)el.innerHTML='<div class="empty-s">Нема архивирани податоци за '+year+'.</div>';
+    return;
+  }
+  adminHistoricalMode=true;
+  window._adminSwapData=archived;
+  renderAdmin();
+}
+
 function renderAdmin(){
   const el=document.getElementById('adminwrap');
   if(!currentUser?.is_admin&&!isSupervisor()){el.innerHTML='<div class="empty-s">Немате пристап.</div>';return;}
 
   const supervisorBanner=isSupervisor()?'<div style="background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);border-radius:9px;padding:8px 14px;margin-bottom:14px;font-size:12px;color:#FBBF24;display:flex;align-items:center;gap:8px;">👁 Режим на преглед — само читање, без можност за уредување</div>':'';
 
-  const allSts=Object.entries(allData).flatMap(([k,arr])=>arr.map(s=>{
+  const _adminDataSource=(adminHistoricalMode&&window._adminSwapData)?window._adminSwapData:allData;
+  const allSts=Object.entries(_adminDataSource).flatMap(([k,arr])=>arr.map(s=>{
     const[uch,odd,par]=k.split('|');const ro=(s.odd_ucenik&&s.odd_ucenik>0)?parseInt(s.odd_ucenik):parseInt(odd);return{...s,_uch:uch,_odd:parseInt(odd),_realOdd:ro,_par:par};
   }));
   if(!allSts.length){el.innerHTML='<div class="empty-s">Нема внесени ученици.</div>';return;}
@@ -4398,7 +4472,7 @@ function renderAdmin(){
     }).join('');
   })()}
 
-  ${buildRealizacijaChartsAggregate(classList.map(c=>({uch:c.uch,odd:c.odd,par:c.par})))}
+  ${adminHistoricalMode?'<div class="rcard"><div class="rttl">Реализација на настава</div><div style="text-align:center;padding:24px;color:var(--tx3);font-size:12px;">Не е достапно за архивирани учебни години — само состојбата на учениците (оценки, изостаноци) се архивира, не и реализацијата на наставата.</div></div>':buildRealizacijaChartsAggregate(classList.map(c=>({uch:c.uch,odd:c.odd,par:c.par})))}
 
   ${buildPOPStudentsTable(sts,'admin')}
 
@@ -5487,12 +5561,20 @@ function buildAdminFilters(uchs,odds,pars,mols,fUch,fOdd,fPar,fPol,fEtn,fMol,fNa
       <div style="font-family:var(--FD);font-size:19px;font-weight:500;color:var(--tx);">Сумиран извештај</div>
     </div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <div>
+        <div style="${labelStyle}">Учебна година</div>
+        <select id="af-year" onchange="onAdminYearChange()" style="${selStyle}width:auto;min-width:130px;">
+          <option value="${activeSchoolYear}" ${!adminHistoricalMode?'selected':''}>${activeSchoolYear} (тековна)</option>
+          ${(adminAvailableArchiveYears||[]).filter(y=>y!==activeSchoolYear).map(y=>`<option value="${y}" ${adminHistoricalMode?'selected':''}>${y} (архива)</option>`).join('')}
+        </select>
+      </div>
       <button class="btn btn-sm" onclick="exportAdminExcel()">⬇ Преземи Excel</button>
       <button class="btn btn-sm" id="btn-all-sep" onclick="exportAllSeparate()">⬇ Поединечни извештаи (ZIP)</button>
       <button class="btn btn-sm" id="btn-all-sep-word" onclick="exportAllSeparateWord()">⬇ Поединечни извештаи Word (ZIP)</button>
       <button class="btn btn-sm" onclick="doPrint()">Печати / PDF</button>
     </div>
   </div>
+  ${adminHistoricalMode?'<div style="background:rgba(96,165,250,.1);border:1px solid rgba(96,165,250,.3);border-radius:9px;padding:8px 14px;margin-bottom:14px;font-size:12px;color:#60A5FA;display:flex;align-items:center;gap:8px;">📁 Архивиран преглед — податоците се од архивата, не се уредливи. Реализацијата на настава не е достапна за минати години.</div>':''}
   <div style="background:var(--bg2);border:1px solid var(--bdr);border-radius:10px 10px 0 0;padding:10px 14px 8px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
     <div><div style="${labelStyle}">Училиште</div><select id="af-uch" onchange="renderAdmin()" style="${selStyle}"><option value="__svi__">Сите училишта</option>${uchs.map(u=>`<option value="${u}" ${fUch===u?'selected':''}>${UCH_NAMES[u]||u}</option>`).join('')}</select></div>
     <div><div style="${labelStyle}">Одделение</div><select id="af-odd" onchange="renderAdmin()" style="${selStyle}"><option value="__svi__">Сите одделенија</option>${odds.map(o=>`<option value="${o}" ${fOdd==o?'selected':''}>${ODD_LBL[o]||o}</option>`).join('')}</select></div>
@@ -5814,10 +5896,11 @@ function gT(id,btn){
   document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
   document.getElementById('p-'+id).classList.add('on');
+  if(id!=='admin'){adminHistoricalMode=false;window._adminSwapData=null;}
   if(id==='lst')renderL();
   if(id==='real')renderReal();
   if(id==='rep')renderR();
-  if(id==='admin')renderAdmin();
+  if(id==='admin')initAdminTab();
   if(id==='supervision')renderSupervision();
 }
 initAuth();
